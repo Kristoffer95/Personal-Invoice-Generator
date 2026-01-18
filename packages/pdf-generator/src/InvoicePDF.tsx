@@ -14,7 +14,7 @@ import type {
   BackgroundDesign,
 } from '@invoice-generator/shared-types'
 import { PAGE_SIZES, CURRENCY_SYMBOLS } from '@invoice-generator/shared-types'
-import { styles, colors } from './styles'
+import { createStyles, getColors, type PdfTheme } from './styles'
 
 interface InvoicePDFProps {
   invoice: Invoice
@@ -41,6 +41,11 @@ function formatDate(dateStr: string): string {
 export function InvoicePDF({ invoice, backgroundDesign }: InvoicePDFProps) {
   const pageSize = PAGE_SIZES[invoice.pageSize as PageSizeKey] || PAGE_SIZES.A4
   const currency = invoice.currency
+  const theme: PdfTheme = invoice.pdfTheme || 'light'
+
+  // Create theme-aware styles (no hooks needed - these are static for the render)
+  const styles = createStyles(theme)
+  const colors = getColors(theme)
 
   // Filter work days that have hours logged
   const workDays = invoice.dailyWorkHours.filter(d => d.isWorkday && d.hours > 0)

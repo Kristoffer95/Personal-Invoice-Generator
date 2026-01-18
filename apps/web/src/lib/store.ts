@@ -118,6 +118,7 @@ const defaultInvoice: Partial<Invoice> = {
   terms: '',
   jobTitle: '',
   showDetailedHours: false,
+  pdfTheme: 'light',
 }
 
 const defaultScheduleConfig: ScheduleConfig = {
@@ -377,6 +378,7 @@ export const useInvoiceStore = create<InvoiceState>()(
           terms: current.terms,
           jobTitle: current.jobTitle,
           showDetailedHours: current.showDetailedHours || false,
+          pdfTheme: current.pdfTheme || 'light',
           backgroundDesignId: current.backgroundDesignId,
           pageSize: current.pageSize || 'A4',
           createdAt: current.createdAt || now,

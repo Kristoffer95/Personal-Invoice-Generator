@@ -48,6 +48,7 @@ import {
   type PeriodBatchType,
   getBatchPeriod,
 } from '@/lib/period-detection'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { PartyInfoForm } from './PartyInfoForm'
 import { LineItemsEditor } from './LineItemsEditor'
 import { BackgroundSelector } from './BackgroundSelector'
@@ -374,6 +375,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               {isExporting ? 'Exporting...' : 'Export'}
             </Button>
             <Separator orientation="vertical" className="h-6" />
+            <ThemeToggle />
             <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
               <Settings className="h-4 w-4" />
             </Button>
@@ -771,6 +773,25 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
                   <Label htmlFor="showDetailedHours" className="font-normal">
                     Show detailed per-day hours breakdown in PDF
                   </Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>PDF Theme</Label>
+                  <RadioGroup
+                    value={currentInvoice.pdfTheme || 'light'}
+                    onValueChange={(value) =>
+                      updateCurrentInvoice({ pdfTheme: value as 'light' | 'dark' })
+                    }
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="light" id="pdf-light" />
+                      <Label htmlFor="pdf-light" className="font-normal">Light</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="dark" id="pdf-dark" />
+                      <Label htmlFor="pdf-dark" className="font-normal">Dark</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
               </div>
             </div>

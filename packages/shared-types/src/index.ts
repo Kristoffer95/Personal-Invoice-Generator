@@ -196,6 +196,7 @@ export const invoiceSchema = z.object({
 
   // Display settings
   showDetailedHours: z.boolean().default(false), // Show per-day hours breakdown
+  pdfTheme: z.enum(['light', 'dark']).default('light'), // PDF color theme
 
   // Design settings
   backgroundDesignId: z.string().optional(),
