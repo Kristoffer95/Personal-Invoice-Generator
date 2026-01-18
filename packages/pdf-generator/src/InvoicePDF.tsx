@@ -13,7 +13,7 @@ import type {
   Currency,
   BackgroundDesign,
 } from '@invoice-generator/shared-types'
-import { PAGE_SIZES, CURRENCY_SYMBOLS, PAYMENT_TERMS_LABELS } from '@invoice-generator/shared-types'
+import { PAGE_SIZES, CURRENCY_SYMBOLS } from '@invoice-generator/shared-types'
 import { styles, colors } from './styles'
 
 interface InvoicePDFProps {
@@ -35,21 +35,6 @@ function formatDate(dateStr: string): string {
     return format(parseISO(dateStr), 'MMM dd, yyyy')
   } catch {
     return dateStr
-  }
-}
-
-function getStatusStyle(status: Invoice['status']) {
-  switch (status) {
-    case 'DRAFT':
-      return styles.statusDraft
-    case 'SENT':
-      return styles.statusSent
-    case 'PAID':
-      return styles.statusPaid
-    case 'OVERDUE':
-      return styles.statusOverdue
-    default:
-      return styles.statusDraft
   }
 }
 
@@ -89,10 +74,6 @@ export function InvoicePDF({ invoice, backgroundDesign }: InvoicePDFProps) {
           />
         )}
 
-        {/* Watermark for draft invoices */}
-        {invoice.status === 'DRAFT' && (
-          <Text style={styles.watermark}>DRAFT</Text>
-        )}
 
         {/* Header */}
         <View style={styles.header}>
@@ -102,9 +83,6 @@ export function InvoicePDF({ invoice, backgroundDesign }: InvoicePDFProps) {
             )}
             <Text style={styles.title}>INVOICE</Text>
             <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber}</Text>
-            <View style={[styles.status, getStatusStyle(invoice.status)]}>
-              <Text>{invoice.status}</Text>
-            </View>
           </View>
           <View style={styles.headerRight}>
             <Text style={[styles.partyName, { marginBottom: 8 }]}>{invoice.from.name}</Text>
@@ -159,14 +137,6 @@ export function InvoicePDF({ invoice, backgroundDesign }: InvoicePDFProps) {
               </Text>
             </View>
           )}
-          <View style={styles.dateBox}>
-            <Text style={styles.dateLabel}>Payment Terms</Text>
-            <Text style={styles.dateValue}>
-              {invoice.paymentTerms === 'CUSTOM'
-                ? invoice.customPaymentTerms || 'Custom'
-                : PAYMENT_TERMS_LABELS[invoice.paymentTerms]}
-            </Text>
-          </View>
         </View>
 
 

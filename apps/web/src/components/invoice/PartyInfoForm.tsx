@@ -22,19 +22,16 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
     }
   }
 
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+  const formId = title || 'party'
+
+  const formContent = (
+    <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor={`${title}-name`} className={cn(showNameError && 'text-destructive')}>
+            <Label htmlFor={`${formId}-name`} className={cn(showNameError && 'text-destructive')}>
               Name / Company *
             </Label>
             <Input
-              id={`${title}-name`}
+              id={`${formId}-name`}
               value={value.name || ''}
               onChange={(e) => handleChange('name', e.target.value)}
               placeholder="Company or individual name"
@@ -46,9 +43,9 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor={`${title}-address`}>Address</Label>
+            <Label htmlFor={`${formId}-address`}>Address</Label>
             <Input
-              id={`${title}-address`}
+              id={`${formId}-address`}
               value={value.address || ''}
               onChange={(e) => handleChange('address', e.target.value)}
               placeholder="Street address"
@@ -56,9 +53,9 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`${title}-city`}>City</Label>
+            <Label htmlFor={`${formId}-city`}>City</Label>
             <Input
-              id={`${title}-city`}
+              id={`${formId}-city`}
               value={value.city || ''}
               onChange={(e) => handleChange('city', e.target.value)}
               placeholder="City"
@@ -66,9 +63,9 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`${title}-state`}>State / Province</Label>
+            <Label htmlFor={`${formId}-state`}>State / Province</Label>
             <Input
-              id={`${title}-state`}
+              id={`${formId}-state`}
               value={value.state || ''}
               onChange={(e) => handleChange('state', e.target.value)}
               placeholder="State"
@@ -76,9 +73,9 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`${title}-postalCode`}>Postal Code</Label>
+            <Label htmlFor={`${formId}-postalCode`}>Postal Code</Label>
             <Input
-              id={`${title}-postalCode`}
+              id={`${formId}-postalCode`}
               value={value.postalCode || ''}
               onChange={(e) => handleChange('postalCode', e.target.value)}
               placeholder="12345"
@@ -86,9 +83,9 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`${title}-country`}>Country</Label>
+            <Label htmlFor={`${formId}-country`}>Country</Label>
             <Input
-              id={`${title}-country`}
+              id={`${formId}-country`}
               value={value.country || ''}
               onChange={(e) => handleChange('country', e.target.value)}
               placeholder="Country"
@@ -96,9 +93,9 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`${title}-email`}>Email</Label>
+            <Label htmlFor={`${formId}-email`}>Email</Label>
             <Input
-              id={`${title}-email`}
+              id={`${formId}-email`}
               type="email"
               value={value.email || ''}
               onChange={(e) => handleChange('email', e.target.value)}
@@ -107,26 +104,30 @@ export function PartyInfoForm({ title, value, onChange, showNameError, onNameCha
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={`${title}-phone`}>Phone</Label>
+            <Label htmlFor={`${formId}-phone`}>Phone</Label>
             <Input
-              id={`${title}-phone`}
+              id={`${formId}-phone`}
               type="tel"
               value={value.phone || ''}
               onChange={(e) => handleChange('phone', e.target.value)}
               placeholder="+1 (555) 123-4567"
             />
           </div>
-
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor={`${title}-taxId`}>Tax ID / VAT Number</Label>
-            <Input
-              id={`${title}-taxId`}
-              value={value.taxId || ''}
-              onChange={(e) => handleChange('taxId', e.target.value)}
-              placeholder="Tax identification number"
-            />
-          </div>
         </div>
+  )
+
+  // If no title, render just the form content without a card wrapper
+  if (!title) {
+    return formContent
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {formContent}
       </CardContent>
     </Card>
   )

@@ -52,29 +52,6 @@ export const styles = StyleSheet.create({
     color: colors.textLight,
     marginBottom: 3,
   },
-  status: {
-    fontSize: 10,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    marginTop: 5,
-  },
-  statusDraft: {
-    backgroundColor: '#f3f4f6',
-    color: colors.textLight,
-  },
-  statusSent: {
-    backgroundColor: '#dbeafe',
-    color: '#1d4ed8',
-  },
-  statusPaid: {
-    backgroundColor: '#dcfce7',
-    color: '#16a34a',
-  },
-  statusOverdue: {
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-  },
   partiesSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -267,15 +244,6 @@ export const styles = StyleSheet.create({
     right: 40,
     fontSize: 9,
     color: colors.textMuted,
-  },
-  watermark: {
-    position: 'absolute',
-    top: '40%',
-    left: '20%',
-    fontSize: 60,
-    color: '#f0f0f0',
-    transform: 'rotate(-45deg)',
-    fontFamily: 'Helvetica-Bold',
   },
   workHoursSummary: {
     flexDirection: 'row',
