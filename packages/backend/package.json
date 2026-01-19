@@ -1,0 +1,19 @@
+{
+  "name": "@invoice-generator/backend",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./convex/index.ts",
+  "types": "./convex/index.ts",
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy",
+    "codegen": "convex codegen"
+  },
+  "dependencies": {
+    "convex": "^1.17.4",
+    "svix": "^1.45.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

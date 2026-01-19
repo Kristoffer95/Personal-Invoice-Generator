@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@invoice-generator/backend/*": [
+        "../../packages/backend/*"
       ]
     },
     "target": "ES2017"

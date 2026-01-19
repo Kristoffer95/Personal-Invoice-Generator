@@ -34,22 +34,22 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
-          // Content Security Policy - allows PDF preview and necessary features
+          // Content Security Policy - allows PDF preview, Clerk auth, Convex, Turnstile, and Google Fonts
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Required for Next.js
-              "style-src 'self' 'unsafe-inline'", // Required for Tailwind
-              "img-src 'self' data: blob:",
-              "font-src 'self' data: blob:", // PDF fonts may use blob URLs
-              "connect-src 'self' blob:", // Allow blob connections for PDF
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com", // Next.js + Clerk + Turnstile
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind + Google Fonts
+              "img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com",
+              "font-src 'self' data: blob: https://fonts.gstatic.com", // PDF fonts + Google Fonts
+              "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.convex.cloud https://clerk-telemetry.com", // Clerk + Convex + Telemetry
               "worker-src 'self' blob:", // PDF renderer uses web workers
               "child-src 'self' blob:", // Allow blob iframes for PDF preview
-              "frame-src 'self' blob:", // Allow blob frames for PDF preview
+              "frame-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com", // Clerk + Turnstile
               "object-src 'self' blob:", // Allow PDF objects
               "frame-ancestors 'self'",
-              "form-action 'self'",
+              "form-action 'self' https://*.clerk.accounts.dev https://*.clerk.com",
               "base-uri 'self'",
             ].join('; '),
           },
