@@ -24,6 +24,8 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    /* Touch target minimum size for accessibility */
+    --min-touch-target: 44px;
   }
 
   .dark {
@@ -53,7 +55,172 @@
   * {
     @apply border-border;
   }
+
+  html {
+    /* Enable smooth scrolling with reduced motion preference */
+    scroll-behavior: smooth;
+    /* Prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Respect user preference for reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Improve font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent overscroll bounce on mobile */
+    overscroll-behavior: none;
+  }
+
+  /* Touch device optimizations */
+  @media (hover: none) and (pointer: coarse) {
+    /*
+     * Touch targets are handled at component level to avoid
+     * affecting small inline elements like calendar checkboxes.
+     * Components use explicit sizing (h-8, h-9, etc.) for touch targets.
+     */
+
+    /* Disable hover states on touch devices to prevent sticky states */
+    .touch-none-hover:hover {
+      background-color: inherit;
+    }
+  }
+
+  /* Focus visible for keyboard navigation */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Remove tap highlight on mobile webkit */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Print styles for invoice export */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide non-essential elements when printing */
+  header,
+  .no-print,
+  button:not(.print-button),
+  [role="dialog"],
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+
+  /* Ensure content fits on page */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Avoid page breaks inside cards */
+  .card,
+  [data-slot="card"] {
+    page-break-inside: avoid;
+  }
+}
+
+/* Safe area insets for notched devices (iPhone X+, etc.) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  /* Sticky header safe area */
+  header {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+}
+
+/* Container query support for responsive components */
+@layer utilities {
+  .container-type-inline {
+    container-type: inline-size;
+  }
+
+  .container-type-size {
+    container-type: size;
+  }
+}
+
+/* Responsive calendar grid for small screens */
+@layer components {
+  /* Mobile-optimized calendar cells */
+  .calendar-cell {
+    @apply relative rounded-md border p-1 transition-colors;
+    min-height: 60px;
+  }
+
+  @media (min-width: 640px) {
+    .calendar-cell {
+      min-height: 80px;
+      @apply p-1.5;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .calendar-cell {
+      min-height: 90px;
+      @apply p-2;
+    }
+  }
+
+  /* Responsive text scaling */
+  .text-responsive-sm {
+    @apply text-xs;
+  }
+
+  @media (min-width: 640px) {
+    .text-responsive-sm {
+      @apply text-sm;
+    }
+  }
+
+  .text-responsive-base {
+    @apply text-sm;
+  }
+
+  @media (min-width: 640px) {
+    .text-responsive-base {
+      @apply text-base;
+    }
+  }
+
+  /* Mobile action bar for sticky footer on small screens */
+  .mobile-action-bar {
+    @apply fixed bottom-0 left-0 right-0 z-50 border-t bg-background p-3;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    .mobile-action-bar {
+      @apply hidden;
+    }
   }
 }

@@ -342,80 +342,94 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   const currencySymbol = CURRENCY_SYMBOLS[currentInvoice.currency || 'USD']
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      {/* Header - Responsive with mobile menu */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div>
-            <h1 className="text-xl font-bold">Invoice Generator</h1>
+        <div className="container mx-auto flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:px-4 md:px-6">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-bold sm:text-xl">Invoice Generator</h1>
             {selectedPeriod && (
-              <p className="text-sm text-muted-foreground">
+              <p className="truncate text-xs text-muted-foreground sm:text-sm">
                 {selectedPeriod.label}
                 {selectedPeriod.isAutoDetected && !isManualOverride && (
-                  <span className="ml-2 text-xs text-primary">(Auto-detected)</span>
+                  <span className="ml-1 text-xs text-primary sm:ml-2">(Auto)</span>
                 )}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          {/* Desktop action buttons */}
+          <div className="hidden items-center gap-1.5 sm:flex sm:gap-2">
             <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Reset
+              <RotateCcw className="mr-1.5 h-4 w-4 sm:mr-2" />
+              <span className="hidden md:inline">Reset</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handleSave}>
-              <Save className="mr-2 h-4 w-4" />
-              Save
+              <Save className="mr-1.5 h-4 w-4 sm:mr-2" />
+              <span className="hidden md:inline">Save</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handlePreview}>
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
+              <Eye className="mr-1.5 h-4 w-4 sm:mr-2" />
+              <span className="hidden md:inline">Preview</span>
             </Button>
             <Button size="sm" onClick={handleExport} disabled={isExporting}>
-              <FileDown className="mr-2 h-4 w-4" />
-              {isExporting ? 'Exporting...' : 'Export'}
+              <FileDown className="mr-1.5 h-4 w-4 sm:mr-2" />
+              <span className="hidden md:inline">{isExporting ? 'Exporting...' : 'Export'}</span>
             </Button>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="mx-1 h-6" />
             <ThemeToggle />
             <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
               <Settings className="h-4 w-4" />
+              <span className="sr-only">Settings</span>
+            </Button>
+          </div>
+          {/* Mobile header actions - minimal */}
+          <div className="flex items-center gap-1 sm:hidden">
+            <ThemeToggle />
+            <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4" />
+              <span className="sr-only">Settings</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content - Calendar */}
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid gap-6 lg:grid-cols-4">
+      <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {/* Calendar */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 xl:col-span-4 2xl:col-span-5">
             <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-3 sm:pb-4">
+                {/* Mobile: Stack header elements */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <CalendarIcon className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                       Work Hours
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">
                       Click on a day to edit hours. Toggle checkboxes to mark as workday.
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={handlePreviousMonth}>
+                  {/* Month navigation */}
+                  <div className="flex items-center justify-between gap-1 sm:justify-end sm:gap-2">
+                    <Button variant="ghost" size="icon" onClick={handlePreviousMonth} className="h-8 w-8 sm:h-9 sm:w-9">
                       <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Previous month</span>
                     </Button>
-                    <span className="min-w-[140px] text-center font-medium">
-                      {format(currentMonth, 'MMMM yyyy')}
+                    <span className="min-w-[100px] text-center text-sm font-medium sm:min-w-[140px] sm:text-base">
+                      {format(currentMonth, 'MMM yyyy')}
                     </span>
-                    <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+                    <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 sm:h-9 sm:w-9">
                       <ChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Next month</span>
                     </Button>
                     {!isCurrentMonthToday && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleGoToToday}
-                        className="ml-2"
+                        className="ml-1 h-8 text-xs sm:ml-2 sm:h-9 sm:text-sm"
                       >
                         Today
                       </Button>
@@ -423,153 +437,161 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                {/* Period selector */}
-                <div className="mb-4 flex flex-wrap items-center gap-4">
-                  <Label className="text-sm text-muted-foreground">Period:</Label>
+              <CardContent className="px-3 sm:px-6">
+                {/* Period selector - responsive with wrapping */}
+                <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                  <Label className="text-xs text-muted-foreground sm:text-sm">Period:</Label>
                   <RadioGroup
                     value={selectedBatch}
                     onValueChange={(value) => handleBatchSelect(value as PeriodBatchType)}
-                    className="flex flex-row gap-4"
+                    className="flex flex-row flex-wrap gap-3 sm:gap-4"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="1st_batch" id="period-1st" />
-                      <Label htmlFor="period-1st" className="font-normal cursor-pointer">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2">
+                      <RadioGroupItem value="1st_batch" id="period-1st" className="h-4 w-4" />
+                      <Label htmlFor="period-1st" className="cursor-pointer text-xs font-normal sm:text-sm">
                         1st Batch
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="2nd_batch" id="period-2nd" />
-                      <Label htmlFor="period-2nd" className="font-normal cursor-pointer">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2">
+                      <RadioGroupItem value="2nd_batch" id="period-2nd" className="h-4 w-4" />
+                      <Label htmlFor="period-2nd" className="cursor-pointer text-xs font-normal sm:text-sm">
                         2nd Batch
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="whole_month" id="period-whole" />
-                      <Label htmlFor="period-whole" className="font-normal cursor-pointer">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2">
+                      <RadioGroupItem value="whole_month" id="period-whole" className="h-4 w-4" />
+                      <Label htmlFor="period-whole" className="cursor-pointer text-xs font-normal sm:text-sm">
                         Whole Month
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
 
-                {/* Calendar grid */}
-                <div className="grid grid-cols-7 gap-1 text-center">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <div key={day} className="p-2 text-xs font-medium text-muted-foreground">
-                      {day}
-                    </div>
-                  ))}
+                {/* Calendar grid - responsive with horizontal scroll on very small screens */}
+                <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:overflow-visible sm:px-0">
+                  <div className="grid min-w-[320px] grid-cols-7 gap-0.5 text-center sm:min-w-0 sm:gap-1">
+                    {/* Day headers - abbreviated on mobile */}
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                      <div key={`${day}-${i}`} className="p-1 text-[10px] font-medium text-muted-foreground sm:hidden sm:p-2 sm:text-xs">
+                        {day}
+                      </div>
+                    ))}
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                      <div key={day} className="hidden p-2 text-xs font-medium text-muted-foreground sm:block">
+                        {day}
+                      </div>
+                    ))}
 
-                  {/* Empty cells for days before the first of the month */}
-                  {Array.from({ length: monthDays[0].getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="p-1" />
-                  ))}
+                    {/* Empty cells for days before the first of the month */}
+                    {Array.from({ length: monthDays[0].getDay() }).map((_, i) => (
+                      <div key={`empty-${i}`} className="p-0.5 sm:p-1" />
+                    ))}
 
-                  {monthDays.map((day) => {
-                    const dateStr = format(day, 'yyyy-MM-dd')
-                    const dayData = hoursMap.get(dateStr)
-                    const inPeriod = isInPeriod(day)
-                    const weekend = isWeekend(day)
-                    const isChecked = dayData?.isWorkday ?? false
+                    {monthDays.map((day) => {
+                      const dateStr = format(day, 'yyyy-MM-dd')
+                      const dayData = hoursMap.get(dateStr)
+                      const inPeriod = isInPeriod(day)
+                      const weekend = isWeekend(day)
+                      const isChecked = dayData?.isWorkday ?? false
 
-                    return (
-                      <div
-                        key={dateStr}
-                        className={cn(
-                          'relative rounded-md border p-1.5 transition-colors min-h-[80px]',
-                          inPeriod && 'bg-primary/5 border-primary/30',
-                          weekend && !inPeriod && 'bg-muted/50',
-                          !isChecked && inPeriod && 'bg-muted/30'
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium">{format(day, 'd')}</span>
+                      return (
+                        <div
+                          key={dateStr}
+                          className={cn(
+                            'calendar-cell',
+                            inPeriod && 'bg-primary/5 border-primary/30',
+                            weekend && !inPeriod && 'bg-muted/50',
+                            !isChecked && inPeriod && 'bg-muted/30'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-medium sm:text-xs">{format(day, 'd')}</span>
+                            {inPeriod && (
+                              <button
+                                type="button"
+                                onClick={() => toggleWorkday(dateStr)}
+                                className={cn(
+                                  'flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all sm:h-4 sm:w-4',
+                                  isChecked
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-muted-foreground/30 hover:border-muted-foreground/50'
+                                )}
+                                aria-label={isChecked ? 'Mark as non-working day' : 'Mark as working day'}
+                              >
+                                {isChecked && (
+                                  <svg className="h-2 w-2 sm:h-2.5 sm:w-2.5" viewBox="0 0 12 12" fill="none">
+                                    <path
+                                      d="M2 6l3 3 5-6"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
+                          </div>
                           {inPeriod && (
-                            <button
-                              type="button"
-                              onClick={() => toggleWorkday(dateStr)}
-                              className={cn(
-                                'h-4 w-4 rounded-full border-2 transition-all flex items-center justify-center',
-                                isChecked
-                                  ? 'bg-primary border-primary text-primary-foreground'
-                                  : 'border-muted-foreground/30 hover:border-muted-foreground/50'
-                              )}
-                              aria-label={isChecked ? 'Mark as non-working day' : 'Mark as working day'}
-                            >
-                              {isChecked && (
-                                <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none">
-                                  <path
-                                    d="M2 6l3 3 5-6"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              )}
-                            </button>
+                            <div className="mt-1 sm:mt-1.5">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={24}
+                                step={0.5}
+                                value={dayData?.hours ?? 0}
+                                onChange={(e) =>
+                                  updateDayHours(dateStr, parseFloat(e.target.value) || 0)
+                                }
+                                className={cn(
+                                  'h-6 px-1 text-center text-[10px] font-medium sm:h-7 sm:px-1.5 sm:text-xs',
+                                  !isChecked && 'opacity-50'
+                                )}
+                              />
+                            </div>
                           )}
                         </div>
-                        {inPeriod && (
-                          <div className="mt-1.5">
-                            <Input
-                              type="number"
-                              min={0}
-                              max={24}
-                              step={0.5}
-                              value={dayData?.hours ?? 0}
-                              onChange={(e) =>
-                                updateDayHours(dateStr, parseFloat(e.target.value) || 0)
-                              }
-                              className={cn(
-                                'h-7 px-1.5 text-xs text-center font-medium',
-                                !isChecked && 'opacity-50'
-                              )}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Summary Sidebar */}
-          <div className="space-y-4">
+          {/* Summary Sidebar - Hidden on mobile (shown in action bar) */}
+          <div className="hidden space-y-3 sm:block sm:space-y-4">
             {/* Quick Summary */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Summary</CardTitle>
+                <CardTitle className="text-sm sm:text-base">Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{totalDays}</div>
-                    <div className="text-xs text-muted-foreground">Working Days</div>
+                    <div className="text-xl font-bold sm:text-2xl">{totalDays}</div>
+                    <div className="text-[10px] text-muted-foreground sm:text-xs">Working Days</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">Total Hours</div>
+                    <div className="text-xl font-bold sm:text-2xl">{totalHours.toFixed(1)}</div>
+                    <div className="text-[10px] text-muted-foreground sm:text-xs">Total Hours</div>
                   </div>
                 </div>
                 <Separator />
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-muted-foreground">Rate</span>
                     <span>{currencySymbol}{currentInvoice.hourlyRate?.toFixed(2) || '0.00'}/hr</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>{currencySymbol}{subtotal.toFixed(2)}</span>
                   </div>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-bold">
-                  <span>Total</span>
-                  <span className="text-lg">{currencySymbol}{(currentInvoice.totalAmount || subtotal).toFixed(2)}</span>
+                  <span className="text-sm sm:text-base">Total</span>
+                  <span className="text-base sm:text-lg">{currencySymbol}{(currentInvoice.totalAmount || subtotal).toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -577,13 +599,13 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
             {/* Quick Settings */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Quick Settings</CardTitle>
+                <CardTitle className="text-sm sm:text-base">Quick Settings</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2.5 sm:space-y-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Hourly Rate</Label>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground sm:text-sm">
                       {currencySymbol}
                     </span>
                     <Input
@@ -592,7 +614,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
                       step={0.01}
                       value={currentInvoice.hourlyRate || ''}
                       onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
-                      className="pl-6"
+                      className="h-9 pl-6 text-sm"
                       placeholder="0.00"
                     />
                   </div>
@@ -606,6 +628,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
                     step={0.5}
                     value={scheduleConfig.defaultHoursPerDay}
                     onChange={(e) => updateScheduleConfig({ defaultHoursPerDay: parseFloat(e.target.value) || 8 })}
+                    className="h-9 text-sm"
                   />
                 </div>
                 <Button
@@ -623,17 +646,49 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         </div>
       </main>
 
+      {/* Mobile Action Bar - Fixed at bottom */}
+      <div className="mobile-action-bar sm:hidden">
+        <div className="flex items-center justify-between gap-2">
+          {/* Summary info */}
+          <div className="flex items-center gap-3 text-xs">
+            <div>
+              <span className="text-muted-foreground">Days:</span>{' '}
+              <span className="font-semibold">{totalDays}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Total:</span>{' '}
+              <span className="font-semibold">{currencySymbol}{(currentInvoice.totalAmount || subtotal).toFixed(0)}</span>
+            </div>
+          </div>
+          {/* Action buttons */}
+          <div className="flex items-center gap-1.5">
+            <Button variant="outline" size="sm" onClick={handleSave} className="h-8 px-2.5">
+              <Save className="h-4 w-4" />
+              <span className="sr-only">Save</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handlePreview} className="h-8 px-2.5">
+              <Eye className="h-4 w-4" />
+              <span className="sr-only">Preview</span>
+            </Button>
+            <Button size="sm" onClick={handleExport} disabled={isExporting} className="h-8 px-3">
+              <FileDown className="mr-1.5 h-4 w-4" />
+              Export
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Settings Sheet */}
       <Sheet open={showSettings} onOpenChange={setShowSettings}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-hidden">
-          <SheetHeader>
-            <SheetTitle>Invoice Settings</SheetTitle>
-            <SheetDescription>
+        <SheetContent side="right" className="w-full overflow-hidden sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-lg sm:text-xl">Invoice Settings</SheetTitle>
+            <SheetDescription className="text-xs sm:text-sm">
               Configure invoice details, parties, and preferences
             </SheetDescription>
           </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-120px)] pr-4">
-            <div className="space-y-6 py-4">
+          <ScrollArea className="h-[calc(100vh-100px)] pr-2 sm:h-[calc(100vh-120px)] sm:pr-4">
+            <div className="space-y-4 py-3 sm:space-y-6 sm:py-4">
               {/* Invoice Info */}
               <div className="space-y-4">
                 <h3 className="font-semibold">Invoice Details</h3>
@@ -799,11 +854,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         </SheetContent>
       </Sheet>
 
-      {/* Preview Dialog */}
+      {/* Preview Dialog - Responsive with full screen on mobile */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+        <DialogContent className="flex h-[95vh] w-[95vw] max-w-4xl flex-col sm:h-[90vh] sm:w-auto">
           <DialogHeader>
-            <DialogTitle>Invoice Preview</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Invoice Preview</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-auto">
             {showPreview && (
@@ -813,8 +868,8 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               />
             )}
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowPreview(false)}>
+          <div className="flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:justify-end sm:pt-4">
+            <Button variant="outline" onClick={() => setShowPreview(false)} className="w-full sm:w-auto">
               Close
             </Button>
             <Button
@@ -823,6 +878,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
                 await handleExport()
               }}
               disabled={isExporting}
+              className="w-full sm:w-auto"
             >
               <FileDown className="mr-2 h-4 w-4" />
               Export PDF
