@@ -856,7 +856,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
 
       {/* Preview Dialog - Responsive with full screen on mobile */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="flex h-[95vh] w-[95vw] max-w-4xl flex-col sm:h-[90vh] sm:w-auto">
+        <DialogContent className="flex h-[95vh] w-[95vw] max-w-[95vw] flex-col sm:h-[90vh] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Invoice Preview</DialogTitle>
           </DialogHeader>

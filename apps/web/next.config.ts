@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
-          // Content Security Policy - restrictive but allows necessary features
+          // Content Security Policy - allows PDF preview and necessary features
           {
             key: 'Content-Security-Policy',
             value: [
@@ -42,8 +42,12 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Required for Next.js
               "style-src 'self' 'unsafe-inline'", // Required for Tailwind
               "img-src 'self' data: blob:",
-              "font-src 'self' data:",
-              "connect-src 'self'",
+              "font-src 'self' data: blob:", // PDF fonts may use blob URLs
+              "connect-src 'self' blob:", // Allow blob connections for PDF
+              "worker-src 'self' blob:", // PDF renderer uses web workers
+              "child-src 'self' blob:", // Allow blob iframes for PDF preview
+              "frame-src 'self' blob:", // Allow blob frames for PDF preview
+              "object-src 'self' blob:", // Allow PDF objects
               "frame-ancestors 'self'",
               "form-action 'self'",
               "base-uri 'self'",
