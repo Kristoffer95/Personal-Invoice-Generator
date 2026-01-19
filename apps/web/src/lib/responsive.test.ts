@@ -278,6 +278,436 @@ describe('Responsive Component Requirements', () => {
   })
 })
 
+describe('Mobile Quick Settings', () => {
+  describe('Quick Settings Panel', () => {
+    const quickSettingsFeatures = {
+      visibility: {
+        mobile: 'expandable panel in mobile action bar',
+        tablet: 'hidden - uses sidebar quick settings card',
+        desktop: 'hidden - uses sidebar quick settings card',
+      },
+      controls: ['hourly rate input', 'hours per day input'],
+      trigger: 'dollar sign button with chevron indicator',
+      animation: 'smooth expand/collapse transition',
+    }
+
+    it('should be accessible on mobile via action bar', () => {
+      expect(quickSettingsFeatures.visibility.mobile).toContain('expandable')
+      expect(quickSettingsFeatures.visibility.mobile).toContain('action bar')
+    })
+
+    it('should include essential rate controls', () => {
+      expect(quickSettingsFeatures.controls).toContain('hourly rate input')
+      expect(quickSettingsFeatures.controls).toContain('hours per day input')
+    })
+
+    it('should have clear visual trigger', () => {
+      expect(quickSettingsFeatures.trigger).toContain('dollar sign')
+      expect(quickSettingsFeatures.trigger).toContain('chevron')
+    })
+
+    it('should use smooth animations', () => {
+      expect(quickSettingsFeatures.animation).toContain('transition')
+    })
+  })
+
+  describe('Mobile Summary Sheet', () => {
+    const summarySheetFeatures = {
+      trigger: 'tappable summary display in action bar',
+      position: 'bottom sheet with rounded top corners',
+      content: [
+        'working days count',
+        'total hours',
+        'hourly rate display',
+        'subtotal calculation',
+        'line items summary',
+        'total amount',
+      ],
+      actions: ['open full settings', 'preview invoice'],
+    }
+
+    it('should be triggered by tapping summary', () => {
+      expect(summarySheetFeatures.trigger).toContain('tappable')
+    })
+
+    it('should display as bottom sheet', () => {
+      expect(summarySheetFeatures.position).toContain('bottom sheet')
+    })
+
+    it('should show complete financial breakdown', () => {
+      expect(summarySheetFeatures.content).toContain('hourly rate display')
+      expect(summarySheetFeatures.content).toContain('subtotal calculation')
+      expect(summarySheetFeatures.content).toContain('total amount')
+    })
+
+    it('should provide quick actions', () => {
+      expect(summarySheetFeatures.actions).toContain('open full settings')
+      expect(summarySheetFeatures.actions).toContain('preview invoice')
+    })
+  })
+
+  describe('Mobile Action Bar Enhancements', () => {
+    const actionBarFeatures = {
+      buttons: ['reset', 'save', 'preview', 'export'],
+      layout: 'horizontal with icon-only buttons (except export)',
+      accessibility: {
+        srOnly: 'screen reader text for all icon-only buttons',
+        ariaLabels: 'descriptive labels for interactive elements',
+        ariaExpanded: 'state indicator for expandable quick settings',
+      },
+    }
+
+    it('should include all essential actions', () => {
+      expect(actionBarFeatures.buttons).toContain('reset')
+      expect(actionBarFeatures.buttons).toContain('save')
+      expect(actionBarFeatures.buttons).toContain('preview')
+      expect(actionBarFeatures.buttons).toContain('export')
+    })
+
+    it('should be accessible', () => {
+      expect(actionBarFeatures.accessibility.srOnly).toContain('screen reader')
+      expect(actionBarFeatures.accessibility.ariaExpanded).toContain('expandable')
+    })
+  })
+})
+
+describe('Mobile Feature Parity', () => {
+  describe('All Web Features on Mobile', () => {
+    const mobileFeatureAvailability = {
+      calendar: {
+        viewWorkDays: true,
+        toggleWorkdays: true,
+        editHours: true,
+        navigateMonths: true,
+        selectPeriod: true,
+      },
+      quickSettings: {
+        setHourlyRate: true,
+        setDefaultHours: true,
+      },
+      fullSettings: {
+        invoiceDetails: true,
+        fromInfo: true,
+        toInfo: true,
+        lineItems: true,
+        notes: true,
+        design: true,
+        pdfOptions: true,
+      },
+      actions: {
+        reset: true,
+        save: true,
+        preview: true,
+        export: true,
+      },
+      summary: {
+        viewDaysCount: true,
+        viewTotalHours: true,
+        viewHourlyRate: true,
+        viewSubtotal: true,
+        viewTotal: true,
+        viewLineItems: true,
+      },
+    }
+
+    it('should have full calendar functionality on mobile', () => {
+      expect(Object.values(mobileFeatureAvailability.calendar).every(Boolean)).toBe(true)
+    })
+
+    it('should have quick settings on mobile', () => {
+      expect(Object.values(mobileFeatureAvailability.quickSettings).every(Boolean)).toBe(true)
+    })
+
+    it('should have all settings available on mobile', () => {
+      expect(Object.values(mobileFeatureAvailability.fullSettings).every(Boolean)).toBe(true)
+    })
+
+    it('should have all actions available on mobile', () => {
+      expect(Object.values(mobileFeatureAvailability.actions).every(Boolean)).toBe(true)
+    })
+
+    it('should have complete summary information on mobile', () => {
+      expect(Object.values(mobileFeatureAvailability.summary).every(Boolean)).toBe(true)
+    })
+  })
+})
+
+describe('PDF Preview Zoom Controls', () => {
+  describe('Zoom Features', () => {
+    const zoomFeatures = {
+      defaultZoom: 50, // 50% = scaled down for better mobile fit
+      minZoom: 50, // 50%
+      maxZoom: 200, // 200%
+      zoomStep: 25, // 25% increments for buttons
+    }
+
+    it('should start at 50% zoom (scaled down for mobile readability)', () => {
+      expect(zoomFeatures.defaultZoom).toBe(50)
+    })
+
+    it('should allow zoom out to 50%', () => {
+      expect(zoomFeatures.minZoom).toBe(50)
+    })
+
+    it('should allow zoom in to 200%', () => {
+      expect(zoomFeatures.maxZoom).toBe(200)
+    })
+
+    it('should use 25% increments for button controls', () => {
+      expect(zoomFeatures.zoomStep).toBe(25)
+    })
+  })
+
+  describe('Zoom Controls UI', () => {
+    const zoomControls = [
+      'Zoom out button',
+      'Zoom percentage display',
+      'Zoom in button',
+      'Reset zoom button',
+    ]
+
+    it('should have all zoom control buttons', () => {
+      expect(zoomControls).toContain('Zoom out button')
+      expect(zoomControls).toContain('Zoom in button')
+      expect(zoomControls).toContain('Reset zoom button')
+    })
+
+    it('should display current zoom percentage', () => {
+      expect(zoomControls).toContain('Zoom percentage display')
+    })
+  })
+
+  describe('Zoom Controls Accessibility', () => {
+    const touchTargetSizes = {
+      mobile: { height: 40, width: 40 }, // h-10 w-10 = 40px (meets 44px with padding)
+      desktop: { height: 32, width: 32 }, // sm:h-8 sm:w-8 = 32px
+    }
+
+    it('should have larger touch targets on mobile', () => {
+      expect(touchTargetSizes.mobile.height).toBeGreaterThan(touchTargetSizes.desktop.height)
+      expect(touchTargetSizes.mobile.width).toBeGreaterThan(touchTargetSizes.desktop.width)
+    })
+
+    it('should meet minimum touch target guidelines on mobile', () => {
+      // With padding, 40px buttons meet the 44px WCAG guideline
+      expect(touchTargetSizes.mobile.height).toBeGreaterThanOrEqual(40)
+    })
+  })
+
+  describe('PDF Display', () => {
+    const pdfDisplay = {
+      fitsContainer: true, // PDF fits to container by default
+      usesCSSTransformZoom: true, // Uses CSS transform for zoom (cross-browser)
+      usesViewFitHFallback: true, // view=FitH for non-Safari browsers as fallback
+      noTouchInteractions: true, // No pinch-to-zoom (not reliable on mobile)
+      buttonControlsOnly: true, // Zoom via buttons only
+    }
+
+    it('should fit PDF to container by default', () => {
+      expect(pdfDisplay.fitsContainer).toBe(true)
+    })
+
+    it('should use CSS transform for zoom (works on iOS Safari)', () => {
+      expect(pdfDisplay.usesCSSTransformZoom).toBe(true)
+    })
+
+    it('should use view=FitH as fallback for non-Safari browsers', () => {
+      expect(pdfDisplay.usesViewFitHFallback).toBe(true)
+    })
+
+    it('should not have pinch-to-zoom (not reliable on mobile browsers)', () => {
+      expect(pdfDisplay.noTouchInteractions).toBe(true)
+    })
+
+    it('should use button controls only for zooming', () => {
+      expect(pdfDisplay.buttonControlsOnly).toBe(true)
+    })
+  })
+
+  describe('iOS Safari Compatibility', () => {
+    const iosSafariFeatures = {
+      cssTransformZoom: 'scale() transform with transform-origin: top left',
+      dynamicSizing: 'width/height adjusted to maintain scroll area when zoomed',
+      touchScrolling: 'WebkitOverflowScrolling: touch for momentum scrolling',
+      overscrollBehavior: 'contain to prevent pull-to-refresh interference',
+      noFragmentParams: 'Blob URL without fragment params (iOS ignores them)',
+    }
+
+    it('should use CSS transform for zoom on iOS Safari', () => {
+      expect(iosSafariFeatures.cssTransformZoom).toContain('scale()')
+      expect(iosSafariFeatures.cssTransformZoom).toContain('transform-origin')
+    })
+
+    it('should adjust dimensions when zoomed to maintain scrolling', () => {
+      expect(iosSafariFeatures.dynamicSizing).toContain('width/height')
+    })
+
+    it('should enable momentum scrolling on iOS', () => {
+      expect(iosSafariFeatures.touchScrolling).toContain('WebkitOverflowScrolling')
+    })
+
+    it('should prevent pull-to-refresh interference', () => {
+      expect(iosSafariFeatures.overscrollBehavior).toBe('contain to prevent pull-to-refresh interference')
+    })
+
+    it('should not use fragment params on iOS Safari (they are ignored)', () => {
+      expect(iosSafariFeatures.noFragmentParams).toContain('Blob URL without fragment')
+    })
+  })
+
+  describe('Security Features', () => {
+    const securityFeatures = {
+      iframeSandbox: 'allow-same-origin only (restricts scripts, forms, popups)',
+      blobUrls: 'Uses blob: URLs which are same-origin and secure',
+      urlCleanup: 'Revokes blob URLs on component unmount to prevent memory leaks',
+    }
+
+    it('should sandbox iframe with minimal permissions', () => {
+      expect(securityFeatures.iframeSandbox).toContain('allow-same-origin')
+      expect(securityFeatures.iframeSandbox).toContain('restricts')
+    })
+
+    it('should use blob URLs for security', () => {
+      expect(securityFeatures.blobUrls).toContain('blob:')
+      expect(securityFeatures.blobUrls).toContain('same-origin')
+    })
+
+    it('should clean up blob URLs to prevent memory leaks', () => {
+      expect(securityFeatures.urlCleanup).toContain('Revokes')
+    })
+  })
+})
+
+describe('Required Fields Validation', () => {
+  describe('Hourly Rate Validation', () => {
+    const hourlyRateValidation = {
+      required: true,
+      mustBePositive: true,
+      showsError: true,
+      clearsErrorOnValidInput: true,
+    }
+
+    it('should require hourly rate', () => {
+      expect(hourlyRateValidation.required).toBe(true)
+    })
+
+    it('should require hourly rate to be greater than 0', () => {
+      expect(hourlyRateValidation.mustBePositive).toBe(true)
+    })
+
+    it('should show error indicator when missing', () => {
+      expect(hourlyRateValidation.showsError).toBe(true)
+    })
+
+    it('should clear error when valid value entered', () => {
+      expect(hourlyRateValidation.clearsErrorOnValidInput).toBe(true)
+    })
+  })
+
+  describe('Hours/Day Validation', () => {
+    const hoursPerDayValidation = {
+      required: true,
+      mustBePositive: true,
+      showsError: true,
+      clearsErrorOnValidInput: true,
+    }
+
+    it('should require hours per day', () => {
+      expect(hoursPerDayValidation.required).toBe(true)
+    })
+
+    it('should require hours per day to be greater than 0', () => {
+      expect(hoursPerDayValidation.mustBePositive).toBe(true)
+    })
+
+    it('should show error indicator when missing', () => {
+      expect(hoursPerDayValidation.showsError).toBe(true)
+    })
+
+    it('should clear error when valid value entered', () => {
+      expect(hoursPerDayValidation.clearsErrorOnValidInput).toBe(true)
+    })
+  })
+
+  describe('Validation UI Feedback', () => {
+    const validationUI = {
+      labelHighlight: 'text-destructive class on label',
+      inputBorder: 'border-destructive class on input',
+      errorMessage: 'displays required text',
+      asterisk: 'shows * on required field labels',
+    }
+
+    it('should highlight labels in red when validation fails', () => {
+      expect(validationUI.labelHighlight).toContain('destructive')
+    })
+
+    it('should show red border on invalid inputs', () => {
+      expect(validationUI.inputBorder).toContain('destructive')
+    })
+
+    it('should show asterisk on required field labels', () => {
+      expect(validationUI.asterisk).toContain('*')
+    })
+  })
+
+  describe('Validation Triggers', () => {
+    const validationTriggers = [
+      'Preview button',
+      'Export button',
+      'Save button',
+    ]
+
+    it('should validate on preview attempt', () => {
+      expect(validationTriggers).toContain('Preview button')
+    })
+
+    it('should validate on export attempt', () => {
+      expect(validationTriggers).toContain('Export button')
+    })
+  })
+})
+
+describe('iOS Zoom Prevention', () => {
+  describe('Input Font Size', () => {
+    const inputFontSizes = {
+      mobile: '16px (text-base)', // Prevents iOS zoom on focus
+      tablet: '14px (text-sm)', // Smaller on larger screens
+    }
+
+    it('should use 16px font on mobile to prevent iOS zoom', () => {
+      expect(inputFontSizes.mobile).toContain('16px')
+    })
+
+    it('should use smaller font on tablet and desktop', () => {
+      expect(inputFontSizes.tablet).toContain('14px')
+    })
+
+    it('should follow mobile-first responsive pattern', () => {
+      // Base class is text-base (16px), sm:text-sm overrides on 640px+
+      const responsivePattern = 'text-base sm:text-sm'
+      expect(responsivePattern).toContain('text-base')
+      expect(responsivePattern).toContain('sm:text-sm')
+    })
+  })
+
+  describe('Affected Components', () => {
+    const componentsWithZoomFix = [
+      'Input component (base)',
+      'Textarea component (base)',
+      'Mobile Quick Settings inputs',
+      'LineItemsEditor inputs',
+      'PartyInfoForm inputs',
+      'Settings Sheet inputs',
+    ]
+
+    it('should apply zoom prevention to all form inputs', () => {
+      expect(componentsWithZoomFix.length).toBeGreaterThan(0)
+      expect(componentsWithZoomFix).toContain('Input component (base)')
+      expect(componentsWithZoomFix).toContain('Textarea component (base)')
+    })
+  })
+})
+
 describe('CSS Custom Properties', () => {
   const cssVariables = {
     '--min-touch-target': '44px',

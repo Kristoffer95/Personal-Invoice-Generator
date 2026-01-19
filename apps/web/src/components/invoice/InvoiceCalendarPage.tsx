@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  DollarSign,
+  ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -65,6 +67,8 @@ interface ValidationErrors {
   invoiceNumber?: boolean
   fromName?: boolean
   toName?: boolean
+  hourlyRate?: boolean
+  defaultHoursPerDay?: boolean
 }
 
 export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
@@ -72,6 +76,8 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showMobileQuickSettings, setShowMobileQuickSettings] = useState(false)
+  const [showMobileSummary, setShowMobileSummary] = useState(false)
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [selectedPeriod, setSelectedPeriod] = useState<DetectedPeriod | null>(null)
   const [isManualOverride, setIsManualOverride] = useState(false)
@@ -240,10 +246,20 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
       errors.toName = true
       hasErrors = true
     }
+    // Hourly Rate is required and must be greater than 0
+    if (!currentInvoice.hourlyRate || currentInvoice.hourlyRate <= 0) {
+      errors.hourlyRate = true
+      hasErrors = true
+    }
+    // Default Hours/Day is required and must be greater than 0
+    if (!scheduleConfig.defaultHoursPerDay || scheduleConfig.defaultHoursPerDay <= 0) {
+      errors.defaultHoursPerDay = true
+      hasErrors = true
+    }
 
     setValidationErrors(errors)
     return !hasErrors
-  }, [currentInvoice.invoiceNumber, currentInvoice.from?.name, currentInvoice.to?.name])
+  }, [currentInvoice.invoiceNumber, currentInvoice.from?.name, currentInvoice.to?.name, currentInvoice.hourlyRate, scheduleConfig.defaultHoursPerDay])
 
   const handleSave = useCallback(() => {
     const saved = saveInvoice()
@@ -255,7 +271,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     } else {
       toast({
         title: 'Cannot save invoice',
-        description: 'Please fill in required fields (invoice number, from, to).',
+        description: 'Please fill in required fields (invoice number, from, to, hourly rate, hours/day).',
         variant: 'destructive',
       })
     }
@@ -265,23 +281,33 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     if (!validateInvoice()) {
       toast({
         title: 'Cannot preview',
-        description: 'Please fill in required fields in Settings before previewing.',
+        description: 'Please fill in required fields: Invoice Number, From/To names, Hourly Rate, and Hours/Day.',
         variant: 'destructive',
       })
-      setShowSettings(true)
+      // Show quick settings on mobile if rate/hours are missing
+      if (validationErrors.hourlyRate || validationErrors.defaultHoursPerDay) {
+        setShowMobileQuickSettings(true)
+      } else {
+        setShowSettings(true)
+      }
       return
     }
     setShowPreview(true)
-  }, [validateInvoice, toast])
+  }, [validateInvoice, toast, validationErrors.hourlyRate, validationErrors.defaultHoursPerDay])
 
   const handleExport = useCallback(async () => {
     if (!validateInvoice()) {
       toast({
         title: 'Cannot export',
-        description: 'Please fill in required fields in Settings before exporting.',
+        description: 'Please fill in required fields: Invoice Number, From/To names, Hourly Rate, and Hours/Day.',
         variant: 'destructive',
       })
-      setShowSettings(true)
+      // Show quick settings on mobile if rate/hours are missing
+      if (validationErrors.hourlyRate || validationErrors.defaultHoursPerDay) {
+        setShowMobileQuickSettings(true)
+      } else {
+        setShowSettings(true)
+      }
       return
     }
 
@@ -323,6 +349,25 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     const dueDate = format(addDays(date, 30), 'yyyy-MM-dd')
     updateCurrentInvoice({ dueDate })
   }, [updateCurrentInvoice])
+
+  // Mobile UI handlers - optimized with useCallback
+  const toggleMobileQuickSettings = useCallback(() => {
+    setShowMobileQuickSettings(prev => !prev)
+  }, [])
+
+  const openMobileSummary = useCallback(() => {
+    setShowMobileSummary(true)
+  }, [])
+
+  const closeMobileSummaryAndOpenSettings = useCallback(() => {
+    setShowMobileSummary(false)
+    setShowSettings(true)
+  }, [])
+
+  const closeMobileSummaryAndPreview = useCallback(() => {
+    setShowMobileSummary(false)
+    handlePreview()
+  }, [handlePreview])
 
   // Summary calculations
   const totalHours = useMemo(() => {
@@ -603,7 +648,9 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               </CardHeader>
               <CardContent className="space-y-2.5 sm:space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Hourly Rate</Label>
+                  <Label className={cn('text-xs', validationErrors.hourlyRate && 'text-destructive')}>
+                    Hourly Rate *
+                  </Label>
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground sm:text-sm">
                       {currencySymbol}
@@ -613,23 +660,41 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
                       min={0}
                       step={0.01}
                       value={currentInvoice.hourlyRate || ''}
-                      onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
-                      className="h-9 pl-6 text-sm"
+                      onChange={(e) => {
+                        setHourlyRate(parseFloat(e.target.value) || 0)
+                        if (parseFloat(e.target.value) > 0) {
+                          setValidationErrors(prev => ({ ...prev, hourlyRate: false }))
+                        }
+                      }}
+                      className={cn('h-9 pl-6 text-sm', validationErrors.hourlyRate && 'border-destructive')}
                       placeholder="0.00"
                     />
                   </div>
+                  {validationErrors.hourlyRate && (
+                    <p className="text-xs text-destructive">Required</p>
+                  )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Hours/Day Default</Label>
+                  <Label className={cn('text-xs', validationErrors.defaultHoursPerDay && 'text-destructive')}>
+                    Hours/Day Default *
+                  </Label>
                   <Input
                     type="number"
                     min={0}
                     max={24}
                     step={0.5}
                     value={scheduleConfig.defaultHoursPerDay}
-                    onChange={(e) => updateScheduleConfig({ defaultHoursPerDay: parseFloat(e.target.value) || 8 })}
-                    className="h-9 text-sm"
+                    onChange={(e) => {
+                      updateScheduleConfig({ defaultHoursPerDay: parseFloat(e.target.value) || 8 })
+                      if (parseFloat(e.target.value) > 0) {
+                        setValidationErrors(prev => ({ ...prev, defaultHoursPerDay: false }))
+                      }
+                    }}
+                    className={cn('h-9 text-sm', validationErrors.defaultHoursPerDay && 'border-destructive')}
                   />
+                  {validationErrors.defaultHoursPerDay && (
+                    <p className="text-xs text-destructive">Required</p>
+                  )}
                 </div>
                 <Button
                   variant="outline"
@@ -648,25 +713,117 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
 
       {/* Mobile Action Bar - Fixed at bottom */}
       <div className="mobile-action-bar sm:hidden">
+        {/* Quick Settings Panel - Expandable */}
+        <div
+          className={cn(
+            'overflow-hidden transition-all duration-300 ease-in-out',
+            showMobileQuickSettings ? 'mb-3 max-h-48 opacity-100' : 'max-h-0 opacity-0'
+          )}
+        >
+          <div className={cn(
+            'rounded-lg border bg-card p-3',
+            (validationErrors.hourlyRate || validationErrors.defaultHoursPerDay) && 'border-destructive'
+          )}>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className={cn('text-xs', validationErrors.hourlyRate ? 'text-destructive' : 'text-muted-foreground')}>
+                  Hourly Rate *
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    {currencySymbol}
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={currentInvoice.hourlyRate || ''}
+                    onChange={(e) => {
+                      setHourlyRate(parseFloat(e.target.value) || 0)
+                      if (parseFloat(e.target.value) > 0) {
+                        setValidationErrors(prev => ({ ...prev, hourlyRate: false }))
+                      }
+                    }}
+                    className={cn('h-9 pl-6', validationErrors.hourlyRate && 'border-destructive')}
+                    placeholder="0.00"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className={cn('text-xs', validationErrors.defaultHoursPerDay ? 'text-destructive' : 'text-muted-foreground')}>
+                  Hours/Day *
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={24}
+                  step={0.5}
+                  value={scheduleConfig.defaultHoursPerDay}
+                  onChange={(e) => {
+                    updateScheduleConfig({ defaultHoursPerDay: parseFloat(e.target.value) || 8 })
+                    if (parseFloat(e.target.value) > 0) {
+                      setValidationErrors(prev => ({ ...prev, defaultHoursPerDay: false }))
+                    }
+                  }}
+                  className={cn('h-9', validationErrors.defaultHoursPerDay && 'border-destructive')}
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+            {(validationErrors.hourlyRate || validationErrors.defaultHoursPerDay) && (
+              <p className="mt-2 text-xs text-destructive">Please fill in required fields</p>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-2">
-          {/* Summary info */}
-          <div className="flex items-center gap-3 text-xs">
-            <div>
-              <span className="text-muted-foreground">Days:</span>{' '}
-              <span className="font-semibold">{totalDays}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Total:</span>{' '}
-              <span className="font-semibold">{currencySymbol}{(currentInvoice.totalAmount || subtotal).toFixed(0)}</span>
-            </div>
+          {/* Left side: Quick Settings toggle + Summary */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleMobileQuickSettings}
+              className={cn(
+                'h-8 gap-1 px-2',
+                showMobileQuickSettings && 'bg-accent'
+              )}
+              aria-expanded={showMobileQuickSettings}
+              aria-label={showMobileQuickSettings ? 'Hide quick settings' : 'Show quick settings'}
+            >
+              <DollarSign className="h-3.5 w-3.5" />
+              <ChevronUp
+                className={cn(
+                  'h-3 w-3 transition-transform duration-200',
+                  !showMobileQuickSettings && 'rotate-180'
+                )}
+              />
+            </Button>
+            {/* Summary info - compact, tappable to show full summary */}
+            <button
+              type="button"
+              onClick={openMobileSummary}
+              className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs transition-colors hover:bg-accent active:bg-accent"
+              aria-label="View full summary"
+            >
+              <span>
+                <span className="text-muted-foreground">{totalDays}d</span>
+                <span className="mx-0.5 text-muted-foreground">/</span>
+                <span className="font-semibold">{currencySymbol}{(currentInvoice.totalAmount || subtotal).toFixed(0)}</span>
+              </span>
+            </button>
           </div>
           {/* Action buttons */}
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" onClick={handleSave} className="h-8 px-2.5">
+            <Button variant="outline" size="sm" onClick={handleReset} className="h-8 w-8 p-0">
+              <RotateCcw className="h-4 w-4" />
+              <span className="sr-only">Reset</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSave} className="h-8 w-8 p-0">
               <Save className="h-4 w-4" />
               <span className="sr-only">Save</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={handlePreview} className="h-8 px-2.5">
+            <Button variant="outline" size="sm" onClick={handlePreview} className="h-8 w-8 p-0">
               <Eye className="h-4 w-4" />
               <span className="sr-only">Preview</span>
             </Button>
@@ -677,6 +834,79 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Mobile Summary Sheet */}
+      <Sheet open={showMobileSummary} onOpenChange={setShowMobileSummary}>
+        <SheetContent side="bottom" className="max-h-[70vh] rounded-t-xl">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-lg">Invoice Summary</SheetTitle>
+            <SheetDescription className="text-xs">
+              {selectedPeriod?.label}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4">
+            {/* Work Summary */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg border bg-card p-3 text-center">
+                <div className="text-2xl font-bold">{totalDays}</div>
+                <div className="text-xs text-muted-foreground">Working Days</div>
+              </div>
+              <div className="rounded-lg border bg-card p-3 text-center">
+                <div className="text-2xl font-bold">{totalHours.toFixed(1)}</div>
+                <div className="text-xs text-muted-foreground">Total Hours</div>
+              </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            <div className="rounded-lg border bg-card p-3">
+              <h4 className="mb-2 text-sm font-semibold">Breakdown</h4>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hourly Rate</span>
+                  <span>{currencySymbol}{currentInvoice.hourlyRate?.toFixed(2) || '0.00'}/hr</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hours × Rate</span>
+                  <span>{currencySymbol}{subtotal.toFixed(2)}</span>
+                </div>
+                {(currentInvoice.lineItems?.length ?? 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Line Items ({currentInvoice.lineItems?.length})</span>
+                    <span>
+                      {currencySymbol}
+                      {(currentInvoice.lineItems?.reduce((sum, item) => sum + item.amount, 0) || 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <Separator className="my-2" />
+                <div className="flex justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-lg">{currencySymbol}{(currentInvoice.totalAmount || subtotal).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={closeMobileSummaryAndOpenSettings}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                All Settings
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={closeMobileSummaryAndPreview}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Settings Sheet */}
       <Sheet open={showSettings} onOpenChange={setShowSettings}>

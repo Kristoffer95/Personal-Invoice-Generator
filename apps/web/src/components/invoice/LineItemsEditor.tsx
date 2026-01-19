@@ -85,7 +85,7 @@ export function LineItemsEditor({
                       onUpdate(item.id, { description: e.target.value })
                     }
                     placeholder="Item description"
-                    className="h-8 text-xs sm:h-9 sm:text-sm"
+                    className="h-9 sm:h-9"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:col-span-4 sm:grid-cols-2">
@@ -101,7 +101,8 @@ export function LineItemsEditor({
                           quantity: parseFloat(e.target.value) || 0,
                         })
                       }
-                      className="h-8 text-right text-xs sm:h-9 sm:text-sm"
+                      className="h-9 text-right sm:h-9"
+                      inputMode="decimal"
                     />
                   </div>
                   <div>
@@ -116,7 +117,8 @@ export function LineItemsEditor({
                           unitPrice: parseFloat(e.target.value) || 0,
                         })
                       }
-                      className="h-8 text-right text-xs sm:h-9 sm:text-sm"
+                      className="h-9 text-right sm:h-9"
+                      inputMode="decimal"
                     />
                   </div>
                 </div>
