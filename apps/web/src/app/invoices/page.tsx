@@ -16,6 +16,10 @@ import {
   BarChart3,
   Tag,
   Settings,
+  FolderInput,
+  Lock,
+  Unlock,
+  Folder,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,20 +52,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   useInvoices,
-  useUnfiledInvoices,
+  useUncategorizedInvoices,
   useArchivedInvoices,
   useInvoiceMutations,
+  useAllInvoicesCount,
 } from "@/hooks/use-invoices";
 import { useNextInvoiceNumber } from "@/hooks/use-user-profile";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { FolderTree, FolderBreadcrumb } from "@/components/folders/FolderTree";
+import { FolderTree, FolderBreadcrumb, UNCATEGORIZED_FOLDER, type FolderSelection } from "@/components/folders/FolderTree";
 import {
   InvoiceFilters,
   defaultFilters,
   type InvoiceFiltersState,
 } from "@/components/invoice/InvoiceFilters";
 import { InvoiceStatusSelect, InvoiceStatusBadge } from "@/components/invoice/InvoiceStatusSelect";
+import { InvoicePreviewPopover } from "@/components/invoice/InvoicePreviewPopover";
 import { TagBadgeList } from "@/components/tags/TagSelector";
+import { useFolderTree, useFolderMutations } from "@/hooks/use-invoice-folders";
 import { TagManager } from "@/components/tags/TagManager";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import {
@@ -81,6 +88,7 @@ type InvoiceItem = {
   to: { name: string };
   folderId?: Id<"invoiceFolders">;
   isArchived?: boolean;
+  isMoveLocked?: boolean;
   tags?: Id<"tags">[];
   periodStart?: string;
   periodEnd?: string;
@@ -121,12 +129,17 @@ export default function InvoicesPage() {
     unarchiveInvoice,
     bulkArchiveInvoices,
     bulkUpdateStatus,
+    moveToFolder,
+    toggleMoveLock,
+    bulkMoveToFolder,
   } = useInvoiceMutations();
+  const { toggleFolderMoveLock } = useFolderMutations();
+  const { tree: folderTree } = useFolderTree();
   const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber();
 
   // View state
   const [activeTab, setActiveTab] = useState<"invoices" | "analytics" | "tags">("invoices");
-  const [selectedFolder, setSelectedFolder] = useState<Id<"invoiceFolders"> | undefined>();
+  const [selectedFolder, setSelectedFolder] = useState<FolderSelection>(undefined);
   const [filters, setFilters] = useState<InvoiceFiltersState>(defaultFilters);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
 
@@ -134,25 +147,86 @@ export default function InvoicesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
+  // Move invoice state
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [invoiceToMove, setInvoiceToMove] = useState<InvoiceItem | null>(null);
+  const [selectedMoveTarget, setSelectedMoveTarget] = useState<Id<"invoiceFolders"> | null>(null);
+
   // Build filter options for hooks
-  const filterOptions = useMemo(() => ({
-    folderId: selectedFolder,
-    statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
-    tags: filters.tags.length > 0 ? filters.tags : undefined,
-    dateFrom: filters.dateFrom || undefined,
-    dateTo: filters.dateTo || undefined,
-    amountMin: filters.amountMin,
-    amountMax: filters.amountMax,
-    searchQuery: filters.searchQuery || undefined,
-    isArchived: filters.showArchived ? undefined : false,
-  }), [selectedFolder, filters]);
+  const filterOptions = useMemo(() => {
+    // Determine folder filter based on selection
+    // undefined = all invoices (no folder filter)
+    // UNCATEGORIZED_FOLDER = only invoices without a folder (folderId is undefined in DB)
+    // actual ID = specific folder
+    let folderFilter: Id<"invoiceFolders"> | undefined = undefined;
+    let filterByUncategorized = false;
+
+    if (selectedFolder === UNCATEGORIZED_FOLDER) {
+      // For uncategorized, we need to query invoices where folderId is undefined
+      // The backend getUnfiled query handles this, but for filters we pass undefined
+      filterByUncategorized = true;
+    } else if (selectedFolder !== undefined) {
+      folderFilter = selectedFolder;
+    }
+
+    return {
+      folderId: filterByUncategorized ? undefined : folderFilter,
+      statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
+      tags: filters.tags.length > 0 ? filters.tags : undefined,
+      dateFrom: filters.dateFrom || undefined,
+      dateTo: filters.dateTo || undefined,
+      amountMin: filters.amountMin,
+      amountMax: filters.amountMax,
+      searchQuery: filters.searchQuery || undefined,
+      // Fix archived filter: when showArchived is true, show ONLY archived invoices
+      // when showArchived is false, show ONLY non-archived invoices
+      isArchived: filters.showArchived ? true : false,
+    };
+  }, [selectedFolder, filters]);
 
   // Fetch invoices based on current view
-  const { invoices: filteredInvoices, isLoading: invoicesLoading } = useInvoices(filterOptions);
-  const { invoices: unfiledInvoices } = useUnfiledInvoices();
+  // For uncategorized folder, use the uncategorized invoices hook
+  const isUncategorizedSelected = selectedFolder === UNCATEGORIZED_FOLDER;
+  const { invoices: regularInvoices, isLoading: invoicesLoading } = useInvoices(
+    isUncategorizedSelected ? { ...filterOptions, folderId: undefined } : filterOptions
+  );
+  const { invoices: uncategorizedInvoices, isLoading: uncategorizedLoading } = useUncategorizedInvoices();
+  const { count: allInvoicesCount } = useAllInvoicesCount();
   const { invoices: archivedInvoices, isLoading: archivedLoading } = useArchivedInvoices();
 
-  const isLoading = invoicesLoading;
+  // Filter uncategorized invoices to only show those without folders when that option is selected
+  const filteredInvoices = useMemo(() => {
+    if (isUncategorizedSelected && !filters.showArchived) {
+      // Filter uncategorized invoices based on current filters
+      let result = uncategorizedInvoices.filter(i => !i.isArchived);
+
+      // Apply search filter
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        result = result.filter(i =>
+          i.invoiceNumber.toLowerCase().includes(query) ||
+          i.to.name.toLowerCase().includes(query)
+        );
+      }
+
+      // Apply status filter
+      if (filters.statuses.length > 0) {
+        result = result.filter(i => filters.statuses.includes(i.status));
+      }
+
+      // Apply tags filter
+      if (filters.tags.length > 0) {
+        result = result.filter(i =>
+          filters.tags.every(tagId => i.tags?.includes(tagId))
+        );
+      }
+
+      return result;
+    }
+    return regularInvoices;
+  }, [isUncategorizedSelected, regularInvoices, uncategorizedInvoices, filters]);
+
+  const isLoading = isUncategorizedSelected ? uncategorizedLoading : invoicesLoading;
 
   // Bulk selection handlers
   const toggleSelectInvoice = (invoiceId: string) => {
@@ -263,8 +337,73 @@ export default function InvoicesPage() {
     }
   };
 
+  // Move invoice handlers
+  const handleMoveInvoice = (invoice: InvoiceItem) => {
+    if (invoice.isMoveLocked) {
+      toast({ title: "Invoice locked", description: "This invoice cannot be moved", variant: "destructive" });
+      return;
+    }
+    setInvoiceToMove(invoice);
+    setSelectedMoveTarget(invoice.folderId ?? null);
+    setMoveDialogOpen(true);
+  };
+
+  const handleConfirmMove = async () => {
+    if (!invoiceToMove) return;
+
+    try {
+      await moveToFolder({
+        invoiceId: invoiceToMove._id,
+        folderId: selectedMoveTarget ?? undefined,
+      });
+      toast({ title: "Invoice moved" });
+      setMoveDialogOpen(false);
+      setInvoiceToMove(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to move invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkMove = async () => {
+    if (selectedInvoices.size === 0) return;
+
+    try {
+      const result = await bulkMoveToFolder({
+        invoiceIds: Array.from(selectedInvoices) as Id<"invoices">[],
+        folderId: selectedMoveTarget ?? undefined,
+      });
+      if (result.locked > 0) {
+        toast({
+          title: `${result.moved} invoice(s) moved`,
+          description: `${result.locked} invoice(s) were locked and could not be moved`,
+        });
+      } else {
+        toast({ title: `${result.moved} invoice(s) moved` });
+      }
+      clearSelection();
+      setMoveDialogOpen(false);
+    } catch {
+      toast({ title: "Error", description: "Failed to move invoices", variant: "destructive" });
+    }
+  };
+
+  // Toggle move lock handlers
+  const handleToggleMoveLock = async (invoiceId: Id<"invoices">, isLocked: boolean) => {
+    try {
+      await toggleMoveLock({ invoiceId, isMoveLocked: !isLocked });
+      toast({ title: isLocked ? "Invoice unlocked" : "Invoice locked" });
+    } catch {
+      toast({ title: "Error", description: "Failed to update lock status", variant: "destructive" });
+    }
+  };
+
   const handleCreateNewInvoice = () => {
-    if (selectedFolder) {
+    // Only pass folderId if a real folder is selected (not All or Uncategorized)
+    if (selectedFolder && selectedFolder !== UNCATEGORIZED_FOLDER) {
       router.push(`/?folderId=${selectedFolder}`);
     } else {
       router.push("/");
@@ -287,6 +426,24 @@ export default function InvoicesPage() {
     const symbol = CURRENCY_SYMBOLS[currency] || "$";
     return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
   };
+
+  // Flatten folder tree for move dialog
+  type FlatFolder = { id: Id<"invoiceFolders">; name: string; level: number };
+  const flattenFolderTree = (
+    folders: typeof folderTree,
+    level = 0
+  ): FlatFolder[] => {
+    const result: FlatFolder[] = [];
+    for (const folder of folders) {
+      result.push({ id: folder._id, name: folder.name, level });
+      if (folder.children && folder.children.length > 0) {
+        result.push(...flattenFolderTree(folder.children as typeof folderTree, level + 1));
+      }
+    }
+    return result;
+  };
+
+  const flatFolders = flattenFolderTree(folderTree);
 
   return (
     <div className="min-h-screen bg-background">
@@ -343,8 +500,10 @@ export default function InvoicesPage() {
                     <FolderTree
                       selectedFolderId={selectedFolder}
                       onSelectFolder={setSelectedFolder}
-                      showUnfiled
-                      unfiledCount={unfiledInvoices.length}
+                      showAllInvoices
+                      allInvoicesCount={allInvoicesCount}
+                      showUncategorized
+                      uncategorizedCount={uncategorizedInvoices.filter(i => !i.isArchived).length}
                     />
 
                     {/* Archived Invoices Link */}
@@ -430,6 +589,18 @@ export default function InvoicesPage() {
                       {selectedInvoices.size} selected
                     </span>
                     <div className="flex-1" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setInvoiceToMove(null); // Bulk move mode
+                        setSelectedMoveTarget(null);
+                        setMoveDialogOpen(true);
+                      }}
+                    >
+                      <FolderInput className="h-4 w-4 mr-2" />
+                      Move
+                    </Button>
                     <Button variant="outline" size="sm" onClick={handleBulkArchive}>
                       <Archive className="h-4 w-4 mr-2" />
                       Archive
@@ -527,6 +698,11 @@ export default function InvoicesPage() {
                                         Archived
                                       </Badge>
                                     )}
+                                    {invoice.isMoveLocked && (
+                                      <span title="Move locked">
+                                        <Lock className="h-3 w-3 text-muted-foreground" />
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <span className="truncate">{invoice.to.name}</span>
@@ -557,6 +733,9 @@ export default function InvoicesPage() {
                               </div>
                             </div>
 
+                            {/* Preview Button */}
+                            <InvoicePreviewPopover invoiceId={invoice._id} />
+
                             <InvoiceStatusSelect
                               value={invoice.status}
                               onChange={(status, notes) =>
@@ -583,6 +762,28 @@ export default function InvoicesPage() {
                                 >
                                   <Copy className="h-4 w-4 mr-2" />
                                   Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleMoveInvoice(invoice)}
+                                  disabled={invoice.isMoveLocked}
+                                >
+                                  <FolderInput className="h-4 w-4 mr-2" />
+                                  Move to Folder
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleMoveLock(invoice._id, !!invoice.isMoveLocked)}
+                                >
+                                  {invoice.isMoveLocked ? (
+                                    <>
+                                      <Unlock className="h-4 w-4 mr-2" />
+                                      Unlock Moving
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock className="h-4 w-4 mr-2" />
+                                      Lock Moving
+                                    </>
+                                  )}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {invoice.isArchived ? (
@@ -658,6 +859,71 @@ export default function InvoicesPage() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteInvoice}>
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Invoice Dialog */}
+      <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {invoiceToMove ? "Move Invoice" : `Move ${selectedInvoices.size} Invoice(s)`}
+            </DialogTitle>
+            <DialogDescription>
+              {invoiceToMove
+                ? `Select a folder for "${invoiceToMove.invoiceNumber}"`
+                : "Select a destination folder for the selected invoices"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4 max-h-[300px] overflow-y-auto">
+            <button
+              type="button"
+              className={`w-full flex items-center gap-2 p-2 rounded-md text-left transition-colors ${
+                selectedMoveTarget === null
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted"
+              }`}
+              onClick={() => setSelectedMoveTarget(null)}
+            >
+              <FileText className="h-4 w-4" />
+              <span className="text-sm font-medium">Uncategorized</span>
+            </button>
+            {flatFolders.map((folder) => (
+              <button
+                key={folder.id}
+                type="button"
+                className={`w-full flex items-center gap-2 p-2 rounded-md text-left transition-colors ${
+                  selectedMoveTarget === folder.id
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-muted"
+                }`}
+                style={{ paddingLeft: `${folder.level * 16 + 8}px` }}
+                onClick={() => setSelectedMoveTarget(folder.id)}
+              >
+                <Folder className="h-4 w-4" />
+                <span className="text-sm">{folder.name}</span>
+              </button>
+            ))}
+            {flatFolders.length === 0 && (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                No folders available. Create a folder first.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMoveDialogOpen(false);
+                setInvoiceToMove(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={invoiceToMove ? handleConfirmMove : handleBulkMove}>
+              Move
             </Button>
           </DialogFooter>
         </DialogContent>

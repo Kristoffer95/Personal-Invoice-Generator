@@ -220,7 +220,6 @@ export function InvoicePreview({ invoice, backgroundDesign }: InvoicePreviewProp
             src={pdfViewUrl}
             style={iframeStyle}
             title="Invoice Preview"
-            // Security: sandbox restricts iframe capabilities
             sandbox="allow-same-origin"
           />
         )}

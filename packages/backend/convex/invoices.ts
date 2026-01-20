@@ -44,8 +44,6 @@ const statusValidator = v.union(
   v.literal("DRAFT"),
   v.literal("TO_SEND"),
   v.literal("SENT"),
-  v.literal("VIEWED"),
-  v.literal("PAYMENT_PENDING"),
   v.literal("PARTIAL_PAYMENT"),
   v.literal("PAID"),
   v.literal("OVERDUE"),
@@ -455,8 +453,6 @@ export const updateInvoice = mutation({
         patchData.sentAt = nowStr;
       } else if (finalStatus === "PAID" && !invoice.paidAt) {
         patchData.paidAt = nowStr;
-      } else if (finalStatus === "VIEWED" && !invoice.viewedAt) {
-        patchData.viewedAt = nowStr;
       }
     }
 
@@ -595,6 +591,19 @@ export const moveToFolder = mutation({
       throw new Error("Invoice not found");
     }
 
+    // Check if invoice is move locked
+    if (invoice.isMoveLocked) {
+      throw new Error("Invoice is locked and cannot be moved");
+    }
+
+    // Check if source folder has move lock enabled
+    if (invoice.folderId) {
+      const sourceFolder = await ctx.db.get(invoice.folderId);
+      if (sourceFolder && sourceFolder.isMoveLocked) {
+        throw new Error("Invoices in this folder are locked and cannot be moved");
+      }
+    }
+
     if (args.folderId) {
       const folder = await ctx.db.get(args.folderId);
       if (!folder || folder.userId !== user._id) {
@@ -608,6 +617,102 @@ export const moveToFolder = mutation({
     });
 
     return args.invoiceId;
+  },
+});
+
+// Toggle move lock for an invoice
+export const toggleMoveLock = mutation({
+  args: {
+    invoiceId: v.id("invoices"),
+    isMoveLocked: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice || invoice.userId !== user._id || invoice.deletedAt) {
+      throw new Error("Invoice not found");
+    }
+
+    await ctx.db.patch(args.invoiceId, {
+      isMoveLocked: args.isMoveLocked,
+      updatedAt: Date.now(),
+    });
+
+    return args.invoiceId;
+  },
+});
+
+// Bulk move invoices to folder
+export const bulkMoveToFolder = mutation({
+  args: {
+    invoiceIds: v.array(v.id("invoices")),
+    folderId: v.optional(v.id("invoiceFolders")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Limit bulk operations to prevent abuse
+    if (args.invoiceIds.length > 100) {
+      throw new Error("Cannot move more than 100 invoices at once");
+    }
+
+    if (args.folderId) {
+      const folder = await ctx.db.get(args.folderId);
+      if (!folder || folder.userId !== user._id) {
+        throw new Error("Folder not found");
+      }
+    }
+
+    const now = Date.now();
+    const results = { moved: 0, locked: 0 };
+
+    // Cache folder lock status to avoid repeated lookups
+    const folderLockCache = new Map<string, boolean>();
+
+    for (const invoiceId of args.invoiceIds) {
+      const invoice = await ctx.db.get(invoiceId);
+      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+        // Check if invoice is move locked
+        if (invoice.isMoveLocked) {
+          results.locked++;
+          continue;
+        }
+
+        // Check if source folder has move lock enabled (with caching)
+        if (invoice.folderId) {
+          const cachedLock = folderLockCache.get(invoice.folderId);
+          if (cachedLock !== undefined) {
+            if (cachedLock) {
+              results.locked++;
+              continue;
+            }
+          } else {
+            const sourceFolder = await ctx.db.get(invoice.folderId);
+            const isLocked = sourceFolder?.isMoveLocked ?? false;
+            folderLockCache.set(invoice.folderId, isLocked);
+            if (isLocked) {
+              results.locked++;
+              continue;
+            }
+          }
+        }
+
+        await ctx.db.patch(invoiceId, {
+          folderId: args.folderId,
+          updatedAt: now,
+        });
+        results.moved++;
+      }
+    }
+
+    return results;
   },
 });
 
@@ -650,8 +755,6 @@ export const updateStatus = mutation({
       patchData.sentAt = nowStr;
     } else if (args.status === "PAID" && !invoice.paidAt) {
       patchData.paidAt = nowStr;
-    } else if (args.status === "VIEWED" && !invoice.viewedAt) {
-      patchData.viewedAt = nowStr;
     }
 
     await ctx.db.patch(args.invoiceId, patchData);
@@ -808,8 +911,6 @@ export const bulkUpdateStatus = mutation({
           patchData.sentAt = nowStr;
         } else if (args.status === "PAID" && !invoice.paidAt) {
           patchData.paidAt = nowStr;
-        } else if (args.status === "VIEWED" && !invoice.viewedAt) {
-          patchData.viewedAt = nowStr;
         }
 
         await ctx.db.patch(invoiceId, patchData);

@@ -44,8 +44,6 @@ const invoiceStatusValidator = v.union(
   v.literal("DRAFT"),
   v.literal("TO_SEND"),
   v.literal("SENT"),
-  v.literal("VIEWED"),
-  v.literal("PAYMENT_PENDING"),
   v.literal("PARTIAL_PAYMENT"),
   v.literal("PAID"),
   v.literal("OVERDUE"),
@@ -138,6 +136,9 @@ export default defineSchema({
     // Tags for folder organization
     tags: v.optional(v.array(v.id("tags"))),
 
+    // Movement locking - prevents all invoices in this folder from being moved
+    isMoveLocked: v.optional(v.boolean()),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -229,6 +230,9 @@ export default defineSchema({
     // Archiving
     isArchived: v.optional(v.boolean()),
     archivedAt: v.optional(v.string()),
+
+    // Movement locking - prevents this invoice from being moved
+    isMoveLocked: v.optional(v.boolean()),
 
     // Display settings
     showDetailedHours: v.boolean(),

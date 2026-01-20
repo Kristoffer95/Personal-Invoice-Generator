@@ -12,6 +12,8 @@ import {
   Trash2,
   FolderInput,
   FileText,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,7 @@ type FolderNode = {
   parentId?: Id<"invoiceFolders">;
   tags?: Id<"tags">[];
   invoiceCount: number;
+  isMoveLocked?: boolean;
   children: FolderNode[];
   // Allow additional properties from Convex
   [key: string]: unknown;
@@ -65,14 +68,15 @@ type FolderNode = {
 interface FolderTreeItemProps {
   folder: FolderNode;
   level: number;
-  selectedFolderId?: Id<"invoiceFolders">;
+  selectedFolderId?: FolderSelection;
   expandedFolders: Set<string>;
-  onSelect: (folderId: Id<"invoiceFolders">) => void;
+  onSelect: (folderId: FolderSelection) => void;
   onToggleExpand: (folderId: string) => void;
   onEdit: (folder: FolderNode) => void;
   onDelete: (folder: FolderNode) => void;
   onMove: (folder: FolderNode) => void;
   onAddSubfolder: (parentId: Id<"invoiceFolders">) => void;
+  onToggleMoveLock: (folder: FolderNode) => void;
 }
 
 function FolderTreeItem({
@@ -86,6 +90,7 @@ function FolderTreeItem({
   onDelete,
   onMove,
   onAddSubfolder,
+  onToggleMoveLock,
 }: FolderTreeItemProps) {
   const isExpanded = expandedFolders.has(folder._id);
   const isSelected = selectedFolderId === folder._id;
@@ -147,6 +152,13 @@ function FolderTreeItem({
           {folder.name}
         </span>
 
+        {/* Lock Indicator */}
+        {folder.isMoveLocked && (
+          <span title="Invoices in this folder are locked from moving">
+            <Lock className="h-3 w-3 text-muted-foreground" />
+          </span>
+        )}
+
         {/* Invoice Count */}
         {folder.invoiceCount > 0 && (
           <Badge variant="secondary" className="h-5 px-1.5 text-xs">
@@ -178,6 +190,19 @@ function FolderTreeItem({
               <FolderInput className="h-4 w-4 mr-2" />
               Move
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onToggleMoveLock(folder)}>
+              {folder.isMoveLocked ? (
+                <>
+                  <Unlock className="h-4 w-4 mr-2" />
+                  Unlock Invoices
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Lock Invoices
+                </>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
@@ -206,6 +231,7 @@ function FolderTreeItem({
               onDelete={onDelete}
               onMove={onMove}
               onAddSubfolder={onAddSubfolder}
+              onToggleMoveLock={onToggleMoveLock}
             />
           ))}
         </div>
@@ -214,22 +240,30 @@ function FolderTreeItem({
   );
 }
 
+// Special folder value for uncategorized invoices (no folder assigned)
+export const UNCATEGORIZED_FOLDER = "__uncategorized__" as const;
+export type FolderSelection = Id<"invoiceFolders"> | typeof UNCATEGORIZED_FOLDER | undefined;
+
 interface FolderTreeProps {
-  selectedFolderId?: Id<"invoiceFolders">;
-  onSelectFolder: (folderId: Id<"invoiceFolders"> | undefined) => void;
-  showUnfiled?: boolean;
-  unfiledCount?: number;
+  selectedFolderId?: FolderSelection;
+  onSelectFolder: (folderId: FolderSelection) => void;
+  showAllInvoices?: boolean;
+  allInvoicesCount?: number;
+  showUncategorized?: boolean;
+  uncategorizedCount?: number;
 }
 
 export function FolderTree({
   selectedFolderId,
   onSelectFolder,
-  showUnfiled = true,
-  unfiledCount = 0,
+  showAllInvoices = true,
+  allInvoicesCount = 0,
+  showUncategorized = true,
+  uncategorizedCount = 0,
 }: FolderTreeProps) {
   const { toast } = useToast();
   const { tree, isLoading } = useFolderTree();
-  const { createFolder, updateFolder, deleteFolder, moveFolder } = useFolderMutations();
+  const { createFolder, updateFolder, deleteFolder, moveFolder, toggleFolderMoveLock } = useFolderMutations();
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
@@ -374,6 +408,29 @@ export function FolderTree({
     }
   };
 
+  const handleToggleMoveLock = async (folder: FolderNode) => {
+    try {
+      await toggleFolderMoveLock({
+        folderId: folder._id,
+        isMoveLocked: !folder.isMoveLocked,
+      });
+      toast({
+        title: folder.isMoveLocked
+          ? "Invoices unlocked"
+          : "Invoices locked",
+        description: folder.isMoveLocked
+          ? "Invoices in this folder can now be moved"
+          : "Invoices in this folder cannot be moved",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update lock status",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Flatten tree for move dialog
   const flattenTree = (nodes: FolderNode[], excludeId?: string): Array<{ id: Id<"invoiceFolders">; name: string; level: number }> => {
     const result: Array<{ id: Id<"invoiceFolders">; name: string; level: number }> = [];
@@ -422,8 +479,8 @@ export function FolderTree({
         </Button>
       </div>
 
-      {/* Unfiled Option */}
-      {showUnfiled && (
+      {/* All Invoices Option */}
+      {showAllInvoices && (
         <div
           className={cn(
             "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors",
@@ -434,10 +491,31 @@ export function FolderTree({
           onClick={() => onSelectFolder(undefined)}
         >
           <FileText className="h-4 w-4" />
-          <span className="flex-1 text-sm font-medium">Unfiled</span>
-          {unfiledCount > 0 && (
+          <span className="flex-1 text-sm font-medium">All</span>
+          {allInvoicesCount > 0 && (
             <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-              {unfiledCount}
+              {allInvoicesCount}
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {/* Uncategorized Option - invoices not in any folder */}
+      {showUncategorized && (
+        <div
+          className={cn(
+            "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors",
+            selectedFolderId === UNCATEGORIZED_FOLDER
+              ? "bg-primary/10 text-primary"
+              : "hover:bg-muted/50"
+          )}
+          onClick={() => onSelectFolder(UNCATEGORIZED_FOLDER)}
+        >
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <span className="flex-1 text-sm font-medium">Uncategorized</span>
+          {uncategorizedCount > 0 && (
+            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+              {uncategorizedCount}
             </Badge>
           )}
         </div>
@@ -463,6 +541,7 @@ export function FolderTree({
               onDelete={handleDeleteFolder}
               onMove={handleMoveFolder}
               onAddSubfolder={handleAddFolder}
+              onToggleMoveLock={handleToggleMoveLock}
             />
           ))}
         </div>
@@ -588,7 +667,7 @@ export function FolderTree({
             <AlertDialogTitle>Delete Folder?</AlertDialogTitle>
             <AlertDialogDescription>
               This will delete &quot;{folderToDelete?.name}&quot;. Invoices in this folder
-              will be moved to Unfiled. Subfolders will be moved to the parent level.
+              will become uncategorized. Subfolders will be moved to the parent level.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -609,12 +688,31 @@ export function FolderTree({
 
 // Breadcrumb component for folder navigation
 interface FolderBreadcrumbProps {
-  folderId?: Id<"invoiceFolders">;
-  onNavigate: (folderId?: Id<"invoiceFolders">) => void;
+  folderId?: FolderSelection;
+  onNavigate: (folderId?: FolderSelection) => void;
 }
 
 export function FolderBreadcrumb({ folderId, onNavigate }: FolderBreadcrumbProps) {
-  const { path, isLoading } = useFolderPath(folderId);
+  // Only fetch path for actual folder IDs, not for special values
+  const actualFolderId = folderId && folderId !== UNCATEGORIZED_FOLDER ? folderId : undefined;
+  const { path, isLoading } = useFolderPath(actualFolderId);
+
+  // Show breadcrumb for Uncategorized
+  if (folderId === UNCATEGORIZED_FOLDER) {
+    return (
+      <nav className="flex items-center gap-1 text-sm">
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => onNavigate(undefined)}
+        >
+          All
+        </button>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">Uncategorized</span>
+      </nav>
+    );
+  }
 
   if (!folderId || isLoading) {
     return null;
@@ -627,7 +725,7 @@ export function FolderBreadcrumb({ folderId, onNavigate }: FolderBreadcrumbProps
         className="text-muted-foreground hover:text-foreground transition-colors"
         onClick={() => onNavigate(undefined)}
       >
-        All Invoices
+        All
       </button>
       {path.map((item, index) => (
         <span key={item._id} className="flex items-center gap-1">

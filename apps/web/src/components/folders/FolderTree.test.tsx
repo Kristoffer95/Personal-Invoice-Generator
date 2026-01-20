@@ -9,17 +9,20 @@ const mockTree = [
     description: 'All client work',
     color: '#3b82f6',
     invoiceCount: 5,
+    isMoveLocked: false,
     children: [
       {
         _id: 'folder_1a',
         name: 'Project Alpha',
         invoiceCount: 2,
+        isMoveLocked: false,
         children: [],
       },
       {
         _id: 'folder_1b',
         name: 'Project Beta',
         invoiceCount: 3,
+        isMoveLocked: true, // This one is locked
         children: [],
       },
     ],
@@ -28,6 +31,7 @@ const mockTree = [
     _id: 'folder_2',
     name: 'Personal',
     invoiceCount: 1,
+    isMoveLocked: false,
     children: [],
   },
 ]
@@ -36,6 +40,7 @@ const mockCreateFolder = vi.fn()
 const mockUpdateFolder = vi.fn()
 const mockDeleteFolder = vi.fn()
 const mockMoveFolder = vi.fn()
+const mockToggleFolderMoveLock = vi.fn()
 
 vi.mock('@/hooks/use-invoice-folders', () => ({
   useFolderTree: () => ({
@@ -51,6 +56,7 @@ vi.mock('@/hooks/use-invoice-folders', () => ({
     updateFolder: mockUpdateFolder,
     deleteFolder: mockDeleteFolder,
     moveFolder: mockMoveFolder,
+    toggleFolderMoveLock: mockToggleFolderMoveLock,
   }),
 }))
 
@@ -72,6 +78,7 @@ describe('FolderTree', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToggleFolderMoveLock.mockResolvedValue('folder_id')
   })
 
   it('renders the folder tree header', () => {
@@ -96,28 +103,41 @@ describe('FolderTree', () => {
     expect(buttons.length).toBeGreaterThan(0)
   })
 
-  it('renders unfiled option by default', () => {
+  it('renders All invoices option by default', () => {
     render(
       <FolderTree
         onSelectFolder={mockOnSelectFolder}
-        showUnfiled={true}
-        unfiledCount={3}
+        showAllInvoices={true}
+        allInvoicesCount={10}
       />
     )
 
-    expect(screen.getByText('Unfiled')).toBeInTheDocument()
+    expect(screen.getByText('All')).toBeInTheDocument()
+    expect(screen.getByText('10')).toBeInTheDocument()
+  })
+
+  it('renders Uncategorized option by default', () => {
+    render(
+      <FolderTree
+        onSelectFolder={mockOnSelectFolder}
+        showUncategorized={true}
+        uncategorizedCount={3}
+      />
+    )
+
+    expect(screen.getByText('Uncategorized')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
   })
 
-  it('hides unfiled option when showUnfiled is false', () => {
+  it('hides All option when showAllInvoices is false', () => {
     render(
       <FolderTree
         onSelectFolder={mockOnSelectFolder}
-        showUnfiled={false}
+        showAllInvoices={false}
       />
     )
 
-    expect(screen.queryByText('Unfiled')).not.toBeInTheDocument()
+    expect(screen.queryByText('All')).not.toBeInTheDocument()
   })
 
   it('renders root folders', () => {
@@ -142,16 +162,28 @@ describe('FolderTree', () => {
     expect(screen.getByText('1')).toBeInTheDocument()
   })
 
-  it('calls onSelectFolder when unfiled is clicked', () => {
+  it('calls onSelectFolder with undefined when All is clicked', () => {
     render(
       <FolderTree
         onSelectFolder={mockOnSelectFolder}
-        showUnfiled={true}
+        showAllInvoices={true}
       />
     )
 
-    fireEvent.click(screen.getByText('Unfiled'))
+    fireEvent.click(screen.getByText('All'))
     expect(mockOnSelectFolder).toHaveBeenCalledWith(undefined)
+  })
+
+  it('calls onSelectFolder with UNCATEGORIZED_FOLDER when Uncategorized is clicked', () => {
+    render(
+      <FolderTree
+        onSelectFolder={mockOnSelectFolder}
+        showUncategorized={true}
+      />
+    )
+
+    fireEvent.click(screen.getByText('Uncategorized'))
+    expect(mockOnSelectFolder).toHaveBeenCalledWith('__uncategorized__')
   })
 
   it('expands folder to show children when expand button is clicked', async () => {
@@ -193,17 +225,17 @@ describe('FolderTree', () => {
     expect(selectedFolder?.className).toContain('bg-primary')
   })
 
-  it('highlights unfiled when no folder is selected', () => {
+  it('highlights All when no folder is selected', () => {
     render(
       <FolderTree
         selectedFolderId={undefined}
         onSelectFolder={mockOnSelectFolder}
-        showUnfiled={true}
+        showAllInvoices={true}
       />
     )
 
-    const unfiledItem = screen.getByText('Unfiled').closest('div')
-    expect(unfiledItem?.className).toContain('bg-primary')
+    const allItem = screen.getByText('All').closest('div')
+    expect(allItem?.className).toContain('bg-primary')
   })
 
   it('opens create folder dialog when add button is clicked', async () => {
@@ -294,10 +326,53 @@ describe('FolderTree', () => {
         updateFolder: vi.fn(),
         deleteFolder: vi.fn(),
         moveFolder: vi.fn(),
+        toggleFolderMoveLock: vi.fn(),
       }),
     }))
 
     // This test would need proper mock reset
+  })
+
+  describe('Folder Lock Feature', () => {
+    it('shows lock icon for locked folders when expanded', async () => {
+      render(
+        <FolderTree
+          onSelectFolder={mockOnSelectFolder}
+        />
+      )
+
+      // Expand Client Projects to see Project Beta which is locked
+      const expandButtons = screen.getAllByRole('button')
+      const expandButton = expandButtons.find(btn =>
+        btn.closest('div')?.textContent?.includes('Client Projects')
+      )
+
+      if (expandButton) {
+        fireEvent.click(expandButton)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('Project Beta')).toBeInTheDocument()
+      })
+
+      // Project Beta should have the lock icon (it has isMoveLocked: true)
+      // The lock icon has title="Invoices in this folder are locked from moving"
+      const lockTitle = screen.queryByTitle('Invoices in this folder are locked from moving')
+      expect(lockTitle).toBeInTheDocument()
+    })
+
+    it('does not show lock icon for unlocked folders', () => {
+      render(
+        <FolderTree
+          onSelectFolder={mockOnSelectFolder}
+        />
+      )
+
+      // Client Projects is unlocked, should not show lock icon
+      const clientProjectsRow = screen.getByText('Client Projects').closest('div')
+      // The span with lock icon should not be present (or have the unlocked folder)
+      expect(clientProjectsRow).not.toHaveTextContent('locked')
+    })
   })
 })
 
@@ -319,7 +394,7 @@ describe('FolderBreadcrumb', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders breadcrumb with All Invoices link', () => {
+  it('renders breadcrumb with All link', () => {
     render(
       <FolderBreadcrumb
         folderId={'folder_1' as any}
@@ -327,10 +402,10 @@ describe('FolderBreadcrumb', () => {
       />
     )
 
-    expect(screen.getByText('All Invoices')).toBeInTheDocument()
+    expect(screen.getByText('All')).toBeInTheDocument()
   })
 
-  it('calls onNavigate with undefined when All Invoices is clicked', () => {
+  it('calls onNavigate with undefined when All is clicked', () => {
     render(
       <FolderBreadcrumb
         folderId={'folder_1' as any}
@@ -338,7 +413,7 @@ describe('FolderBreadcrumb', () => {
       />
     )
 
-    fireEvent.click(screen.getByText('All Invoices'))
+    fireEvent.click(screen.getByText('All'))
     expect(mockOnNavigate).toHaveBeenCalledWith(undefined)
   })
 

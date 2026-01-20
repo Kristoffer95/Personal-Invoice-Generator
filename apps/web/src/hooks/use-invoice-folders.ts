@@ -65,11 +65,13 @@ export function useFolderMutations() {
   const updateFolder = useMutation(api.invoiceFolders.updateFolder);
   const deleteFolder = useMutation(api.invoiceFolders.removeFolder);
   const moveFolder = useMutation(api.invoiceFolders.moveFolder);
+  const toggleFolderMoveLock = useMutation(api.invoiceFolders.toggleFolderMoveLock);
 
   return {
     createFolder,
     updateFolder,
     deleteFolder,
     moveFolder,
+    toggleFolderMoveLock,
   };
 }

@@ -37,8 +37,6 @@ const ALL_STATUSES: InvoiceStatus[] = [
   "DRAFT",
   "TO_SEND",
   "SENT",
-  "VIEWED",
-  "PAYMENT_PENDING",
   "PARTIAL_PAYMENT",
   "PAID",
   "OVERDUE",

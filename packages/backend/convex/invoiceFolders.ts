@@ -448,3 +448,46 @@ export const moveFolder = mutation({
     return args.folderId;
   },
 });
+
+// Toggle move lock for a folder (prevents all invoices in folder from being moved)
+export const toggleFolderMoveLock = mutation({
+  args: {
+    folderId: v.id("invoiceFolders"),
+    isMoveLocked: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const folder = await ctx.db.get(args.folderId);
+    if (!folder || folder.userId !== user._id || folder.deletedAt) {
+      throw new Error("Folder not found");
+    }
+
+    await ctx.db.patch(args.folderId, {
+      isMoveLocked: args.isMoveLocked,
+      updatedAt: Date.now(),
+    });
+
+    // Sync the lock state to all invoices in this folder
+    // This provides additional enforcement at the invoice level
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
+      .collect();
+
+    const now = Date.now();
+    for (const invoice of invoices) {
+      if (!invoice.deletedAt) {
+        await ctx.db.patch(invoice._id, {
+          isMoveLocked: args.isMoveLocked,
+          updatedAt: now,
+        });
+      }
+    }
+
+    return args.folderId;
+  },
+});
