@@ -233,6 +233,16 @@ vi.mock("@/components/analytics/AnalyticsDashboard", () => ({
   AnalyticsDashboard: () => <div data-testid="analytics-dashboard" />,
 }));
 
+vi.mock("@/components/status-logs/StatusLogList", () => ({
+  StatusLogList: () => <div data-testid="status-log-list" />,
+}));
+
+vi.mock("@/components/status-logs/InvoiceStatusLogsDialog", () => ({
+  InvoiceStatusLogsDialog: ({ invoiceId, trigger }: { invoiceId: string; trigger: React.ReactNode }) => (
+    <div data-testid={`status-logs-dialog-${invoiceId}`}>{trigger}</div>
+  ),
+}));
+
 // Import component after mocks
 import InvoicesPage from "./page";
 

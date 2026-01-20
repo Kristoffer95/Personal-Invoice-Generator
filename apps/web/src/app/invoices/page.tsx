@@ -15,11 +15,11 @@ import {
   ArchiveRestore,
   BarChart3,
   Tag,
-  Settings,
   FolderInput,
   Lock,
   Unlock,
   Folder,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +71,8 @@ import { TagBadgeList } from "@/components/tags/TagSelector";
 import { useFolderTree, useFolderMutations } from "@/hooks/use-invoice-folders";
 import { TagManager } from "@/components/tags/TagManager";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
+import { StatusLogList } from "@/components/status-logs/StatusLogList";
+import { InvoiceStatusLogsDialog } from "@/components/status-logs/InvoiceStatusLogsDialog";
 import {
   CURRENCY_SYMBOLS,
   type Currency,
@@ -138,7 +140,7 @@ export default function InvoicesPage() {
   const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber();
 
   // View state
-  const [activeTab, setActiveTab] = useState<"invoices" | "analytics" | "tags">("invoices");
+  const [activeTab, setActiveTab] = useState<"invoices" | "analytics" | "tags" | "logs">("invoices");
   const [selectedFolder, setSelectedFolder] = useState<FolderSelection>(undefined);
   const [filters, setFilters] = useState<InvoiceFiltersState>(defaultFilters);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
@@ -480,6 +482,10 @@ export default function InvoicesPage() {
                 <Tag className="h-4 w-4" />
                 Tags
               </TabsTrigger>
+              <TabsTrigger value="logs" className="gap-2">
+                <History className="h-4 w-4" />
+                Status Logs
+              </TabsTrigger>
             </TabsList>
 
             {activeTab === "invoices" && (
@@ -785,6 +791,16 @@ export default function InvoicesPage() {
                                     </>
                                   )}
                                 </DropdownMenuItem>
+                                <InvoiceStatusLogsDialog
+                                  invoiceId={invoice._id}
+                                  invoiceNumber={invoice.invoiceNumber}
+                                  trigger={
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                      <History className="h-4 w-4 mr-2" />
+                                      View Logs
+                                    </DropdownMenuItem>
+                                  }
+                                />
                                 <DropdownMenuSeparator />
                                 {invoice.isArchived ? (
                                   <DropdownMenuItem
@@ -834,6 +850,11 @@ export default function InvoicesPage() {
             <div className="max-w-2xl">
               <TagManager />
             </div>
+          </TabsContent>
+
+          {/* Status Logs Tab */}
+          <TabsContent value="logs">
+            <StatusLogList />
           </TabsContent>
         </Tabs>
       </div>

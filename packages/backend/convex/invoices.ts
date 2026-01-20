@@ -350,6 +350,26 @@ export const createInvoice = mutation({
       updatedAt: now,
     });
 
+    // Create initial status log entry
+    let folderName: string | undefined;
+    if (args.folderId) {
+      const folder = await ctx.db.get(args.folderId);
+      folderName = folder?.name;
+    }
+
+    await ctx.db.insert("statusLogs", {
+      userId: user._id,
+      invoiceId,
+      invoiceNumber: args.invoiceNumber,
+      folderId: args.folderId,
+      folderName,
+      previousStatus: undefined,
+      newStatus: finalStatus,
+      notes: "Invoice created",
+      changedAt: now,
+      changedAtStr: nowStr,
+    });
+
     return invoiceId;
   },
 });
@@ -716,7 +736,7 @@ export const bulkMoveToFolder = mutation({
   },
 });
 
-// Update invoice status with date tracking
+// Update invoice status with date tracking and logging
 export const updateStatus = mutation({
   args: {
     invoiceId: v.id("invoices"),
@@ -734,8 +754,10 @@ export const updateStatus = mutation({
       throw new Error("Invoice not found");
     }
 
+    const now = Date.now();
     const nowStr = new Date().toISOString();
     const currentHistory = invoice.statusHistory || [];
+    const previousStatus = invoice.status;
 
     const patchData: Record<string, unknown> = {
       status: args.status,
@@ -747,7 +769,7 @@ export const updateStatus = mutation({
           notes: args.notes,
         },
       ],
-      updatedAt: Date.now(),
+      updatedAt: now,
     };
 
     // Set specific date fields based on status transition
@@ -758,6 +780,26 @@ export const updateStatus = mutation({
     }
 
     await ctx.db.patch(args.invoiceId, patchData);
+
+    // Create status log entry
+    let folderName: string | undefined;
+    if (invoice.folderId) {
+      const folder = await ctx.db.get(invoice.folderId);
+      folderName = folder?.name;
+    }
+
+    await ctx.db.insert("statusLogs", {
+      userId: user._id,
+      invoiceId: args.invoiceId,
+      invoiceNumber: invoice.invoiceNumber,
+      folderId: invoice.folderId,
+      folderName,
+      previousStatus,
+      newStatus: args.status,
+      notes: args.notes,
+      changedAt: now,
+      changedAtStr: nowStr,
+    });
 
     return args.invoiceId;
   },
@@ -874,7 +916,7 @@ export const bulkArchiveInvoices = mutation({
   },
 });
 
-// Bulk update status
+// Bulk update status with logging
 export const bulkUpdateStatus = mutation({
   args: {
     invoiceIds: v.array(v.id("invoices")),
@@ -890,10 +932,14 @@ export const bulkUpdateStatus = mutation({
     const nowStr = new Date().toISOString();
     const now = Date.now();
 
+    // Cache folder names to avoid repeated lookups
+    const folderNameCache = new Map<string, string>();
+
     for (const invoiceId of args.invoiceIds) {
       const invoice = await ctx.db.get(invoiceId);
       if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
         const currentHistory = invoice.statusHistory || [];
+        const previousStatus = invoice.status;
         const patchData: Record<string, unknown> = {
           status: args.status,
           statusHistory: [
@@ -914,6 +960,34 @@ export const bulkUpdateStatus = mutation({
         }
 
         await ctx.db.patch(invoiceId, patchData);
+
+        // Create status log entry
+        let folderName: string | undefined;
+        if (invoice.folderId) {
+          const cached = folderNameCache.get(invoice.folderId);
+          if (cached !== undefined) {
+            folderName = cached;
+          } else {
+            const folder = await ctx.db.get(invoice.folderId);
+            folderName = folder?.name;
+            if (folderName) {
+              folderNameCache.set(invoice.folderId, folderName);
+            }
+          }
+        }
+
+        await ctx.db.insert("statusLogs", {
+          userId: user._id,
+          invoiceId,
+          invoiceNumber: invoice.invoiceNumber,
+          folderId: invoice.folderId,
+          folderName,
+          previousStatus,
+          newStatus: args.status,
+          notes: args.notes,
+          changedAt: now,
+          changedAtStr: nowStr,
+        });
       }
     }
 

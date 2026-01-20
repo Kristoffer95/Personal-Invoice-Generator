@@ -283,4 +283,30 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_name", ["userId", "name"]),
+
+  // Status logs for tracking invoice status changes (centralized for filtering)
+  statusLogs: defineTable({
+    userId: v.id("users"),
+    invoiceId: v.id("invoices"),
+
+    // Invoice info at time of log (for display without joins)
+    invoiceNumber: v.string(),
+
+    // Folder info at time of log (for filtering)
+    folderId: v.optional(v.id("invoiceFolders")),
+    folderName: v.optional(v.string()),
+
+    // Status change details
+    previousStatus: v.optional(invoiceStatusValidator),
+    newStatus: invoiceStatusValidator,
+    notes: v.optional(v.string()),
+
+    // Timestamps
+    changedAt: v.number(), // Unix timestamp for efficient querying
+    changedAtStr: v.string(), // ISO string for display
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_and_changed", ["userId", "changedAt"])
+    .index("by_invoice_id", ["invoiceId"])
+    .index("by_folder_id", ["userId", "folderId"]),
 });

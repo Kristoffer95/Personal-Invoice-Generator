@@ -49,6 +49,22 @@ export const statusChangeEventSchema = z.object({
 
 export type StatusChangeEvent = z.infer<typeof statusChangeEventSchema>
 
+// Status log entry for centralized logging
+export const statusLogSchema = z.object({
+  id: z.string(),
+  invoiceId: z.string(),
+  invoiceNumber: z.string(),
+  folderId: z.string().optional(),
+  folderName: z.string().optional(),
+  previousStatus: invoiceStatusSchema.optional(),
+  newStatus: invoiceStatusSchema,
+  notes: z.string().optional(),
+  changedAt: z.number(), // Unix timestamp
+  changedAtStr: z.string(), // ISO string
+})
+
+export type StatusLog = z.infer<typeof statusLogSchema>
+
 // Tag schema for organizing invoices and folders
 export const tagSchema = z.object({
   id: z.string(),
