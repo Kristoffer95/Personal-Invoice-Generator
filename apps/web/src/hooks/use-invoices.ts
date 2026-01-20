@@ -238,9 +238,11 @@ export function useInvoiceMutations() {
   const archiveInvoiceMutation = useMutation(api.invoices.archiveInvoice);
   const unarchiveInvoiceMutation = useMutation(api.invoices.unarchiveInvoice);
   const bulkArchiveInvoicesMutation = useMutation(api.invoices.bulkArchiveInvoices);
+  const bulkDeleteInvoicesMutation = useMutation(api.invoices.bulkDeleteInvoices);
   const bulkUpdateStatusMutation = useMutation(api.invoices.bulkUpdateStatus);
   const toggleMoveLockMutation = useMutation(api.invoices.toggleMoveLock);
   const bulkMoveToFolderMutation = useMutation(api.invoices.bulkMoveToFolder);
+  const quickCreateInvoiceMutation = useMutation(api.invoices.quickCreateInvoice);
 
   // Wrap mutations to invalidate cache after successful operations
   const wrapWithCacheInvalidation = useCallback(<T extends (...args: Parameters<T>) => Promise<unknown>>(
@@ -263,8 +265,23 @@ export function useInvoiceMutations() {
     archiveInvoice: wrapWithCacheInvalidation(archiveInvoiceMutation),
     unarchiveInvoice: wrapWithCacheInvalidation(unarchiveInvoiceMutation),
     bulkArchiveInvoices: wrapWithCacheInvalidation(bulkArchiveInvoicesMutation),
+    bulkDeleteInvoices: wrapWithCacheInvalidation(bulkDeleteInvoicesMutation),
     bulkUpdateStatus: wrapWithCacheInvalidation(bulkUpdateStatusMutation),
     toggleMoveLock: wrapWithCacheInvalidation(toggleMoveLockMutation),
     bulkMoveToFolder: wrapWithCacheInvalidation(bulkMoveToFolderMutation),
+    quickCreateInvoice: wrapWithCacheInvalidation(quickCreateInvoiceMutation),
+  };
+}
+
+// Hook to get the next billing period for a folder
+export function useNextBillingPeriod(folderId: Id<"invoiceFolders"> | undefined) {
+  const period = useQuery(
+    api.invoices.getNextBillingPeriod,
+    folderId ? { folderId } : "skip"
+  );
+
+  return {
+    period: period ?? null,
+    isLoading: period === undefined,
   };
 }

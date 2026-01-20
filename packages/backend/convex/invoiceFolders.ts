@@ -72,6 +72,41 @@ export const getFolder = query({
   },
 });
 
+// Get folder with client profile details (for invoice auto-fill)
+// Returns all linked client profiles for the folder
+export const getFolderWithClientProfiles = query({
+  args: { folderId: v.id("invoiceFolders") },
+  handler: async (ctx, args) => {
+    const user = await getUserFromIdentityOrE2E(ctx);
+    if (!user) {
+      return null;
+    }
+
+    const folder = await ctx.db.get(args.folderId);
+
+    // Security: Ensure folder belongs to user
+    if (!folder || folder.userId !== user._id || folder.deletedAt) {
+      return null;
+    }
+
+    // Get all client profiles linked to this folder
+    const clientProfiles = [];
+    if (folder.clientProfileIds && folder.clientProfileIds.length > 0) {
+      for (const profileId of folder.clientProfileIds) {
+        const profile = await ctx.db.get(profileId);
+        if (profile && profile.userId === user._id && !profile.deletedAt) {
+          clientProfiles.push(profile);
+        }
+      }
+    }
+
+    return {
+      ...folder,
+      clientProfiles,
+    };
+  },
+});
+
 // Get child folders of a parent
 export const getChildren = query({
   args: { parentId: v.optional(v.id("invoiceFolders")) },
@@ -91,6 +126,28 @@ export const getChildren = query({
   },
 });
 
+// Currency and payment terms validators for folder defaults
+const currencyValidator = v.union(
+  v.literal("USD"),
+  v.literal("EUR"),
+  v.literal("GBP"),
+  v.literal("PHP"),
+  v.literal("JPY"),
+  v.literal("AUD"),
+  v.literal("CAD"),
+  v.literal("SGD")
+);
+
+const paymentTermsValidator = v.union(
+  v.literal("DUE_ON_RECEIPT"),
+  v.literal("NET_7"),
+  v.literal("NET_15"),
+  v.literal("NET_30"),
+  v.literal("NET_45"),
+  v.literal("NET_60"),
+  v.literal("CUSTOM")
+);
+
 // Create a new folder
 export const createFolder = mutation({
   args: {
@@ -99,6 +156,11 @@ export const createFolder = mutation({
     color: v.optional(v.string()),
     parentId: v.optional(v.id("invoiceFolders")),
     tags: v.optional(v.array(v.id("tags"))),
+    clientProfileIds: v.optional(v.array(v.id("clientProfiles"))),
+    defaultHourlyRate: v.optional(v.number()),
+    defaultCurrency: v.optional(currencyValidator),
+    defaultPaymentTerms: v.optional(paymentTermsValidator),
+    defaultJobTitle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUserFromIdentity(ctx);
@@ -127,6 +189,16 @@ export const createFolder = mutation({
       }
     }
 
+    // Validate all client profiles ownership
+    if (args.clientProfileIds && args.clientProfileIds.length > 0) {
+      for (const profileId of args.clientProfileIds) {
+        const clientProfile = await ctx.db.get(profileId);
+        if (!clientProfile || clientProfile.userId !== user._id || clientProfile.deletedAt) {
+          throw new Error("Invalid client profile");
+        }
+      }
+    }
+
     const now = Date.now();
     const folderId = await ctx.db.insert("invoiceFolders", {
       userId: user._id,
@@ -135,6 +207,11 @@ export const createFolder = mutation({
       color: args.color,
       parentId: args.parentId,
       tags: args.tags,
+      clientProfileIds: args.clientProfileIds,
+      defaultHourlyRate: args.defaultHourlyRate,
+      defaultCurrency: args.defaultCurrency,
+      defaultPaymentTerms: args.defaultPaymentTerms,
+      defaultJobTitle: args.defaultJobTitle,
       createdAt: now,
       updatedAt: now,
     });
@@ -152,6 +229,17 @@ export const updateFolder = mutation({
     color: v.optional(v.string()),
     parentId: v.optional(v.id("invoiceFolders")),
     tags: v.optional(v.array(v.id("tags"))),
+    clientProfileIds: v.optional(v.array(v.id("clientProfiles"))),
+    defaultHourlyRate: v.optional(v.number()),
+    defaultCurrency: v.optional(currencyValidator),
+    defaultPaymentTerms: v.optional(paymentTermsValidator),
+    defaultJobTitle: v.optional(v.string()),
+    // Allow clearing optional fields by passing null
+    clearClientProfiles: v.optional(v.boolean()),
+    clearDefaultHourlyRate: v.optional(v.boolean()),
+    clearDefaultCurrency: v.optional(v.boolean()),
+    clearDefaultPaymentTerms: v.optional(v.boolean()),
+    clearDefaultJobTitle: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUserFromIdentity(ctx);
@@ -200,11 +288,50 @@ export const updateFolder = mutation({
       }
     }
 
-    const { folderId, ...updates } = args;
-    await ctx.db.patch(folderId, {
+    // Validate all client profiles ownership
+    if (args.clientProfileIds && args.clientProfileIds.length > 0) {
+      for (const profileId of args.clientProfileIds) {
+        const clientProfile = await ctx.db.get(profileId);
+        if (!clientProfile || clientProfile.userId !== user._id || clientProfile.deletedAt) {
+          throw new Error("Invalid client profile");
+        }
+      }
+    }
+
+    // Build the update object
+    const {
+      folderId,
+      clearClientProfiles,
+      clearDefaultHourlyRate,
+      clearDefaultCurrency,
+      clearDefaultPaymentTerms,
+      clearDefaultJobTitle,
+      ...updates
+    } = args;
+
+    const patchData: Record<string, unknown> = {
       ...updates,
       updatedAt: Date.now(),
-    });
+    };
+
+    // Handle clearing optional fields
+    if (clearClientProfiles) {
+      patchData.clientProfileIds = undefined;
+    }
+    if (clearDefaultHourlyRate) {
+      patchData.defaultHourlyRate = undefined;
+    }
+    if (clearDefaultCurrency) {
+      patchData.defaultCurrency = undefined;
+    }
+    if (clearDefaultPaymentTerms) {
+      patchData.defaultPaymentTerms = undefined;
+    }
+    if (clearDefaultJobTitle) {
+      patchData.defaultJobTitle = undefined;
+    }
+
+    await ctx.db.patch(folderId, patchData);
 
     return folderId;
   },

@@ -30,6 +30,21 @@ export function useInvoiceFolder(folderId: Id<"invoiceFolders"> | undefined) {
   };
 }
 
+// Get folder with linked client profiles (for invoice auto-fill)
+// Returns all client profiles associated with the folder
+export function useFolderWithClientProfiles(folderId: Id<"invoiceFolders"> | undefined) {
+  const folderWithProfiles = useQuery(
+    api.invoiceFolders.getFolderWithClientProfiles,
+    folderId ? { folderId } : "skip"
+  );
+
+  return {
+    folder: folderWithProfiles ?? null,
+    clientProfiles: folderWithProfiles?.clientProfiles ?? [],
+    isLoading: folderWithProfiles === undefined,
+  };
+}
+
 export function useFolderChildren(parentId?: Id<"invoiceFolders">) {
   const children = useQuery(api.invoiceFolders.getChildren, { parentId });
 

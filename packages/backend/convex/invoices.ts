@@ -916,6 +916,32 @@ export const bulkArchiveInvoices = mutation({
   },
 });
 
+// Bulk delete invoices (soft delete)
+export const bulkDeleteInvoices = mutation({
+  args: {
+    invoiceIds: v.array(v.id("invoices")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const now = Date.now();
+    let deletedCount = 0;
+
+    for (const invoiceId of args.invoiceIds) {
+      const invoice = await ctx.db.get(invoiceId);
+      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+        await ctx.db.patch(invoiceId, { deletedAt: now });
+        deletedCount++;
+      }
+    }
+
+    return deletedCount;
+  },
+});
+
 // Bulk update status with logging
 export const bulkUpdateStatus = mutation({
   args: {
@@ -1036,5 +1062,335 @@ export const getUnfiled = query({
     return invoices
       .filter((i) => i.userId === user._id && !i.deletedAt)
       .sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// Get the next billing period for a folder based on existing invoices
+// Analyzes all invoices in the folder and determines what the next period should be
+export const getNextBillingPeriod = query({
+  args: { folderId: v.id("invoiceFolders") },
+  handler: async (ctx, args) => {
+    const user = await getUserFromIdentityOrE2E(ctx);
+    if (!user) {
+      return null;
+    }
+
+    // Get the folder to verify access
+    const folder = await ctx.db.get(args.folderId);
+    if (!folder || folder.userId !== user._id || folder.deletedAt) {
+      return null;
+    }
+
+    // Get all non-deleted invoices in the folder
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
+      .collect();
+
+    const activeInvoices = invoices.filter((i) => !i.deletedAt && i.periodEnd);
+
+    if (activeInvoices.length === 0) {
+      // No invoices yet - start with current month 1st batch
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+
+      return {
+        periodStart: `${year}-${String(month + 1).padStart(2, "0")}-01`,
+        periodEnd: `${year}-${String(month + 1).padStart(2, "0")}-15`,
+        batchType: "1st_batch" as const,
+        monthLabel: new Date(year, month).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+      };
+    }
+
+    // Find the latest period end date
+    const sortedInvoices = activeInvoices
+      .filter((i) => i.periodEnd)
+      .sort((a, b) => {
+        const dateA = new Date(a.periodEnd!);
+        const dateB = new Date(b.periodEnd!);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+    const latestInvoice = sortedInvoices[0];
+    const latestEndDate = new Date(latestInvoice.periodEnd!);
+    const latestEndDay = latestEndDate.getDate();
+
+    // Determine next period based on the latest invoice
+    // If latest ends on 15th (1st batch) -> next is 2nd batch of same month
+    // If latest ends on month end (2nd batch) -> next is 1st batch of next month
+    let nextYear = latestEndDate.getFullYear();
+    let nextMonth = latestEndDate.getMonth();
+    let batchType: "1st_batch" | "2nd_batch";
+
+    if (latestEndDay <= 15) {
+      // Latest was 1st batch, next is 2nd batch of same month
+      batchType = "2nd_batch";
+    } else {
+      // Latest was 2nd batch, next is 1st batch of next month
+      batchType = "1st_batch";
+      nextMonth += 1;
+      if (nextMonth > 11) {
+        nextMonth = 0;
+        nextYear += 1;
+      }
+    }
+
+    // Calculate period dates
+    let periodStart: string;
+    let periodEnd: string;
+
+    if (batchType === "1st_batch") {
+      periodStart = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-01`;
+      periodEnd = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-15`;
+    } else {
+      // 2nd batch: 16th to end of month
+      const lastDay = new Date(nextYear, nextMonth + 1, 0).getDate();
+      periodStart = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-16`;
+      periodEnd = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    }
+
+    return {
+      periodStart,
+      periodEnd,
+      batchType,
+      monthLabel: new Date(nextYear, nextMonth).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    };
+  },
+});
+
+// Quick create invoice with minimal input - auto-fills from folder defaults and client profile
+export const quickCreateInvoice = mutation({
+  args: {
+    folderId: v.id("invoiceFolders"),
+    clientProfileId: v.id("clientProfiles"),
+    invoiceNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the folder with defaults
+    const folder = await ctx.db.get(args.folderId);
+    if (!folder || folder.userId !== user._id || folder.deletedAt) {
+      throw new Error("Folder not found");
+    }
+
+    // Get the client profile
+    const client = await ctx.db.get(args.clientProfileId);
+    if (!client || client.userId !== user._id || client.deletedAt) {
+      throw new Error("Client not found");
+    }
+
+    // Get user profile for "from" info
+    const userProfiles = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+    const userProfile = userProfiles[0];
+
+    // Get all non-deleted invoices in the folder to determine next period
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
+      .collect();
+
+    const activeInvoices = invoices.filter((i) => !i.deletedAt && i.periodEnd);
+
+    // Calculate next period
+    let nextYear: number;
+    let nextMonth: number;
+    let batchType: "1st_batch" | "2nd_batch";
+
+    if (activeInvoices.length === 0) {
+      // No invoices yet - start with current month 1st batch
+      const now = new Date();
+      nextYear = now.getFullYear();
+      nextMonth = now.getMonth();
+      batchType = "1st_batch";
+    } else {
+      // Find latest period and calculate next
+      const sortedInvoices = activeInvoices
+        .sort((a, b) => new Date(b.periodEnd!).getTime() - new Date(a.periodEnd!).getTime());
+
+      const latestEndDate = new Date(sortedInvoices[0].periodEnd!);
+      const latestEndDay = latestEndDate.getDate();
+      nextYear = latestEndDate.getFullYear();
+      nextMonth = latestEndDate.getMonth();
+
+      if (latestEndDay <= 15) {
+        batchType = "2nd_batch";
+      } else {
+        batchType = "1st_batch";
+        nextMonth += 1;
+        if (nextMonth > 11) {
+          nextMonth = 0;
+          nextYear += 1;
+        }
+      }
+    }
+
+    // Calculate period dates
+    let periodStart: string;
+    let periodEnd: string;
+
+    if (batchType === "1st_batch") {
+      periodStart = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-01`;
+      periodEnd = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-15`;
+    } else {
+      const lastDay = new Date(nextYear, nextMonth + 1, 0).getDate();
+      periodStart = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-16`;
+      periodEnd = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    }
+
+    // Generate daily work hours for the period
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+    const dailyWorkHours: Array<{ date: string; hours: number; isWorkday: boolean }> = [];
+    const defaultHoursPerDay = 8;
+
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dayOfWeek = d.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      dailyWorkHours.push({
+        date: d.toISOString().split("T")[0],
+        hours: defaultHoursPerDay,
+        isWorkday: !isWeekend,
+      });
+    }
+
+    // Calculate totals
+    const workingDays = dailyWorkHours.filter((d) => d.isWorkday);
+    const totalDays = workingDays.length;
+    const totalHours = workingDays.reduce((sum, d) => sum + d.hours, 0);
+    const hourlyRate = folder.defaultHourlyRate || 0;
+    const subtotal = totalHours * hourlyRate;
+
+    // Build from info from user profile
+    const from = {
+      name: userProfile?.displayName || userProfile?.businessName || user.email || "",
+      address: userProfile?.address || "",
+      city: userProfile?.city || "",
+      state: userProfile?.state || "",
+      postalCode: userProfile?.postalCode || "",
+      country: userProfile?.country || "",
+      email: userProfile?.email || user.email || "",
+      phone: userProfile?.phone || "",
+      taxId: userProfile?.taxId || "",
+    };
+
+    // Build to info from client profile
+    const to = {
+      name: client.companyName || client.name,
+      address: client.address || "",
+      city: client.city || "",
+      state: client.state || "",
+      postalCode: client.postalCode || "",
+      country: client.country || "",
+      email: client.email || "",
+      phone: client.phone || "",
+      taxId: client.taxId || "",
+    };
+
+    const now = Date.now();
+    const nowStr = new Date().toISOString();
+    const today = new Date().toISOString().split("T")[0];
+
+    // Calculate due date based on payment terms
+    const paymentTerms = folder.defaultPaymentTerms || "NET_30";
+    let dueDate: string;
+    const dueDateObj = new Date();
+    switch (paymentTerms) {
+      case "DUE_ON_RECEIPT":
+        dueDate = today;
+        break;
+      case "NET_7":
+        dueDateObj.setDate(dueDateObj.getDate() + 7);
+        dueDate = dueDateObj.toISOString().split("T")[0];
+        break;
+      case "NET_15":
+        dueDateObj.setDate(dueDateObj.getDate() + 15);
+        dueDate = dueDateObj.toISOString().split("T")[0];
+        break;
+      case "NET_30":
+        dueDateObj.setDate(dueDateObj.getDate() + 30);
+        dueDate = dueDateObj.toISOString().split("T")[0];
+        break;
+      case "NET_45":
+        dueDateObj.setDate(dueDateObj.getDate() + 45);
+        dueDate = dueDateObj.toISOString().split("T")[0];
+        break;
+      case "NET_60":
+        dueDateObj.setDate(dueDateObj.getDate() + 60);
+        dueDate = dueDateObj.toISOString().split("T")[0];
+        break;
+      default:
+        dueDateObj.setDate(dueDateObj.getDate() + 30);
+        dueDate = dueDateObj.toISOString().split("T")[0];
+    }
+
+    const invoiceId = await ctx.db.insert("invoices", {
+      userId: user._id,
+      folderId: args.folderId,
+      invoiceNumber: args.invoiceNumber,
+      status: "DRAFT",
+      statusHistory: [
+        {
+          status: "DRAFT",
+          changedAt: nowStr,
+          notes: "Invoice created via quick create",
+        },
+      ],
+      issueDate: today,
+      dueDate,
+      periodStart,
+      periodEnd,
+      from,
+      to,
+      hourlyRate,
+      defaultHoursPerDay,
+      dailyWorkHours,
+      totalDays,
+      totalHours,
+      subtotal,
+      lineItems: [],
+      discountPercent: 0,
+      discountAmount: 0,
+      taxPercent: 0,
+      taxAmount: 0,
+      totalAmount: subtotal,
+      currency: folder.defaultCurrency || "USD",
+      paymentTerms,
+      bankDetails: userProfile?.bankDetails,
+      jobTitle: folder.defaultJobTitle,
+      showDetailedHours: true,
+      pdfTheme: "light",
+      pageSize: "A4",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create status log entry
+    await ctx.db.insert("statusLogs", {
+      userId: user._id,
+      invoiceId,
+      invoiceNumber: args.invoiceNumber,
+      folderId: args.folderId,
+      folderName: folder.name,
+      previousStatus: undefined,
+      newStatus: "DRAFT",
+      notes: "Invoice created via quick create",
+      changedAt: now,
+      changedAtStr: nowStr,
+    });
+
+    return {
+      invoiceId,
+      periodStart,
+      periodEnd,
+      batchType,
+    };
   },
 });

@@ -65,6 +65,16 @@ vi.mock('@/components/tags/TagSelector', () => ({
   TagBadgeList: () => null,
 }))
 
+vi.mock('@/hooks/use-client-profiles', () => ({
+  useClientProfiles: () => ({
+    clients: [
+      { _id: 'client_1', name: 'Test Client', email: 'test@client.com' },
+      { _id: 'client_2', name: 'Another Client', email: 'another@client.com' },
+    ],
+    isLoading: false,
+  }),
+}))
+
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
     toast: vi.fn(),

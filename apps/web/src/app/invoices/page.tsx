@@ -20,6 +20,8 @@ import {
   Unlock,
   Folder,
   History,
+  Users,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +58,7 @@ import {
   useArchivedInvoices,
   useInvoiceMutations,
   useAllInvoicesCount,
+  useNextBillingPeriod,
 } from "@/hooks/use-invoices";
 import { useNextInvoiceNumber } from "@/hooks/use-user-profile";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -68,17 +71,22 @@ import {
 import { InvoiceStatusSelect, InvoiceStatusBadge } from "@/components/invoice/InvoiceStatusSelect";
 import { InvoicePreviewPopover } from "@/components/invoice/InvoicePreviewPopover";
 import { TagBadgeList } from "@/components/tags/TagSelector";
-import { useFolderTree, useFolderMutations } from "@/hooks/use-invoice-folders";
+import { useFolderTree, useFolderMutations, useFolderWithClientProfiles } from "@/hooks/use-invoice-folders";
 import { TagManager } from "@/components/tags/TagManager";
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { StatusLogList } from "@/components/status-logs/StatusLogList";
 import { InvoiceStatusLogsDialog } from "@/components/status-logs/InvoiceStatusLogsDialog";
+import { ClientManager } from "@/components/clients/ClientManager";
 import {
   CURRENCY_SYMBOLS,
   type Currency,
   type InvoiceStatus,
 } from "@invoice-generator/shared-types";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
+import { useClientMutations, useClientProfiles } from "@/hooks/use-client-profiles";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type InvoiceItem = {
   _id: Id<"invoices">;
@@ -130,17 +138,19 @@ export default function InvoicesPage() {
     archiveInvoice,
     unarchiveInvoice,
     bulkArchiveInvoices,
+    bulkDeleteInvoices,
     bulkUpdateStatus,
     moveToFolder,
     toggleMoveLock,
     bulkMoveToFolder,
+    quickCreateInvoice,
   } = useInvoiceMutations();
   const { toggleFolderMoveLock } = useFolderMutations();
   const { tree: folderTree } = useFolderTree();
   const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber();
 
   // View state
-  const [activeTab, setActiveTab] = useState<"invoices" | "analytics" | "tags" | "logs">("invoices");
+  const [activeTab, setActiveTab] = useState<"invoices" | "clients" | "analytics" | "tags" | "logs">("invoices");
   const [selectedFolder, setSelectedFolder] = useState<FolderSelection>(undefined);
   const [filters, setFilters] = useState<InvoiceFiltersState>(defaultFilters);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
@@ -153,6 +163,37 @@ export default function InvoicesPage() {
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [invoiceToMove, setInvoiceToMove] = useState<InvoiceItem | null>(null);
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<Id<"invoiceFolders"> | null>(null);
+
+  // Quick create invoice state
+  const [clientSelectorOpen, setClientSelectorOpen] = useState(false);
+  const [isQuickCreating, setIsQuickCreating] = useState(false);
+
+  // Bulk delete state
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+
+  // New client form modal state (for "All" folder or no clients)
+  const [newClientDialogOpen, setNewClientDialogOpen] = useState(false);
+  const [newClientFormData, setNewClientFormData] = useState({
+    name: "",
+    companyName: "",
+    email: "",
+    address: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
+    phone: "",
+  });
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
+
+  // Get folder with client profiles for the selected folder
+  const selectedFolderIdForClients = selectedFolder && selectedFolder !== UNCATEGORIZED_FOLDER ? selectedFolder : undefined;
+  const { folder: selectedFolderData, clientProfiles: folderClientProfiles, isLoading: clientProfilesLoading } = useFolderWithClientProfiles(selectedFolderIdForClients);
+  const { period: nextBillingPeriod, isLoading: nextPeriodLoading } = useNextBillingPeriod(selectedFolderIdForClients);
+
+  // Get all clients for "All" folder scenario
+  const { clients: allClients } = useClientProfiles();
+  const { createClient } = useClientMutations();
 
   // Build filter options for hooks
   const filterOptions = useMemo(() => {
@@ -324,6 +365,21 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedInvoices.size === 0) return;
+
+    try {
+      const deletedCount = await bulkDeleteInvoices({
+        invoiceIds: Array.from(selectedInvoices) as Id<"invoices">[],
+      });
+      toast({ title: `${deletedCount} invoice(s) deleted` });
+      clearSelection();
+      setBulkDeleteDialogOpen(false);
+    } catch {
+      toast({ title: "Error", description: "Failed to delete invoices", variant: "destructive" });
+    }
+  };
+
   const handleBulkStatusUpdate = async (status: InvoiceStatus) => {
     if (selectedInvoices.size === 0) return;
 
@@ -403,13 +459,148 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleCreateNewInvoice = () => {
-    // Only pass folderId if a real folder is selected (not All or Uncategorized)
-    if (selectedFolder && selectedFolder !== UNCATEGORIZED_FOLDER) {
-      router.push(`/?folderId=${selectedFolder}`);
-    } else {
-      router.push("/");
+  // Quick create invoice with a specific client
+  const handleQuickCreateWithClient = async (clientId: Id<"clientProfiles">) => {
+    if (!selectedFolder || selectedFolder === UNCATEGORIZED_FOLDER || !nextInvoiceNumber) {
+      return;
     }
+
+    setIsQuickCreating(true);
+    try {
+      const result = await quickCreateInvoice({
+        folderId: selectedFolder,
+        clientProfileId: clientId,
+        invoiceNumber: nextInvoiceNumber,
+      });
+      await incrementNumber();
+
+      // Format period for toast message
+      const periodLabel = result.batchType === "1st_batch" ? "1st batch" : "2nd batch";
+      const periodDate = new Date(result.periodStart);
+      const monthLabel = periodDate.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+      toast({
+        title: "Invoice created",
+        description: `Created invoice for ${monthLabel} ${periodLabel}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create invoice",
+        variant: "destructive",
+      });
+    } finally {
+      setIsQuickCreating(false);
+      setClientSelectorOpen(false);
+    }
+  };
+
+  const handleCreateNewInvoice = async () => {
+    // If "All Invoices" is selected (selectedFolder is undefined), show client form modal
+    if (selectedFolder === undefined) {
+      // Show the new client form modal
+      setNewClientDialogOpen(true);
+      return;
+    }
+
+    // If Uncategorized is selected, also show client form modal
+    if (selectedFolder === UNCATEGORIZED_FOLDER) {
+      setNewClientDialogOpen(true);
+      return;
+    }
+
+    // Wait for data to load - show loading state if still loading
+    if (clientProfilesLoading || nextPeriodLoading) {
+      toast({
+        title: "Loading...",
+        description: "Please wait while we load folder data",
+      });
+      return;
+    }
+
+    // Check if folder has client profiles
+    if (!selectedFolderData) {
+      // Folder data not available - show error
+      toast({
+        title: "Folder not found",
+        description: "Unable to load folder data. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check how many clients are linked to this folder
+    const clientCount = folderClientProfiles.length;
+
+    if (clientCount === 0) {
+      // No clients linked - show client form modal for creating a new client
+      setNewClientDialogOpen(true);
+      return;
+    }
+
+    if (clientCount === 1) {
+      // Exactly 1 client - quick create with that client
+      await handleQuickCreateWithClient(folderClientProfiles[0]._id);
+      return;
+    }
+
+    // Multiple clients - show client selector dialog
+    setClientSelectorOpen(true);
+  };
+
+  // Handle creating a new client and redirecting to home to create invoice
+  const handleCreateClientAndRedirect = async () => {
+    if (!newClientFormData.name.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a client name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreatingClient(true);
+    try {
+      await createClient({
+        name: newClientFormData.name,
+        companyName: newClientFormData.companyName || undefined,
+        email: newClientFormData.email || undefined,
+        address: newClientFormData.address || undefined,
+        city: newClientFormData.city || undefined,
+        state: newClientFormData.state || undefined,
+        postalCode: newClientFormData.postalCode || undefined,
+        country: newClientFormData.country || undefined,
+        phone: newClientFormData.phone || undefined,
+      });
+
+      toast({ title: "Client created" });
+      setNewClientDialogOpen(false);
+      setNewClientFormData({
+        name: "",
+        companyName: "",
+        email: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
+        phone: "",
+      });
+      // Redirect to home page to select month and batch
+      router.push("/");
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to create client",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingClient(false);
+    }
+  };
+
+  const updateNewClientField = (field: keyof typeof newClientFormData, value: string) => {
+    setNewClientFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleOpenInvoice = (invoiceId: Id<"invoices">) => {
@@ -474,6 +665,10 @@ export default function InvoicesPage() {
                 <FileText className="h-4 w-4" />
                 Invoices
               </TabsTrigger>
+              <TabsTrigger value="clients" className="gap-2">
+                <Users className="h-4 w-4" />
+                Clients
+              </TabsTrigger>
               <TabsTrigger value="analytics" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Analytics
@@ -489,9 +684,26 @@ export default function InvoicesPage() {
             </TabsList>
 
             {activeTab === "invoices" && (
-              <Button onClick={handleCreateNewInvoice}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Invoice
+              <Button
+                onClick={handleCreateNewInvoice}
+                disabled={isQuickCreating || (selectedFolderIdForClients && (clientProfilesLoading || nextPeriodLoading))}
+              >
+                {isQuickCreating ? (
+                  <>
+                    <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Creating...
+                  </>
+                ) : (selectedFolderIdForClients && (clientProfilesLoading || nextPeriodLoading)) ? (
+                  <>
+                    <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Invoice
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -611,6 +823,15 @@ export default function InvoicesPage() {
                       <Archive className="h-4 w-4 mr-2" />
                       Archive
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setBulkDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
@@ -651,9 +872,21 @@ export default function InvoicesPage() {
                           ? "No invoices in this folder"
                           : "No invoices yet"}
                       </p>
-                      <Button onClick={handleCreateNewInvoice}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Invoice
+                      <Button
+                        onClick={handleCreateNewInvoice}
+                        disabled={isQuickCreating || (selectedFolderIdForClients && (clientProfilesLoading || nextPeriodLoading))}
+                      >
+                        {isQuickCreating ? (
+                          <>
+                            <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Invoice
+                          </>
+                        )}
                       </Button>
                     </CardContent>
                   </Card>
@@ -840,6 +1073,11 @@ export default function InvoicesPage() {
             </div>
           </TabsContent>
 
+          {/* Clients Tab */}
+          <TabsContent value="clients">
+            <ClientManager />
+          </TabsContent>
+
           {/* Analytics Tab */}
           <TabsContent value="analytics">
             <AnalyticsDashboard />
@@ -945,6 +1183,219 @@ export default function InvoicesPage() {
             </Button>
             <Button onClick={invoiceToMove ? handleConfirmMove : handleBulkMove}>
               Move
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Selector Dialog for Quick Invoice Creation */}
+      <Dialog open={clientSelectorOpen} onOpenChange={setClientSelectorOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Client</DialogTitle>
+            <DialogDescription>
+              {nextBillingPeriod && (
+                <>
+                  Creating invoice for <strong>{nextBillingPeriod.monthLabel}</strong>{" "}
+                  <strong>{nextBillingPeriod.batchType === "1st_batch" ? "1st batch" : "2nd batch"}</strong>.
+                  Select which client this invoice is for:
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2 max-h-60 overflow-y-auto">
+            {folderClientProfiles.map((client) => (
+              <button
+                key={client._id}
+                onClick={() => handleQuickCreateWithClient(client._id)}
+                disabled={isQuickCreating}
+                className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent hover:border-primary transition-colors text-left disabled:opacity-50"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{client.companyName || client.name}</p>
+                  {client.companyName && client.name !== client.companyName && (
+                    <p className="text-xs text-muted-foreground truncate">{client.name}</p>
+                  )}
+                  {!client.companyName && client.email && (
+                    <p className="text-xs text-muted-foreground truncate">{client.email}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClientSelectorOpen(false)}
+              disabled={isQuickCreating}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {selectedInvoices.size} Invoice(s)?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the selected invoices. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete}>
+              Delete {selectedInvoices.size} Invoice(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Client Form Dialog (for "All" folder or no clients linked) */}
+      <Dialog open={newClientDialogOpen} onOpenChange={setNewClientDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Client</DialogTitle>
+            <DialogDescription>
+              Enter client details to create a new invoice. After creating the client, you&apos;ll be redirected to the home page to select a month and batch.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {/* Basic Info */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-client-name">
+                  Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="new-client-name"
+                  placeholder="Contact name"
+                  value={newClientFormData.name}
+                  onChange={(e) => updateNewClientField("name", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-client-companyName">Company Name</Label>
+                <Input
+                  id="new-client-companyName"
+                  placeholder="Company or business name"
+                  value={newClientFormData.companyName}
+                  onChange={(e) => updateNewClientField("companyName", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Contact Info */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-client-email">Email</Label>
+                <Input
+                  id="new-client-email"
+                  type="email"
+                  placeholder="client@example.com"
+                  value={newClientFormData.email}
+                  onChange={(e) => updateNewClientField("email", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-client-phone">Phone</Label>
+                <Input
+                  id="new-client-phone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={newClientFormData.phone}
+                  onChange={(e) => updateNewClientField("phone", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <Label htmlFor="new-client-address">Street Address</Label>
+              <Input
+                id="new-client-address"
+                placeholder="123 Main Street"
+                value={newClientFormData.address}
+                onChange={(e) => updateNewClientField("address", e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-client-city">City</Label>
+                <Input
+                  id="new-client-city"
+                  placeholder="New York"
+                  value={newClientFormData.city}
+                  onChange={(e) => updateNewClientField("city", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-client-state">State / Province</Label>
+                <Input
+                  id="new-client-state"
+                  placeholder="NY"
+                  value={newClientFormData.state}
+                  onChange={(e) => updateNewClientField("state", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-client-postalCode">Postal Code</Label>
+                <Input
+                  id="new-client-postalCode"
+                  placeholder="10001"
+                  value={newClientFormData.postalCode}
+                  onChange={(e) => updateNewClientField("postalCode", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-client-country">Country</Label>
+                <Input
+                  id="new-client-country"
+                  placeholder="United States"
+                  value={newClientFormData.country}
+                  onChange={(e) => updateNewClientField("country", e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNewClientDialogOpen(false);
+                setNewClientFormData({
+                  name: "",
+                  companyName: "",
+                  email: "",
+                  address: "",
+                  city: "",
+                  state: "",
+                  postalCode: "",
+                  country: "",
+                  phone: "",
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateClientAndRedirect} disabled={isCreatingClient}>
+              {isCreatingClient ? "Creating..." : "Create & Continue"}
             </Button>
           </DialogFooter>
         </DialogContent>

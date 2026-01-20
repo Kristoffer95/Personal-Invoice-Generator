@@ -45,10 +45,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useFolderTree, useFolderPath, useFolderMutations } from "@/hooks/use-invoice-folders";
+import { useClientProfiles } from "@/hooks/use-client-profiles";
 import { TagSelector, TagBadgeList } from "@/components/tags/TagSelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import type { Currency, PaymentTerms } from "@invoice-generator/shared-types";
 
 // Use a recursive type that matches the Convex return type
 type FolderNode = {
@@ -60,6 +70,11 @@ type FolderNode = {
   tags?: Id<"tags">[];
   invoiceCount: number;
   isMoveLocked?: boolean;
+  clientProfileIds?: Id<"clientProfiles">[];
+  defaultHourlyRate?: number;
+  defaultCurrency?: Currency;
+  defaultPaymentTerms?: PaymentTerms;
+  defaultJobTitle?: string;
   children: FolderNode[];
   // Allow additional properties from Convex
   [key: string]: unknown;
@@ -264,6 +279,7 @@ export function FolderTree({
   const { toast } = useToast();
   const { tree, isLoading } = useFolderTree();
   const { createFolder, updateFolder, deleteFolder, moveFolder, toggleFolderMoveLock } = useFolderMutations();
+  const { clients } = useClientProfiles();
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
@@ -285,6 +301,13 @@ export function FolderTree({
   const [folderTags, setFolderTags] = useState<Id<"tags">[]>([]);
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<Id<"invoiceFolders"> | null>(null);
 
+  // Client and default settings form state
+  const [folderClientProfileIds, setFolderClientProfileIds] = useState<Id<"clientProfiles">[]>([]);
+  const [folderDefaultHourlyRate, setFolderDefaultHourlyRate] = useState<number | undefined>();
+  const [folderDefaultCurrency, setFolderDefaultCurrency] = useState<Currency | undefined>();
+  const [folderDefaultPaymentTerms, setFolderDefaultPaymentTerms] = useState<PaymentTerms | undefined>();
+  const [folderDefaultJobTitle, setFolderDefaultJobTitle] = useState<string>("");
+
   const handleToggleExpand = useCallback((folderId: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
@@ -304,6 +327,11 @@ export function FolderTree({
     setFolderDescription("");
     setFolderColor("#3b82f6");
     setFolderTags([]);
+    setFolderClientProfileIds([]);
+    setFolderDefaultHourlyRate(undefined);
+    setFolderDefaultCurrency(undefined);
+    setFolderDefaultPaymentTerms(undefined);
+    setFolderDefaultJobTitle("");
     setFolderDialogOpen(true);
   };
 
@@ -314,6 +342,11 @@ export function FolderTree({
     setFolderDescription(folder.description || "");
     setFolderColor(folder.color || "#3b82f6");
     setFolderTags(folder.tags || []);
+    setFolderClientProfileIds(folder.clientProfileIds || []);
+    setFolderDefaultHourlyRate(folder.defaultHourlyRate);
+    setFolderDefaultCurrency(folder.defaultCurrency);
+    setFolderDefaultPaymentTerms(folder.defaultPaymentTerms);
+    setFolderDefaultJobTitle(folder.defaultJobTitle || "");
     setFolderDialogOpen(true);
   };
 
@@ -322,12 +355,29 @@ export function FolderTree({
 
     try {
       if (editingFolder) {
+        // Determine what fields need clearing
+        const clearClientProfiles = folderClientProfileIds.length === 0 && (editingFolder.clientProfileIds?.length ?? 0) > 0;
+        const clearDefaultHourlyRate = !folderDefaultHourlyRate && !!editingFolder.defaultHourlyRate;
+        const clearDefaultCurrency = !folderDefaultCurrency && !!editingFolder.defaultCurrency;
+        const clearDefaultPaymentTerms = !folderDefaultPaymentTerms && !!editingFolder.defaultPaymentTerms;
+        const clearDefaultJobTitle = !folderDefaultJobTitle && !!editingFolder.defaultJobTitle;
+
         await updateFolder({
           folderId: editingFolder._id,
           name: folderName.trim(),
           description: folderDescription || undefined,
           color: folderColor,
           tags: folderTags.length > 0 ? folderTags : undefined,
+          clientProfileIds: folderClientProfileIds.length > 0 ? folderClientProfileIds : undefined,
+          defaultHourlyRate: folderDefaultHourlyRate,
+          defaultCurrency: folderDefaultCurrency,
+          defaultPaymentTerms: folderDefaultPaymentTerms,
+          defaultJobTitle: folderDefaultJobTitle || undefined,
+          clearClientProfiles,
+          clearDefaultHourlyRate,
+          clearDefaultCurrency,
+          clearDefaultPaymentTerms,
+          clearDefaultJobTitle,
         });
         toast({ title: "Folder updated" });
       } else {
@@ -337,6 +387,11 @@ export function FolderTree({
           color: folderColor,
           parentId: parentIdForNew,
           tags: folderTags.length > 0 ? folderTags : undefined,
+          clientProfileIds: folderClientProfileIds.length > 0 ? folderClientProfileIds : undefined,
+          defaultHourlyRate: folderDefaultHourlyRate,
+          defaultCurrency: folderDefaultCurrency,
+          defaultPaymentTerms: folderDefaultPaymentTerms,
+          defaultJobTitle: folderDefaultJobTitle || undefined,
         });
         toast({ title: "Folder created" });
 
@@ -549,7 +604,7 @@ export function FolderTree({
 
       {/* Create/Edit Folder Dialog */}
       <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingFolder ? "Edit Folder" : "New Folder"}
@@ -597,6 +652,134 @@ export function FolderTree({
                 onChange={setFolderTags}
                 type="folder"
               />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Client & Invoice Defaults</h4>
+              <p className="text-xs text-muted-foreground">
+                Link clients and set default values for new invoices created in this folder.
+              </p>
+
+              <div className="space-y-2">
+                <Label>Link Clients (optional)</Label>
+                <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                  {clients.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No clients available. Go to the <strong>Clients</strong> tab to add clients.
+                    </p>
+                  ) : (
+                    clients.map((client) => {
+                      const isSelected = folderClientProfileIds.includes(client._id);
+                      return (
+                        <label
+                          key={client._id}
+                          className={cn(
+                            "flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted/50 transition-colors",
+                            isSelected && "bg-primary/10"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFolderClientProfileIds([...folderClientProfileIds, client._id]);
+                              } else {
+                                setFolderClientProfileIds(folderClientProfileIds.filter(id => id !== client._id));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{client.name}</span>
+                            {(client.companyName || client.email) && (
+                              <span className="text-xs text-muted-foreground">
+                                {client.companyName || client.email}
+                              </span>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {folderClientProfileIds.length === 0
+                    ? "Select clients for this folder. New invoices will prompt to select a client."
+                    : folderClientProfileIds.length === 1
+                    ? "New invoices in this folder will auto-fill with this client."
+                    : `${folderClientProfileIds.length} clients selected. New invoices will prompt to select one.`}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Default Hourly Rate</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={folderDefaultHourlyRate || ""}
+                    onChange={(e) => setFolderDefaultHourlyRate(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="e.g., 50.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Default Currency</Label>
+                  <Select
+                    value={folderDefaultCurrency || "none"}
+                    onValueChange={(value) => setFolderDefaultCurrency(value === "none" ? undefined : value as Currency)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not set</SelectItem>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="PHP">PHP - Philippine Peso</SelectItem>
+                      <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
+                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                      <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Default Payment Terms</Label>
+                  <Select
+                    value={folderDefaultPaymentTerms || "none"}
+                    onValueChange={(value) => setFolderDefaultPaymentTerms(value === "none" ? undefined : value as PaymentTerms)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select terms..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not set</SelectItem>
+                      <SelectItem value="DUE_ON_RECEIPT">Due on Receipt</SelectItem>
+                      <SelectItem value="NET_7">Net 7</SelectItem>
+                      <SelectItem value="NET_15">Net 15</SelectItem>
+                      <SelectItem value="NET_30">Net 30</SelectItem>
+                      <SelectItem value="NET_45">Net 45</SelectItem>
+                      <SelectItem value="NET_60">Net 60</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Default Job Title</Label>
+                  <Input
+                    value={folderDefaultJobTitle}
+                    onChange={(e) => setFolderDefaultJobTitle(e.target.value)}
+                    placeholder="e.g., Software Development"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

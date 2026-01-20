@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 3005",
+    "dev:e2e": "E2E_TESTING=true next dev --turbopack -p 3005",
     "dev:backend": "pnpm --filter @invoice-generator/backend dev",
     "build": "next build",
     "start": "next start -p 3005",
@@ -11,10 +12,10 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
-    "test:all": "vitest run && playwright test",
+    "test:e2e": "E2E_TESTING=true playwright test",
+    "test:e2e:ui": "E2E_TESTING=true playwright test --ui",
+    "test:e2e:headed": "E2E_TESTING=true playwright test --headed",
+    "test:all": "vitest run && E2E_TESTING=true playwright test",
     "clean": "rm -rf .next node_modules .turbo",
     "clean:cache": "rm -rf .next .turbo"
   },

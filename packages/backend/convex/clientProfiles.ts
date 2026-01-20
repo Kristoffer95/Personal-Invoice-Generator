@@ -59,6 +59,7 @@ export const searchClients = query({
         (c) =>
           !c.deletedAt &&
           (c.name.toLowerCase().includes(searchLower) ||
+            c.companyName?.toLowerCase().includes(searchLower) ||
             c.email?.toLowerCase().includes(searchLower))
       )
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -69,6 +70,7 @@ export const searchClients = query({
 export const createClient = mutation({
   args: {
     name: v.string(),
+    companyName: v.optional(v.string()),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     state: v.optional(v.string()),
@@ -76,8 +78,10 @@ export const createClient = mutation({
     country: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    website: v.optional(v.string()),
     taxId: v.optional(v.string()),
     logo: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Auto-provision user if needed
@@ -103,6 +107,7 @@ export const updateClient = mutation({
   args: {
     clientId: v.id("clientProfiles"),
     name: v.optional(v.string()),
+    companyName: v.optional(v.string()),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     state: v.optional(v.string()),
@@ -110,8 +115,10 @@ export const updateClient = mutation({
     country: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    website: v.optional(v.string()),
     taxId: v.optional(v.string()),
     logo: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Auto-provision user if needed

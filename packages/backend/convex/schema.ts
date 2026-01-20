@@ -139,6 +139,37 @@ export default defineSchema({
     // Movement locking - prevents all invoices in this folder from being moved
     isMoveLocked: v.optional(v.boolean()),
 
+    // Client profiles linked to this folder (for auto-filling new invoices)
+    // Multiple clients can be associated with a folder
+    clientProfileIds: v.optional(v.array(v.id("clientProfiles"))),
+
+    // Default invoice settings for this folder
+    defaultHourlyRate: v.optional(v.number()),
+    defaultCurrency: v.optional(
+      v.union(
+        v.literal("USD"),
+        v.literal("EUR"),
+        v.literal("GBP"),
+        v.literal("PHP"),
+        v.literal("JPY"),
+        v.literal("AUD"),
+        v.literal("CAD"),
+        v.literal("SGD")
+      )
+    ),
+    defaultPaymentTerms: v.optional(
+      v.union(
+        v.literal("DUE_ON_RECEIPT"),
+        v.literal("NET_7"),
+        v.literal("NET_15"),
+        v.literal("NET_30"),
+        v.literal("NET_45"),
+        v.literal("NET_60"),
+        v.literal("CUSTOM")
+      )
+    ),
+    defaultJobTitle: v.optional(v.string()),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -265,7 +296,8 @@ export default defineSchema({
   // Saved client profiles for quick selection
   clientProfiles: defineTable({
     userId: v.id("users"),
-    name: v.string(),
+    name: v.string(), // Contact name or primary name
+    companyName: v.optional(v.string()), // Company/business name
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     state: v.optional(v.string()),
@@ -273,8 +305,10 @@ export default defineSchema({
     country: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    website: v.optional(v.string()),
     taxId: v.optional(v.string()),
     logo: v.optional(v.string()),
+    notes: v.optional(v.string()), // Internal notes about the client
 
     // Timestamps
     createdAt: v.number(),

@@ -77,6 +77,7 @@ const mockUpdateStatus = vi.fn().mockResolvedValue("invoice_1");
 const mockArchiveInvoice = vi.fn().mockResolvedValue("invoice_1");
 const mockUnarchiveInvoice = vi.fn().mockResolvedValue("invoice_1");
 const mockBulkArchiveInvoices = vi.fn().mockResolvedValue(undefined);
+const mockBulkDeleteInvoices = vi.fn().mockResolvedValue(3);
 const mockBulkUpdateStatus = vi.fn().mockResolvedValue(undefined);
 const mockMoveToFolder = vi.fn().mockResolvedValue("invoice_1");
 const mockToggleMoveLock = vi.fn().mockResolvedValue("invoice_1");
@@ -103,6 +104,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock hooks
+const mockQuickCreateInvoice = vi.fn().mockResolvedValue({
+  invoiceId: "invoice_new_123",
+  periodStart: "2024-02-01",
+  periodEnd: "2024-02-15",
+  batchType: "first",
+});
+
 vi.mock("@/hooks/use-invoices", () => ({
   useInvoices: () => ({
     invoices: mockInvoices,
@@ -131,10 +139,16 @@ vi.mock("@/hooks/use-invoices", () => ({
     archiveInvoice: mockArchiveInvoice,
     unarchiveInvoice: mockUnarchiveInvoice,
     bulkArchiveInvoices: mockBulkArchiveInvoices,
+    bulkDeleteInvoices: mockBulkDeleteInvoices,
     bulkUpdateStatus: mockBulkUpdateStatus,
     moveToFolder: mockMoveToFolder,
     toggleMoveLock: mockToggleMoveLock,
     bulkMoveToFolder: mockBulkMoveToFolder,
+    quickCreateInvoice: mockQuickCreateInvoice,
+  }),
+  useNextBillingPeriod: () => ({
+    period: null,
+    isLoading: false,
   }),
 }));
 
@@ -153,6 +167,11 @@ vi.mock("@/hooks/use-invoice-folders", () => ({
     deleteFolder: mockDeleteFolder,
     moveFolder: mockMoveFolder,
     toggleFolderMoveLock: mockToggleFolderMoveLock,
+  }),
+  useFolderWithClientProfiles: () => ({
+    folder: null,
+    clientProfiles: [],
+    isLoading: false,
   }),
 }));
 
@@ -241,6 +260,25 @@ vi.mock("@/components/status-logs/InvoiceStatusLogsDialog", () => ({
   InvoiceStatusLogsDialog: ({ invoiceId, trigger }: { invoiceId: string; trigger: React.ReactNode }) => (
     <div data-testid={`status-logs-dialog-${invoiceId}`}>{trigger}</div>
   ),
+}));
+
+vi.mock("@/components/clients/ClientManager", () => ({
+  ClientManager: () => <div data-testid="client-manager" />,
+}));
+
+const mockCreateClient = vi.fn().mockResolvedValue("client_new_123");
+
+vi.mock("@/hooks/use-client-profiles", () => ({
+  useClientProfiles: () => ({
+    clients: [],
+    isLoading: false,
+  }),
+  useClientMutations: () => ({
+    createClient: mockCreateClient,
+    updateClient: vi.fn(),
+    deleteClient: vi.fn(),
+    upsertFromInvoice: vi.fn(),
+  }),
 }));
 
 // Import component after mocks
@@ -991,6 +1029,319 @@ describe("InvoicesPage - Move and Lock Functionality", () => {
           description: "Move failed",
           variant: "destructive",
         });
+      });
+    });
+  });
+
+  describe("Bulk Delete Functionality", () => {
+    it("shows bulk delete button when invoices are selected", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      const firstInvoiceCheckbox = checkboxes[1];
+
+      await user.click(firstInvoiceCheckbox);
+
+      await waitFor(() => {
+        expect(screen.getByText("1 selected")).toBeInTheDocument();
+        // Find the Delete button in the bulk actions bar
+        const deleteButton = screen.getByRole("button", { name: /delete/i });
+        expect(deleteButton).toBeInTheDocument();
+      });
+    });
+
+    it("opens bulk delete confirmation dialog when delete button is clicked", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      await user.click(checkboxes[1]);
+      await user.click(checkboxes[2]);
+
+      await waitFor(() => {
+        expect(screen.getByText("2 selected")).toBeInTheDocument();
+      });
+
+      // Find and click the Delete button
+      const deleteButton = screen.getByRole("button", { name: /delete/i });
+      await user.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Delete 2 Invoice\(s\)\?/)).toBeInTheDocument();
+        expect(screen.getByText(/This will permanently delete the selected invoices/)).toBeInTheDocument();
+      });
+    });
+
+    it("calls bulkDeleteInvoices when bulk delete is confirmed", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      await user.click(checkboxes[1]);
+      await user.click(checkboxes[3]);
+
+      await waitFor(() => {
+        expect(screen.getByText("2 selected")).toBeInTheDocument();
+      });
+
+      // Click delete button
+      const deleteButton = screen.getByRole("button", { name: /delete/i });
+      await user.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      // Confirm delete
+      const dialog = screen.getByRole("dialog");
+      const confirmDeleteButton = Array.from(dialog.querySelectorAll("button")).find(
+        (btn) => btn.textContent?.includes("Delete 2 Invoice(s)")
+      );
+      if (confirmDeleteButton) {
+        await user.click(confirmDeleteButton);
+      }
+
+      await waitFor(() => {
+        expect(mockBulkDeleteInvoices).toHaveBeenCalledWith({
+          invoiceIds: expect.arrayContaining(["invoice_1", "invoice_3"]),
+        });
+      });
+    });
+
+    it("closes dialog when cancel button is clicked", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      await user.click(checkboxes[1]);
+
+      await waitFor(() => {
+        expect(screen.getByText("1 selected")).toBeInTheDocument();
+      });
+
+      // Click delete button to open dialog
+      const deleteButton = screen.getByRole("button", { name: /delete/i });
+      await user.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      // Click cancel
+      const cancelButton = screen.getByRole("button", { name: "Cancel" });
+      await user.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Delete 1 Invoice\(s\)\?/)).not.toBeInTheDocument();
+      });
+    });
+
+    it("clears selection after successful bulk delete", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      await user.click(checkboxes[1]);
+
+      await waitFor(() => {
+        expect(screen.getByText("1 selected")).toBeInTheDocument();
+      });
+
+      // Open and confirm bulk delete
+      const deleteButton = screen.getByRole("button", { name: /delete/i });
+      await user.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      // Confirm delete
+      const dialog = screen.getByRole("dialog");
+      const confirmDeleteButton = Array.from(dialog.querySelectorAll("button")).find(
+        (btn) => btn.textContent?.includes("Delete 1 Invoice(s)")
+      );
+      if (confirmDeleteButton) {
+        await user.click(confirmDeleteButton);
+      }
+
+      await waitFor(() => {
+        expect(screen.queryByText("1 selected")).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("New Invoice Button in All Folder", () => {
+    it("opens new client form dialog when clicking New Invoice in All folder view", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Ensure we're in "All" folder (default)
+      const folderTree = screen.getByTestId("folder-tree");
+      const allButton = folderTree.querySelector("button");
+      if (allButton) {
+        await user.click(allButton);
+      }
+
+      // Click New Invoice button
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Create New Client")).toBeInTheDocument();
+        expect(screen.getByText(/Enter client details to create a new invoice/)).toBeInTheDocument();
+      });
+    });
+
+    it("opens new client form dialog when clicking New Invoice in Uncategorized folder", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Navigate to Uncategorized folder
+      const folderTree = screen.getByTestId("folder-tree");
+      const buttons = folderTree.querySelectorAll("button");
+      const uncategorizedButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes("Uncategorized")
+      );
+      if (uncategorizedButton) {
+        await user.click(uncategorizedButton);
+      }
+
+      // Click New Invoice button
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Create New Client")).toBeInTheDocument();
+      });
+    });
+
+    it("shows form fields in new client dialog", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Click New Invoice button (we're in "All" view by default)
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/contact name/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/company or business name/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/client@example.com/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/\+1 \(555\) 123-4567/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/123 main street/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/new york/i)).toBeInTheDocument();
+      });
+    });
+
+    it("calls createClient when form is submitted", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Click New Invoice button
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Create New Client")).toBeInTheDocument();
+      });
+
+      // Fill in the form
+      const nameInput = screen.getByPlaceholderText(/contact name/i);
+      const companyInput = screen.getByPlaceholderText(/company or business name/i);
+      const emailInput = screen.getByPlaceholderText(/client@example.com/i);
+
+      await user.type(nameInput, "John Doe");
+      await user.type(companyInput, "Acme Corp");
+      await user.type(emailInput, "john@acme.com");
+
+      // Submit the form
+      const createButton = screen.getByRole("button", { name: /create & continue/i });
+      await user.click(createButton);
+
+      await waitFor(() => {
+        expect(mockCreateClient).toHaveBeenCalledWith({
+          name: "John Doe",
+          companyName: "Acme Corp",
+          email: "john@acme.com",
+          address: undefined,
+          city: undefined,
+          state: undefined,
+          postalCode: undefined,
+          country: undefined,
+          phone: undefined,
+        });
+      });
+    });
+
+    it("shows validation error when name is empty", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Click New Invoice button
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Create New Client")).toBeInTheDocument();
+      });
+
+      // Try to submit without filling name
+      const createButton = screen.getByRole("button", { name: /create & continue/i });
+      await user.click(createButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: "Name required",
+          description: "Please enter a client name",
+          variant: "destructive",
+        });
+      });
+    });
+
+    it("redirects to home page after creating client", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Click New Invoice button
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Create New Client")).toBeInTheDocument();
+      });
+
+      // Fill in the form
+      const nameInput = screen.getByPlaceholderText(/contact name/i);
+      await user.type(nameInput, "Test Client");
+
+      // Submit the form
+      const createButton = screen.getByRole("button", { name: /create & continue/i });
+      await user.click(createButton);
+
+      await waitFor(() => {
+        expect(mockRouterPush).toHaveBeenCalledWith("/");
+      });
+    });
+
+    it("closes dialog when cancel button is clicked", async () => {
+      const user = userEvent.setup();
+      render(<InvoicesPage />);
+
+      // Click New Invoice button
+      const newInvoiceButton = screen.getByRole("button", { name: /new invoice/i });
+      await user.click(newInvoiceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Create New Client")).toBeInTheDocument();
+      });
+
+      // Click cancel
+      const cancelButton = screen.getByRole("button", { name: "Cancel" });
+      await user.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText("Create New Client")).not.toBeInTheDocument();
       });
     });
   });
