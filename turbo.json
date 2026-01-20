@@ -18,9 +18,26 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "env": ["CI", "NODE_ENV"]
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false,
+      "env": ["CI", "NODE_ENV", "PLAYWRIGHT_BROWSERS_PATH", "E2E_TESTING"]
+    },
     "test:watch": {
       "cache": false,
       "persistent": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "clean:cache": {
+      "cache": false
     }
   }
 }

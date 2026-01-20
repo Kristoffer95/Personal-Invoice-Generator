@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { UserButton } from '@clerk/nextjs'
 import {
   format,
   parseISO,
@@ -22,6 +24,10 @@ import {
   Calendar as CalendarIcon,
   DollarSign,
   ChevronUp,
+  User,
+  FolderOpen,
+  Cloud,
+  CloudOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,6 +46,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { useInvoiceStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -56,8 +68,12 @@ import { LineItemsEditor } from './LineItemsEditor'
 import { BackgroundSelector } from './BackgroundSelector'
 import { PageSizeSelector } from './PageSizeSelector'
 import { InvoicePreview } from './InvoicePreview'
+import { useUserProfile, useNextInvoiceNumber } from '@/hooks/use-user-profile'
+import { useInvoice, useInvoiceMutations } from '@/hooks/use-invoices'
+import { useClientMutations } from '@/hooks/use-client-profiles'
 import type { Invoice, PageSizeKey, DailyWorkHours } from '@invoice-generator/shared-types'
 import { CURRENCY_SYMBOLS } from '@invoice-generator/shared-types'
+import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
 
 interface InvoiceCalendarPageProps {
   onExportPDF: (invoice: Invoice) => Promise<void>
@@ -72,6 +88,8 @@ interface ValidationErrors {
 }
 
 export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [isExporting, setIsExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -82,6 +100,20 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<DetectedPeriod | null>(null)
   const [isManualOverride, setIsManualOverride] = useState(false)
   const [selectedBatch, setSelectedBatch] = useState<PeriodBatchType>('1st_batch')
+  const [isSavingToCloud, setIsSavingToCloud] = useState(false)
+  const [hasAppliedProfile, setHasAppliedProfile] = useState(false)
+  const [hasLoadedInvoice, setHasLoadedInvoice] = useState(false)
+
+  // Get Convex hooks for cloud sync
+  const { data: profileData, user: authUser, profile: userProfile } = useUserProfile()
+  const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber()
+  const { createInvoice, updateInvoice } = useInvoiceMutations()
+  const { upsertFromInvoice: saveClientFromInvoice } = useClientMutations()
+
+  // Get invoice ID and folder ID from URL params
+  const invoiceIdParam = searchParams.get('invoiceId')
+  const folderIdParam = searchParams.get('folderId')
+  const { invoice: loadedInvoice } = useInvoice(invoiceIdParam as Id<'invoices'> | undefined)
 
   const {
     currentInvoice,
@@ -102,7 +134,93 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     updateScheduleConfig,
     saveInvoice,
     resetCurrentInvoice,
+    setCurrentInvoice,
   } = useInvoiceStore()
+
+  // Load invoice from URL param (for editing existing invoice)
+  useEffect(() => {
+    if (loadedInvoice && !hasLoadedInvoice) {
+      setHasLoadedInvoice(true)
+      // Convert Convex invoice to local format
+      setCurrentInvoice({
+        id: loadedInvoice._id,
+        invoiceNumber: loadedInvoice.invoiceNumber,
+        status: loadedInvoice.status,
+        issueDate: loadedInvoice.issueDate,
+        dueDate: loadedInvoice.dueDate,
+        periodStart: loadedInvoice.periodStart,
+        periodEnd: loadedInvoice.periodEnd,
+        from: loadedInvoice.from,
+        to: loadedInvoice.to,
+        hourlyRate: loadedInvoice.hourlyRate,
+        defaultHoursPerDay: loadedInvoice.defaultHoursPerDay,
+        dailyWorkHours: loadedInvoice.dailyWorkHours,
+        totalDays: loadedInvoice.totalDays,
+        totalHours: loadedInvoice.totalHours,
+        subtotal: loadedInvoice.subtotal,
+        lineItems: loadedInvoice.lineItems,
+        discountPercent: loadedInvoice.discountPercent,
+        discountAmount: loadedInvoice.discountAmount,
+        taxPercent: loadedInvoice.taxPercent,
+        taxAmount: loadedInvoice.taxAmount,
+        totalAmount: loadedInvoice.totalAmount,
+        currency: loadedInvoice.currency,
+        paymentTerms: loadedInvoice.paymentTerms,
+        customPaymentTerms: loadedInvoice.customPaymentTerms,
+        bankDetails: loadedInvoice.bankDetails,
+        notes: loadedInvoice.notes,
+        terms: loadedInvoice.terms,
+        jobTitle: loadedInvoice.jobTitle,
+        showDetailedHours: loadedInvoice.showDetailedHours,
+        pdfTheme: loadedInvoice.pdfTheme,
+        backgroundDesignId: loadedInvoice.backgroundDesignId,
+        pageSize: loadedInvoice.pageSize,
+      })
+      setIsManualOverride(true)
+    }
+  }, [loadedInvoice, hasLoadedInvoice, setCurrentInvoice])
+
+  // Auto-fill from user profile for new invoices
+  useEffect(() => {
+    if (profileData && authUser && userProfile && !hasAppliedProfile && !invoiceIdParam) {
+      setHasAppliedProfile(true)
+
+      // Build the name from profile or user data
+      const displayName = userProfile.displayName
+        || userProfile.businessName
+        || `${authUser.firstName ?? ''} ${authUser.lastName ?? ''}`.trim()
+        || authUser.email
+
+      // Only update if we have meaningful data and the from name is empty
+      if (displayName && !currentInvoice.from?.name) {
+        updateFromInfo({
+          name: displayName,
+          address: userProfile.address ?? '',
+          city: userProfile.city ?? '',
+          state: userProfile.state ?? '',
+          postalCode: userProfile.postalCode ?? '',
+          country: userProfile.country ?? '',
+          email: userProfile.email ?? authUser.email ?? '',
+          phone: userProfile.phone ?? '',
+          taxId: userProfile.taxId ?? '',
+        })
+
+        // Also apply bank details if available
+        if (userProfile.bankDetails) {
+          updateCurrentInvoice({
+            bankDetails: userProfile.bankDetails,
+          })
+        }
+      }
+    }
+  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceIdParam, currentInvoice.from?.name, updateFromInfo, updateCurrentInvoice])
+
+  // Auto-generate invoice number from profile settings
+  useEffect(() => {
+    if (nextInvoiceNumber && !currentInvoice.invoiceNumber && !invoiceIdParam) {
+      updateCurrentInvoice({ invoiceNumber: nextInvoiceNumber })
+    }
+  }, [nextInvoiceNumber, currentInvoice.invoiceNumber, invoiceIdParam, updateCurrentInvoice])
 
   // Set issue date to today on mount if not already set
   useEffect(() => {
@@ -261,11 +379,104 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     return !hasErrors
   }, [currentInvoice.invoiceNumber, currentInvoice.from?.name, currentInvoice.to?.name, currentInvoice.hourlyRate, scheduleConfig.defaultHoursPerDay])
 
+  // Save to cloud (Convex)
+  const handleSaveToCloud = useCallback(async () => {
+    if (!validateInvoice()) {
+      toast({
+        title: 'Cannot save to cloud',
+        description: 'Please fill in required fields.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsSavingToCloud(true)
+    try {
+      const invoiceData = {
+        folderId: folderIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined,
+        invoiceNumber: currentInvoice.invoiceNumber!,
+        status: currentInvoice.status ?? 'DRAFT',
+        issueDate: currentInvoice.issueDate ?? format(new Date(), 'yyyy-MM-dd'),
+        dueDate: currentInvoice.dueDate,
+        periodStart: currentInvoice.periodStart,
+        periodEnd: currentInvoice.periodEnd,
+        from: currentInvoice.from!,
+        to: currentInvoice.to!,
+        hourlyRate: currentInvoice.hourlyRate ?? 0,
+        defaultHoursPerDay: currentInvoice.defaultHoursPerDay ?? 8,
+        dailyWorkHours: currentInvoice.dailyWorkHours ?? [],
+        totalDays: currentInvoice.totalDays ?? 0,
+        totalHours: currentInvoice.totalHours ?? 0,
+        subtotal: currentInvoice.subtotal ?? 0,
+        lineItems: currentInvoice.lineItems ?? [],
+        discountPercent: currentInvoice.discountPercent ?? 0,
+        discountAmount: currentInvoice.discountAmount ?? 0,
+        taxPercent: currentInvoice.taxPercent ?? 0,
+        taxAmount: currentInvoice.taxAmount ?? 0,
+        totalAmount: currentInvoice.totalAmount ?? 0,
+        currency: currentInvoice.currency ?? 'USD',
+        paymentTerms: currentInvoice.paymentTerms ?? 'NET_30',
+        customPaymentTerms: currentInvoice.customPaymentTerms,
+        bankDetails: currentInvoice.bankDetails,
+        notes: currentInvoice.notes,
+        terms: currentInvoice.terms,
+        jobTitle: currentInvoice.jobTitle,
+        showDetailedHours: currentInvoice.showDetailedHours ?? false,
+        pdfTheme: currentInvoice.pdfTheme ?? 'light',
+        backgroundDesignId: currentInvoice.backgroundDesignId,
+        pageSize: currentInvoice.pageSize ?? 'A4',
+      }
+
+      if (invoiceIdParam) {
+        // Update existing invoice
+        await updateInvoice({
+          invoiceId: invoiceIdParam as Id<'invoices'>,
+          ...invoiceData,
+        })
+        toast({
+          title: 'Invoice updated',
+          description: `Invoice #${currentInvoice.invoiceNumber} has been updated.`,
+        })
+      } else {
+        // Create new invoice
+        await createInvoice(invoiceData)
+        // Increment the invoice number counter
+        await incrementNumber()
+        // Save client profile for reuse
+        if (currentInvoice.to?.name) {
+          await saveClientFromInvoice(currentInvoice.to)
+        }
+        toast({
+          title: 'Invoice saved to cloud',
+          description: `Invoice #${currentInvoice.invoiceNumber} has been saved.`,
+        })
+      }
+    } catch (error) {
+      toast({
+        title: 'Error saving to cloud',
+        description: 'Failed to save invoice. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingToCloud(false)
+    }
+  }, [
+    validateInvoice,
+    currentInvoice,
+    invoiceIdParam,
+    folderIdParam,
+    createInvoice,
+    updateInvoice,
+    incrementNumber,
+    saveClientFromInvoice,
+    toast,
+  ])
+
   const handleSave = useCallback(() => {
     const saved = saveInvoice()
     if (saved) {
       toast({
-        title: 'Invoice saved',
+        title: 'Invoice saved locally',
         description: `Invoice #${saved.invoiceNumber} has been saved.`,
       })
     } else {
@@ -404,14 +615,41 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
           </div>
           {/* Desktop action buttons */}
           <div className="hidden items-center gap-1.5 sm:flex sm:gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => router.push('/invoices')}>
+                    <FolderOpen className="mr-1.5 h-4 w-4 sm:mr-2" />
+                    <span className="hidden md:inline">Invoices</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View all invoices</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="outline" size="sm" onClick={handleReset}>
               <RotateCcw className="mr-1.5 h-4 w-4 sm:mr-2" />
               <span className="hidden md:inline">Reset</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={handleSave}>
-              <Save className="mr-1.5 h-4 w-4 sm:mr-2" />
-              <span className="hidden md:inline">Save</span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveToCloud}
+                    disabled={isSavingToCloud}
+                  >
+                    {isSavingToCloud ? (
+                      <CloudOff className="mr-1.5 h-4 w-4 animate-pulse sm:mr-2" />
+                    ) : (
+                      <Cloud className="mr-1.5 h-4 w-4 sm:mr-2" />
+                    )}
+                    <span className="hidden md:inline">{isSavingToCloud ? 'Saving...' : 'Save'}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save to cloud</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="outline" size="sm" onClick={handlePreview}>
               <Eye className="mr-1.5 h-4 w-4 sm:mr-2" />
               <span className="hidden md:inline">Preview</span>
@@ -422,10 +660,22 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
             </Button>
             <Separator orientation="vertical" className="mx-1 h-6" />
             <ThemeToggle />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => router.push('/profile')}>
+                    <User className="h-4 w-4" />
+                    <span className="sr-only">Profile</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Profile settings</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
               <Settings className="h-4 w-4" />
               <span className="sr-only">Settings</span>
             </Button>
+            <UserButton afterSignOutUrl="/sign-in" />
           </div>
           {/* Mobile header actions - minimal */}
           <div className="flex items-center gap-1 sm:hidden">
@@ -434,6 +684,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               <Settings className="h-4 w-4" />
               <span className="sr-only">Settings</span>
             </Button>
+            <UserButton afterSignOutUrl="/sign-in" />
           </div>
         </div>
       </header>
@@ -819,9 +1070,19 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               <RotateCcw className="h-4 w-4" />
               <span className="sr-only">Reset</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={handleSave} className="h-8 w-8 p-0">
-              <Save className="h-4 w-4" />
-              <span className="sr-only">Save</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSaveToCloud}
+              disabled={isSavingToCloud}
+              className="h-8 w-8 p-0"
+            >
+              {isSavingToCloud ? (
+                <CloudOff className="h-4 w-4 animate-pulse" />
+              ) : (
+                <Cloud className="h-4 w-4" />
+              )}
+              <span className="sr-only">Save to cloud</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handlePreview} className="h-8 w-8 p-0">
               <Eye className="h-4 w-4" />

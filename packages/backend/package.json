@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "convex dev",
     "deploy": "convex deploy",
-    "codegen": "convex codegen"
+    "codegen": "convex codegen",
+    "clean": "rm -rf node_modules .turbo dist",
+    "clean:cache": "rm -rf .turbo"
   },
   "dependencies": {
     "convex": "^1.17.4",

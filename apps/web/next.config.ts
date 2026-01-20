@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind + Google Fonts
               "img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com",
               "font-src 'self' data: blob: https://fonts.gstatic.com", // PDF fonts + Google Fonts
-              "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.convex.cloud https://clerk-telemetry.com", // Clerk + Convex + Telemetry
+              "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.convex.cloud wss://*.convex.cloud https://clerk-telemetry.com", // Clerk + Convex (HTTPS + WebSocket) + Telemetry
               "worker-src 'self' blob:", // PDF renderer uses web workers
               "child-src 'self' blob:", // Allow blob iframes for PDF preview
               "frame-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com", // Clerk + Turnstile

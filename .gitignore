@@ -11,6 +11,9 @@ build
 
 # Testing
 coverage
+playwright-report/
+test-results/
+.playwright-mcp/
 
 # Misc
 .DS_Store

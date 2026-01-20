@@ -13,6 +13,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Resolve workspace packages to their built outputs or dist
+      '@invoice-generator/shared-types': path.resolve(__dirname, '../../packages/shared-types'),
+      '@invoice-generator/pdf-generator': path.resolve(__dirname, '../../packages/pdf-generator'),
+      // Ensure zod resolves from the root node_modules
+      'zod': path.resolve(__dirname, './node_modules/zod'),
     },
   },
 })

@@ -8,8 +8,12 @@
  * @module
  */
 
+import type * as clientProfiles from "../clientProfiles.js";
 import type * as http from "../http.js";
 import type * as index from "../index.js";
+import type * as invoiceFolders from "../invoiceFolders.js";
+import type * as invoices from "../invoices.js";
+import type * as userProfiles from "../userProfiles.js";
 import type * as users from "../users.js";
 
 import type {
@@ -19,8 +23,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  clientProfiles: typeof clientProfiles;
   http: typeof http;
   index: typeof index;
+  invoiceFolders: typeof invoiceFolders;
+  invoices: typeof invoices;
+  userProfiles: typeof userProfiles;
   users: typeof users;
 }>;
 

@@ -7,7 +7,10 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf node_modules .turbo dist",
+    "clean:cache": "rm -rf .turbo"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

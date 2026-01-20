@@ -1,0 +1,1 @@
+Delegate aggressively to specialized agents. Start with the highest priority ticket.
