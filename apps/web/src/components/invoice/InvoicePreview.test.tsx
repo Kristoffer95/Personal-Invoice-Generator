@@ -19,6 +19,7 @@ describe('InvoicePreview', () => {
     id: '1',
     invoiceNumber: 'INV-001',
     status: 'DRAFT',
+    statusHistory: [],
     issueDate: '2024-01-15',
     dueDate: '2024-02-15',
     from: {
@@ -59,6 +60,8 @@ describe('InvoicePreview', () => {
     currency: 'USD',
     paymentTerms: 'NET_30',
     pageSize: 'A4',
+    tags: [],
+    isArchived: false,
     showDetailedHours: false,
     pdfTheme: 'light',
     createdAt: '2024-01-15T00:00:00Z',

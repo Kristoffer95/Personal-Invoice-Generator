@@ -26,6 +26,68 @@ export const backgroundDesignSchema = z.object({
   accentColor: z.string().optional(),
 })
 
+// Invoice status options with tracking
+export const invoiceStatusSchema = z.enum([
+  'DRAFT',
+  'TO_SEND',
+  'SENT',
+  'VIEWED',
+  'PAYMENT_PENDING',
+  'PARTIAL_PAYMENT',
+  'PAID',
+  'OVERDUE',
+  'CANCELLED',
+  'REFUNDED',
+])
+
+export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>
+
+// Status change event for tracking
+export const statusChangeEventSchema = z.object({
+  status: invoiceStatusSchema,
+  changedAt: z.string(), // ISO date string
+  notes: z.string().optional(),
+})
+
+export type StatusChangeEvent = z.infer<typeof statusChangeEventSchema>
+
+// Tag schema for organizing invoices and folders
+export const tagSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string().optional(), // Hex color code
+})
+
+export type Tag = z.infer<typeof tagSchema>
+
+// Status labels for UI display
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  DRAFT: 'Draft',
+  TO_SEND: 'To Send',
+  SENT: 'Sent',
+  VIEWED: 'Viewed',
+  PAYMENT_PENDING: 'Payment Pending',
+  PARTIAL_PAYMENT: 'Partial Payment',
+  PAID: 'Paid',
+  OVERDUE: 'Overdue',
+  CANCELLED: 'Cancelled',
+  REFUNDED: 'Refunded',
+}
+
+// Status colors for UI display
+export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
+  DRAFT: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300' },
+  TO_SEND: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300' },
+  SENT: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-700 dark:text-blue-300' },
+  VIEWED: { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-700 dark:text-indigo-300' },
+  PAYMENT_PENDING: { bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-700 dark:text-orange-300' },
+  PARTIAL_PAYMENT: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-300' },
+  PAID: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
+  OVERDUE: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-300' },
+  CANCELLED: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-500 dark:text-gray-500' },
+  REFUNDED: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-700 dark:text-purple-300' },
+}
+
 export type BackgroundDesign = z.infer<typeof backgroundDesignSchema>
 
 // Work hours for a specific day
@@ -149,13 +211,21 @@ export const invoiceSchema = z.object({
   // Basic info
   id: z.string(),
   invoiceNumber: z.string().min(1, 'Invoice number is required'),
-  status: z.enum(['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED']).default('DRAFT'),
+  status: invoiceStatusSchema.default('DRAFT'),
+
+  // Status tracking with date history
+  statusHistory: z.array(statusChangeEventSchema).default([]),
 
   // Dates
   issueDate: z.string(), // ISO date string
   dueDate: z.string().optional(),
   periodStart: z.string().optional(), // For timesheet invoices
   periodEnd: z.string().optional(),
+
+  // Status-specific dates for easy tracking
+  sentAt: z.string().optional(),
+  paidAt: z.string().optional(),
+  viewedAt: z.string().optional(),
 
   // Parties
   from: partyInfoSchema,
@@ -193,6 +263,13 @@ export const invoiceSchema = z.object({
   notes: z.string().optional(),
   terms: z.string().optional(),
   jobTitle: z.string().optional(), // Job title/description for the invoice
+
+  // Tags for organization
+  tags: z.array(z.string()).default([]), // Tag IDs
+
+  // Archiving
+  isArchived: z.boolean().default(false),
+  archivedAt: z.string().optional(),
 
   // Display settings
   showDetailedHours: z.boolean().default(false), // Show per-day hours breakdown

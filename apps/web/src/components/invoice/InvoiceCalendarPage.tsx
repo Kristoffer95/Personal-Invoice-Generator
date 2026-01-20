@@ -177,6 +177,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         pageSize: loadedInvoice.pageSize,
       })
       setIsManualOverride(true)
+
+      // Navigate calendar to the invoice's coverage month
+      if (loadedInvoice.periodStart) {
+        setCurrentMonth(parseISO(loadedInvoice.periodStart))
+      }
     }
   }, [loadedInvoice, hasLoadedInvoice, setCurrentInvoice])
 

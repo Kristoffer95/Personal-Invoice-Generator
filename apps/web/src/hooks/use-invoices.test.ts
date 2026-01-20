@@ -23,18 +23,23 @@ vi.mock('@invoice-generator/backend/convex/_generated/api', () => ({
       listRecent: 'invoices:listRecent',
       getInvoice: 'invoices:getInvoice',
       getUnfiled: 'invoices:getUnfiled',
+      getArchivedInvoices: 'invoices:getArchivedInvoices',
       createInvoice: 'invoices:createInvoice',
       updateInvoice: 'invoices:updateInvoice',
       removeInvoice: 'invoices:removeInvoice',
       duplicateInvoice: 'invoices:duplicateInvoice',
       moveToFolder: 'invoices:moveToFolder',
       updateStatus: 'invoices:updateStatus',
+      archiveInvoice: 'invoices:archiveInvoice',
+      unarchiveInvoice: 'invoices:unarchiveInvoice',
+      bulkArchiveInvoices: 'invoices:bulkArchiveInvoices',
+      bulkUpdateStatus: 'invoices:bulkUpdateStatus',
     },
   },
 }))
 
 // Import after mocks
-import { useInvoices, useRecentInvoices, useInvoice, useUnfiledInvoices, useInvoiceMutations } from './use-invoices'
+import { useInvoices, useRecentInvoices, useInvoice, useUnfiledInvoices, useArchivedInvoices, useInvoiceMutations } from './use-invoices'
 
 describe('useInvoices', () => {
   beforeEach(() => {
@@ -184,8 +189,121 @@ describe('useUnfiledInvoices', () => {
   })
 })
 
+describe('useArchivedInvoices', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockState.queryReturns = {}
+  })
+
+  it('should return archived invoices', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', isArchived: true, archivedAt: '2024-01-15' },
+      { _id: 'invoice_2', invoiceNumber: 'INV-002', isArchived: true, archivedAt: '2024-01-16' },
+    ]
+    mockState.queryReturns['invoices:getArchivedInvoices'] = mockInvoices
+
+    const { result } = renderHook(() => useArchivedInvoices())
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.invoices).toHaveLength(2)
+  })
+
+  it('should return empty array when loading', () => {
+    mockState.queryReturns['invoices:getArchivedInvoices'] = undefined
+
+    const { result } = renderHook(() => useArchivedInvoices())
+
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.invoices).toEqual([])
+  })
+})
+
+describe('useInvoices - new filtering options', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockState.queryReturns = {}
+  })
+
+  it('should filter by multiple statuses', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', status: 'TO_SEND' },
+      { _id: 'invoice_2', invoiceNumber: 'INV-002', status: 'SENT' },
+    ]
+    mockState.queryReturns['invoices:listInvoices'] = mockInvoices
+
+    const { result } = renderHook(() =>
+      useInvoices({ statuses: ['TO_SEND', 'SENT'] })
+    )
+
+    expect(result.current.invoices).toHaveLength(2)
+  })
+
+  it('should filter by archived status', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', isArchived: false },
+    ]
+    mockState.queryReturns['invoices:listInvoices'] = mockInvoices
+
+    const { result } = renderHook(() => useInvoices({ isArchived: false }))
+
+    expect(result.current.invoices).toHaveLength(1)
+  })
+
+  it('should filter by tags', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', tags: ['tag1', 'tag2'] },
+    ]
+    mockState.queryReturns['invoices:listInvoices'] = mockInvoices
+
+    const { result } = renderHook(() =>
+      useInvoices({ tags: ['tag1' as any] })
+    )
+
+    expect(result.current.invoices).toHaveLength(1)
+  })
+
+  it('should filter by date range', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', issueDate: '2024-06-15' },
+    ]
+    mockState.queryReturns['invoices:listInvoices'] = mockInvoices
+
+    const { result } = renderHook(() =>
+      useInvoices({ dateFrom: '2024-01-01', dateTo: '2024-12-31' })
+    )
+
+    expect(result.current.invoices).toHaveLength(1)
+  })
+
+  it('should filter by amount range', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', totalAmount: 5000 },
+    ]
+    mockState.queryReturns['invoices:listInvoices'] = mockInvoices
+
+    const { result } = renderHook(() =>
+      useInvoices({ amountMin: 1000, amountMax: 10000 })
+    )
+
+    expect(result.current.invoices).toHaveLength(1)
+  })
+
+  it('should filter by search query', () => {
+    const mockInvoices = [
+      { _id: 'invoice_1', invoiceNumber: 'INV-001', to: { name: 'Test Client' } },
+    ]
+    mockState.queryReturns['invoices:listInvoices'] = mockInvoices
+
+    const { result } = renderHook(() =>
+      useInvoices({ searchQuery: 'Test' })
+    )
+
+    expect(result.current.invoices).toHaveLength(1)
+  })
+})
+
 describe('useInvoiceMutations', () => {
-  it('should return all mutation functions', () => {
+  it('should return all mutation functions including new ones', () => {
     const { result } = renderHook(() => useInvoiceMutations())
 
     expect(result.current.createInvoice).toBeDefined()
@@ -194,5 +312,10 @@ describe('useInvoiceMutations', () => {
     expect(result.current.duplicateInvoice).toBeDefined()
     expect(result.current.moveToFolder).toBeDefined()
     expect(result.current.updateStatus).toBeDefined()
+    // New mutation functions
+    expect(result.current.archiveInvoice).toBeDefined()
+    expect(result.current.unarchiveInvoice).toBeDefined()
+    expect(result.current.bulkArchiveInvoices).toBeDefined()
+    expect(result.current.bulkUpdateStatus).toBeDefined()
   })
 })

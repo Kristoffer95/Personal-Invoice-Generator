@@ -42,11 +42,22 @@ const lineItemValidator = v.object({
 
 const statusValidator = v.union(
   v.literal("DRAFT"),
+  v.literal("TO_SEND"),
   v.literal("SENT"),
+  v.literal("VIEWED"),
+  v.literal("PAYMENT_PENDING"),
+  v.literal("PARTIAL_PAYMENT"),
   v.literal("PAID"),
   v.literal("OVERDUE"),
-  v.literal("CANCELLED")
+  v.literal("CANCELLED"),
+  v.literal("REFUNDED")
 );
+
+const statusChangeEventValidator = v.object({
+  status: statusValidator,
+  changedAt: v.string(),
+  notes: v.optional(v.string()),
+});
 
 const currencyValidator = v.union(
   v.literal("USD"),
@@ -81,11 +92,20 @@ const pageSizeValidator = v.union(
 
 const pdfThemeValidator = v.union(v.literal("light"), v.literal("dark"));
 
-// List all invoices for the current user
+// List all invoices for the current user with advanced filtering
 export const listInvoices = query({
   args: {
     folderId: v.optional(v.id("invoiceFolders")),
     status: v.optional(statusValidator),
+    statuses: v.optional(v.array(statusValidator)),
+    isArchived: v.optional(v.boolean()),
+    tags: v.optional(v.array(v.id("tags"))),
+    clientName: v.optional(v.string()),
+    dateFrom: v.optional(v.string()),
+    dateTo: v.optional(v.string()),
+    amountMin: v.optional(v.number()),
+    amountMax: v.optional(v.number()),
+    searchQuery: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -101,7 +121,6 @@ export const listInvoices = query({
         .query("invoices")
         .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
         .collect();
-      // Filter by user
       invoices = invoices.filter((i) => i.userId === user._id);
     } else if (args.status) {
       invoices = await ctx.db
@@ -117,16 +136,86 @@ export const listInvoices = query({
         .collect();
     }
 
-    // Filter out soft-deleted invoices and sort by created date
-    const activeInvoices = invoices
-      .filter((i) => !i.deletedAt)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    // Apply filters
+    let filteredInvoices = invoices.filter((i) => !i.deletedAt);
 
-    if (args.limit) {
-      return activeInvoices.slice(0, args.limit);
+    // Filter by archived status (default: show non-archived)
+    if (args.isArchived !== undefined) {
+      filteredInvoices = filteredInvoices.filter(
+        (i) => (i.isArchived ?? false) === args.isArchived
+      );
+    } else {
+      // By default, don't show archived
+      filteredInvoices = filteredInvoices.filter((i) => !i.isArchived);
     }
 
-    return activeInvoices;
+    // Filter by multiple statuses
+    if (args.statuses && args.statuses.length > 0) {
+      filteredInvoices = filteredInvoices.filter((i) =>
+        args.statuses!.includes(i.status)
+      );
+    }
+
+    // Filter by tags (invoice must have ALL specified tags)
+    if (args.tags && args.tags.length > 0) {
+      filteredInvoices = filteredInvoices.filter((i) =>
+        args.tags!.every((tagId) => i.tags?.includes(tagId))
+      );
+    }
+
+    // Filter by client name (partial match, case-insensitive)
+    if (args.clientName) {
+      const searchName = args.clientName.toLowerCase();
+      filteredInvoices = filteredInvoices.filter((i) =>
+        i.to.name.toLowerCase().includes(searchName)
+      );
+    }
+
+    // Filter by date range
+    if (args.dateFrom) {
+      filteredInvoices = filteredInvoices.filter(
+        (i) => i.issueDate >= args.dateFrom!
+      );
+    }
+    if (args.dateTo) {
+      filteredInvoices = filteredInvoices.filter(
+        (i) => i.issueDate <= args.dateTo!
+      );
+    }
+
+    // Filter by amount range
+    if (args.amountMin !== undefined) {
+      filteredInvoices = filteredInvoices.filter(
+        (i) => i.totalAmount >= args.amountMin!
+      );
+    }
+    if (args.amountMax !== undefined) {
+      filteredInvoices = filteredInvoices.filter(
+        (i) => i.totalAmount <= args.amountMax!
+      );
+    }
+
+    // Search query (matches invoice number, client name, or job title)
+    if (args.searchQuery) {
+      const query = args.searchQuery.toLowerCase();
+      filteredInvoices = filteredInvoices.filter(
+        (i) =>
+          i.invoiceNumber.toLowerCase().includes(query) ||
+          i.to.name.toLowerCase().includes(query) ||
+          (i.jobTitle && i.jobTitle.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort by created date descending
+    const sortedInvoices = filteredInvoices.sort(
+      (a, b) => b.createdAt - a.createdAt
+    );
+
+    if (args.limit) {
+      return sortedInvoices.slice(0, args.limit);
+    }
+
+    return sortedInvoices;
   },
 });
 
@@ -200,19 +289,20 @@ export const createInvoice = mutation({
     notes: v.optional(v.string()),
     terms: v.optional(v.string()),
     jobTitle: v.optional(v.string()),
+    tags: v.optional(v.array(v.id("tags"))),
     showDetailedHours: v.boolean(),
     pdfTheme: pdfThemeValidator,
     backgroundDesignId: v.optional(v.string()),
     pageSize: pageSizeValidator,
+    // Option to auto-transition from DRAFT
+    removeDraftOnSave: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // Auto-provision user if needed
     const user = await getOrCreateUserFromIdentity(ctx);
     if (!user) {
       throw new Error("Unauthorized");
     }
 
-    // Verify folder belongs to user if provided
     if (args.folderId) {
       const folder = await ctx.db.get(args.folderId);
       if (!folder || folder.userId !== user._id) {
@@ -220,10 +310,44 @@ export const createInvoice = mutation({
       }
     }
 
+    // Validate tags if provided
+    if (args.tags && args.tags.length > 0) {
+      for (const tagId of args.tags) {
+        const tag = await ctx.db.get(tagId);
+        if (!tag || tag.userId !== user._id || tag.deletedAt) {
+          throw new Error("Invalid tag");
+        }
+        if (tag.type === "folder") {
+          throw new Error("Cannot use folder-only tag on invoice");
+        }
+      }
+    }
+
     const now = Date.now();
+    const nowStr = new Date().toISOString();
+
+    // Determine final status - remove DRAFT if requested and status is DRAFT
+    let finalStatus = args.status;
+    if (args.removeDraftOnSave && args.status === "DRAFT") {
+      finalStatus = "TO_SEND";
+    }
+
+    // Create initial status history
+    const statusHistory = [
+      {
+        status: finalStatus,
+        changedAt: nowStr,
+        notes: "Invoice created",
+      },
+    ];
+
+    const { removeDraftOnSave, ...invoiceData } = args;
+
     const invoiceId = await ctx.db.insert("invoices", {
       userId: user._id,
-      ...args,
+      ...invoiceData,
+      status: finalStatus,
+      statusHistory,
       createdAt: now,
       updatedAt: now,
     });
@@ -264,13 +388,15 @@ export const updateInvoice = mutation({
     notes: v.optional(v.string()),
     terms: v.optional(v.string()),
     jobTitle: v.optional(v.string()),
+    tags: v.optional(v.array(v.id("tags"))),
     showDetailedHours: v.optional(v.boolean()),
     pdfTheme: v.optional(pdfThemeValidator),
     backgroundDesignId: v.optional(v.string()),
     pageSize: v.optional(pageSizeValidator),
+    // Option to auto-transition from DRAFT
+    removeDraftOnSave: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // Auto-provision user if needed
     const user = await getOrCreateUserFromIdentity(ctx);
     if (!user) {
       throw new Error("Unauthorized");
@@ -281,7 +407,6 @@ export const updateInvoice = mutation({
       throw new Error("Invoice not found");
     }
 
-    // Verify new folder if provided
     if (args.folderId) {
       const folder = await ctx.db.get(args.folderId);
       if (!folder || folder.userId !== user._id) {
@@ -289,11 +414,53 @@ export const updateInvoice = mutation({
       }
     }
 
-    const { invoiceId, ...updates } = args;
-    await ctx.db.patch(invoiceId, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
+    // Validate tags if provided
+    if (args.tags && args.tags.length > 0) {
+      for (const tagId of args.tags) {
+        const tag = await ctx.db.get(tagId);
+        if (!tag || tag.userId !== user._id || tag.deletedAt) {
+          throw new Error("Invalid tag");
+        }
+        if (tag.type === "folder") {
+          throw new Error("Cannot use folder-only tag on invoice");
+        }
+      }
+    }
+
+    const { invoiceId, removeDraftOnSave, ...updates } = args;
+    const patchData: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
+
+    // Handle removeDraftOnSave - transition from DRAFT to TO_SEND
+    let newStatus = updates.status;
+    if (removeDraftOnSave && invoice.status === "DRAFT" && !updates.status) {
+      newStatus = "TO_SEND";
+      patchData.status = newStatus;
+    }
+
+    // If status is changing, update the history and date fields
+    const finalStatus = newStatus || updates.status;
+    if (finalStatus && finalStatus !== invoice.status) {
+      const nowStr = new Date().toISOString();
+      const currentHistory = invoice.statusHistory || [];
+      patchData.statusHistory = [
+        ...currentHistory,
+        {
+          status: finalStatus,
+          changedAt: nowStr,
+        },
+      ];
+
+      // Set specific date fields based on status
+      if (finalStatus === "SENT" && !invoice.sentAt) {
+        patchData.sentAt = nowStr;
+      } else if (finalStatus === "PAID" && !invoice.paidAt) {
+        patchData.paidAt = nowStr;
+      } else if (finalStatus === "VIEWED" && !invoice.viewedAt) {
+        patchData.viewedAt = nowStr;
+      }
+    }
+
+    await ctx.db.patch(invoiceId, patchData);
 
     return invoiceId;
   },
@@ -326,9 +493,10 @@ export const duplicateInvoice = mutation({
     sourceInvoiceId: v.id("invoices"),
     newInvoiceNumber: v.string(),
     folderId: v.optional(v.id("invoiceFolders")),
+    copyWorkHours: v.optional(v.boolean()), // Option to copy work hours
+    copyTags: v.optional(v.boolean()), // Option to copy tags
   },
   handler: async (ctx, args) => {
-    // Auto-provision user if needed
     const user = await getOrCreateUserFromIdentity(ctx);
     if (!user) {
       throw new Error("Unauthorized");
@@ -341,25 +509,66 @@ export const duplicateInvoice = mutation({
 
     const now = Date.now();
     const today = new Date().toISOString().split("T")[0];
+    const nowStr = new Date().toISOString();
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, _creationTime, createdAt, updatedAt, deletedAt, ...invoiceData } =
-      sourceInvoice;
+    const {
+      _id,
+      _creationTime,
+      createdAt,
+      updatedAt,
+      deletedAt,
+      statusHistory,
+      sentAt,
+      paidAt,
+      viewedAt,
+      isArchived,
+      archivedAt,
+      ...invoiceData
+    } = sourceInvoice;
+
+    // Handle work hours based on copyWorkHours option
+    const workHoursData = args.copyWorkHours
+      ? {
+          dailyWorkHours: sourceInvoice.dailyWorkHours,
+          totalDays: sourceInvoice.totalDays,
+          totalHours: sourceInvoice.totalHours,
+          subtotal: sourceInvoice.subtotal,
+          discountAmount: sourceInvoice.discountAmount,
+          taxAmount: sourceInvoice.taxAmount,
+          totalAmount: sourceInvoice.totalAmount,
+        }
+      : {
+          dailyWorkHours: [],
+          totalDays: 0,
+          totalHours: 0,
+          subtotal: 0,
+          discountAmount: 0,
+          taxAmount: 0,
+          totalAmount: 0,
+        };
+
+    // Handle tags based on copyTags option
+    const tagsData = args.copyTags ? { tags: sourceInvoice.tags } : { tags: [] };
 
     const newInvoiceId = await ctx.db.insert("invoices", {
       ...invoiceData,
+      ...workHoursData,
+      ...tagsData,
       invoiceNumber: args.newInvoiceNumber,
       folderId: args.folderId ?? sourceInvoice.folderId,
       status: "DRAFT",
       issueDate: today,
-      // Clear work hours for fresh entry
-      dailyWorkHours: [],
-      totalDays: 0,
-      totalHours: 0,
-      subtotal: 0,
-      discountAmount: 0,
-      taxAmount: 0,
-      totalAmount: 0,
+      dueDate: undefined, // Clear due date
+      periodStart: undefined, // Clear period for fresh entry
+      periodEnd: undefined,
+      statusHistory: [
+        {
+          status: "DRAFT",
+          changedAt: nowStr,
+          notes: `Duplicated from invoice ${sourceInvoice.invoiceNumber}`,
+        },
+      ],
       createdAt: now,
       updatedAt: now,
     });
@@ -402,14 +611,61 @@ export const moveToFolder = mutation({
   },
 });
 
-// Update invoice status
+// Update invoice status with date tracking
 export const updateStatus = mutation({
   args: {
     invoiceId: v.id("invoices"),
     status: statusValidator,
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Auto-provision user if needed
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice || invoice.userId !== user._id) {
+      throw new Error("Invoice not found");
+    }
+
+    const nowStr = new Date().toISOString();
+    const currentHistory = invoice.statusHistory || [];
+
+    const patchData: Record<string, unknown> = {
+      status: args.status,
+      statusHistory: [
+        ...currentHistory,
+        {
+          status: args.status,
+          changedAt: nowStr,
+          notes: args.notes,
+        },
+      ],
+      updatedAt: Date.now(),
+    };
+
+    // Set specific date fields based on status transition
+    if (args.status === "SENT" && !invoice.sentAt) {
+      patchData.sentAt = nowStr;
+    } else if (args.status === "PAID" && !invoice.paidAt) {
+      patchData.paidAt = nowStr;
+    } else if (args.status === "VIEWED" && !invoice.viewedAt) {
+      patchData.viewedAt = nowStr;
+    }
+
+    await ctx.db.patch(args.invoiceId, patchData);
+
+    return args.invoiceId;
+  },
+});
+
+// Archive an invoice
+export const archiveInvoice = mutation({
+  args: {
+    invoiceId: v.id("invoices"),
+  },
+  handler: async (ctx, args) => {
     const user = await getOrCreateUserFromIdentity(ctx);
     if (!user) {
       throw new Error("Unauthorized");
@@ -421,11 +677,146 @@ export const updateStatus = mutation({
     }
 
     await ctx.db.patch(args.invoiceId, {
-      status: args.status,
+      isArchived: true,
+      archivedAt: new Date().toISOString(),
       updatedAt: Date.now(),
     });
 
     return args.invoiceId;
+  },
+});
+
+// Unarchive an invoice
+export const unarchiveInvoice = mutation({
+  args: {
+    invoiceId: v.id("invoices"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice || invoice.userId !== user._id) {
+      throw new Error("Invoice not found");
+    }
+
+    await ctx.db.patch(args.invoiceId, {
+      isArchived: false,
+      archivedAt: undefined,
+      updatedAt: Date.now(),
+    });
+
+    return args.invoiceId;
+  },
+});
+
+// Get archived invoices
+export const getArchivedInvoices = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserFromIdentityOrE2E(ctx);
+    if (!user) {
+      return [];
+    }
+
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_user_and_archived", (q) =>
+        q.eq("userId", user._id).eq("isArchived", true)
+      )
+      .collect();
+
+    const sortedInvoices = invoices
+      .filter((i) => !i.deletedAt)
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    if (args.limit) {
+      return sortedInvoices.slice(0, args.limit);
+    }
+
+    return sortedInvoices;
+  },
+});
+
+// Bulk archive invoices
+export const bulkArchiveInvoices = mutation({
+  args: {
+    invoiceIds: v.array(v.id("invoices")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const nowStr = new Date().toISOString();
+    const now = Date.now();
+
+    for (const invoiceId of args.invoiceIds) {
+      const invoice = await ctx.db.get(invoiceId);
+      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+        await ctx.db.patch(invoiceId, {
+          isArchived: true,
+          archivedAt: nowStr,
+          updatedAt: now,
+        });
+      }
+    }
+
+    return args.invoiceIds.length;
+  },
+});
+
+// Bulk update status
+export const bulkUpdateStatus = mutation({
+  args: {
+    invoiceIds: v.array(v.id("invoices")),
+    status: statusValidator,
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const nowStr = new Date().toISOString();
+    const now = Date.now();
+
+    for (const invoiceId of args.invoiceIds) {
+      const invoice = await ctx.db.get(invoiceId);
+      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+        const currentHistory = invoice.statusHistory || [];
+        const patchData: Record<string, unknown> = {
+          status: args.status,
+          statusHistory: [
+            ...currentHistory,
+            {
+              status: args.status,
+              changedAt: nowStr,
+              notes: args.notes,
+            },
+          ],
+          updatedAt: now,
+        };
+
+        if (args.status === "SENT" && !invoice.sentAt) {
+          patchData.sentAt = nowStr;
+        } else if (args.status === "PAID" && !invoice.paidAt) {
+          patchData.paidAt = nowStr;
+        } else if (args.status === "VIEWED" && !invoice.viewedAt) {
+          patchData.viewedAt = nowStr;
+        }
+
+        await ctx.db.patch(invoiceId, patchData);
+      }
+    }
+
+    return args.invoiceIds.length;
   },
 });
 
