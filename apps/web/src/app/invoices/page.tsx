@@ -51,6 +51,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import {
   useInvoices,
@@ -87,6 +93,7 @@ import { useClientMutations, useClientProfiles } from "@/hooks/use-client-profil
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useInvoiceStore } from "@/lib/store";
 
 type InvoiceItem = {
   _id: Id<"invoices">;
@@ -148,6 +155,7 @@ export default function InvoicesPage() {
   const { toggleFolderMoveLock } = useFolderMutations();
   const { tree: folderTree } = useFolderTree();
   const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber();
+  const { resetCurrentInvoice } = useInvoiceStore();
 
   // View state
   const [activeTab, setActiveTab] = useState<"invoices" | "clients" | "analytics" | "tags" | "logs">("invoices");
@@ -586,6 +594,8 @@ export default function InvoicesPage() {
         country: "",
         phone: "",
       });
+      // Reset the invoice store to ensure user profile auto-fill works for new invoices
+      resetCurrentInvoice();
       // Redirect to home page to select month and batch
       router.push("/");
     } catch {
@@ -651,6 +661,17 @@ export default function InvoicesPage() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => router.push('/profile')}>
+                    <User className="h-4 w-4" />
+                    <span className="sr-only">Profile</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Profile settings</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <UserButton afterSignOutUrl="/sign-in" />
           </div>
         </div>

@@ -90,6 +90,38 @@ const pageSizeValidator = v.union(
 
 const pdfThemeValidator = v.union(v.literal("light"), v.literal("dark"));
 
+// Helper function to check if invoice number is unique within a folder
+// Invoice numbers must be unique per user within the same folder
+async function isInvoiceNumberUniqueInFolder(
+  ctx: { db: { query: (table: string) => { withIndex: (indexName: string, indexFn: (q: { eq: (field: string, value: unknown) => unknown }) => unknown) => { collect: () => Promise<Array<{ invoiceNumber: string; deletedAt?: number; _id: string }>> } } } },
+  userId: string,
+  invoiceNumber: string,
+  folderId: string | undefined,
+  excludeInvoiceId?: string
+): Promise<boolean> {
+  // Query invoices by user
+  const invoices = await ctx.db
+    .query("invoices")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .collect();
+
+  // Filter to find duplicates in the same folder
+  const duplicates = invoices.filter(
+    (i) =>
+      i.invoiceNumber === invoiceNumber &&
+      !i.deletedAt &&
+      i._id !== excludeInvoiceId
+  );
+
+  // If no folderId, check against unfiled invoices only
+  if (folderId === undefined) {
+    return !duplicates.some((i) => (i as { folderId?: string }).folderId === undefined);
+  }
+
+  // Check against invoices in the same folder
+  return !duplicates.some((i) => (i as { folderId?: string }).folderId === folderId);
+}
+
 // List all invoices for the current user with advanced filtering
 export const listInvoices = query({
   args: {
@@ -256,6 +288,35 @@ export const getInvoice = query({
   },
 });
 
+// Check if an invoice number is available in a specific folder
+// Used for real-time validation in the UI before creating/updating invoices
+export const checkInvoiceNumberAvailable = query({
+  args: {
+    invoiceNumber: v.string(),
+    folderId: v.optional(v.id("invoiceFolders")),
+    excludeInvoiceId: v.optional(v.id("invoices")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserFromIdentityOrE2E(ctx);
+    if (!user) {
+      return { available: false, error: "Unauthorized" };
+    }
+
+    const isUnique = await isInvoiceNumberUniqueInFolder(
+      ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+      user._id,
+      args.invoiceNumber,
+      args.folderId,
+      args.excludeInvoiceId
+    );
+
+    return {
+      available: isUnique,
+      error: isUnique ? null : "Invoice number already exists in this folder",
+    };
+  },
+});
+
 // Create a new invoice
 export const createInvoice = mutation({
   args: {
@@ -319,6 +380,21 @@ export const createInvoice = mutation({
           throw new Error("Cannot use folder-only tag on invoice");
         }
       }
+    }
+
+    // Validate invoice number uniqueness within the folder
+    const isUnique = await isInvoiceNumberUniqueInFolder(
+      ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+      user._id,
+      args.invoiceNumber,
+      args.folderId
+    );
+    if (!isUnique) {
+      throw new Error(
+        args.folderId
+          ? "Invoice number already exists in this folder"
+          : "Invoice number already exists in unfiled invoices"
+      );
     }
 
     const now = Date.now();
@@ -445,6 +521,29 @@ export const updateInvoice = mutation({
       }
     }
 
+    // Validate invoice number uniqueness when changing invoice number or folder
+    const newInvoiceNumber = args.invoiceNumber ?? invoice.invoiceNumber;
+    const newFolderId = args.folderId !== undefined ? args.folderId : invoice.folderId;
+    const invoiceNumberChanged = args.invoiceNumber && args.invoiceNumber !== invoice.invoiceNumber;
+    const folderChanged = args.folderId !== undefined && args.folderId !== invoice.folderId;
+
+    if (invoiceNumberChanged || folderChanged) {
+      const isUnique = await isInvoiceNumberUniqueInFolder(
+        ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+        user._id,
+        newInvoiceNumber,
+        newFolderId,
+        args.invoiceId
+      );
+      if (!isUnique) {
+        throw new Error(
+          newFolderId
+            ? "Invoice number already exists in this folder"
+            : "Invoice number already exists in unfiled invoices"
+        );
+      }
+    }
+
     const { invoiceId, removeDraftOnSave, ...updates } = args;
     const patchData: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
 
@@ -521,6 +620,24 @@ export const duplicateInvoice = mutation({
     const sourceInvoice = await ctx.db.get(args.sourceInvoiceId);
     if (!sourceInvoice || sourceInvoice.userId !== user._id) {
       throw new Error("Source invoice not found");
+    }
+
+    // Determine target folder (explicit arg or inherit from source)
+    const targetFolderId = args.folderId ?? sourceInvoice.folderId;
+
+    // Validate invoice number uniqueness in target folder
+    const isUnique = await isInvoiceNumberUniqueInFolder(
+      ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+      user._id,
+      args.newInvoiceNumber,
+      targetFolderId
+    );
+    if (!isUnique) {
+      throw new Error(
+        targetFolderId
+          ? "Invoice number already exists in this folder"
+          : "Invoice number already exists in unfiled invoices"
+      );
     }
 
     const now = Date.now();
@@ -631,6 +748,25 @@ export const moveToFolder = mutation({
       }
     }
 
+    // Skip validation if not actually changing folders
+    if (args.folderId !== invoice.folderId) {
+      // Validate invoice number uniqueness in destination folder
+      const isUnique = await isInvoiceNumberUniqueInFolder(
+        ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+        user._id,
+        invoice.invoiceNumber,
+        args.folderId,
+        args.invoiceId
+      );
+      if (!isUnique) {
+        throw new Error(
+          args.folderId
+            ? "Invoice number already exists in the destination folder"
+            : "Invoice number already exists in unfiled invoices"
+        );
+      }
+    }
+
     await ctx.db.patch(args.invoiceId, {
       folderId: args.folderId,
       updatedAt: Date.now(),
@@ -691,10 +827,28 @@ export const bulkMoveToFolder = mutation({
     }
 
     const now = Date.now();
-    const results = { moved: 0, locked: 0 };
+    const results = { moved: 0, locked: 0, duplicateNumber: 0 };
 
     // Cache folder lock status to avoid repeated lookups
     const folderLockCache = new Map<string, boolean>();
+
+    // Pre-fetch existing invoice numbers in the destination folder for uniqueness check
+    // This is more efficient than checking one by one
+    const destinationInvoices = args.folderId
+      ? await ctx.db
+          .query("invoices")
+          .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
+          .collect()
+      : await ctx.db
+          .query("invoices")
+          .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+          .collect();
+
+    const destinationInvoiceNumbers = new Set(
+      destinationInvoices
+        .filter((i) => !i.deletedAt && (args.folderId ? i.folderId === args.folderId : !i.folderId))
+        .map((i) => i.invoiceNumber)
+    );
 
     for (const invoiceId of args.invoiceIds) {
       const invoice = await ctx.db.get(invoiceId);
@@ -724,11 +878,28 @@ export const bulkMoveToFolder = mutation({
           }
         }
 
+        // Skip if staying in same folder
+        if (invoice.folderId === args.folderId) {
+          continue;
+        }
+
+        // Check for invoice number uniqueness in destination folder
+        // (exclude the invoice being moved from the check)
+        const isNumberInUse = destinationInvoiceNumbers.has(invoice.invoiceNumber) &&
+          !args.invoiceIds.includes(invoiceId as typeof args.invoiceIds[number]);
+        if (isNumberInUse) {
+          results.duplicateNumber++;
+          continue;
+        }
+
         await ctx.db.patch(invoiceId, {
           folderId: args.folderId,
           updatedAt: now,
         });
         results.moved++;
+
+        // Add this invoice number to destination set (for subsequent checks in this batch)
+        destinationInvoiceNumbers.add(invoice.invoiceNumber);
       }
     }
 
@@ -1184,6 +1355,17 @@ export const quickCreateInvoice = mutation({
       throw new Error("Client not found");
     }
 
+    // Validate invoice number uniqueness in the folder
+    const isUnique = await isInvoiceNumberUniqueInFolder(
+      ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+      user._id,
+      args.invoiceNumber,
+      args.folderId
+    );
+    if (!isUnique) {
+      throw new Error("Invoice number already exists in this folder");
+    }
+
     // Get user profile for "from" info
     const userProfiles = await ctx.db
       .query("userProfiles")
@@ -1270,13 +1452,13 @@ export const quickCreateInvoice = mutation({
 
     // Build from info from user profile
     const from = {
-      name: userProfile?.displayName || userProfile?.businessName || user.email || "",
+      name: userProfile?.displayName || userProfile?.businessName || "",
       address: userProfile?.address || "",
       city: userProfile?.city || "",
       state: userProfile?.state || "",
       postalCode: userProfile?.postalCode || "",
       country: userProfile?.country || "",
-      email: userProfile?.email || user.email || "",
+      email: userProfile?.email || "",
       phone: userProfile?.phone || "",
       taxId: userProfile?.taxId || "",
     };

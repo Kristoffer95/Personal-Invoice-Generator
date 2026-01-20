@@ -194,7 +194,8 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     }
   }, [loadedInvoice, hasLoadedInvoice, setCurrentInvoice])
 
-  // Auto-fill from user profile for new invoices
+  // Auto-fill from user profile for new invoices - ALWAYS apply user profile data
+  // This ensures the logged-in user's business details are pre-filled every time
   useEffect(() => {
     if (profileData && authUser && userProfile && !hasAppliedProfile && !invoiceIdParam) {
       setHasAppliedProfile(true)
@@ -205,8 +206,9 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         || `${authUser.firstName ?? ''} ${authUser.lastName ?? ''}`.trim()
         || authUser.email
 
-      // Only update if we have meaningful data and the from name is empty
-      if (displayName && !currentInvoice.from?.name) {
+      // ALWAYS apply user profile data for new invoices
+      // This overrides any stale data from the persisted store
+      if (displayName) {
         updateFromInfo({
           name: displayName,
           address: userProfile.address ?? '',
@@ -227,7 +229,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         }
       }
     }
-  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceIdParam, currentInvoice.from?.name, updateFromInfo, updateCurrentInvoice])
+  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceIdParam, updateFromInfo, updateCurrentInvoice])
 
   // Auto-fill from folder's linked client profiles and default settings for new invoices
   useEffect(() => {
@@ -622,9 +624,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         })
       }
     } catch (error) {
+      // Extract meaningful error message from Convex mutation errors
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save invoice. Please try again.'
       toast({
         title: 'Error saving to cloud',
-        description: 'Failed to save invoice. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
