@@ -19,6 +19,7 @@ describe('InvoicePreview', () => {
     id: '1',
     invoiceNumber: 'INV-001',
     status: 'DRAFT',
+    statusHistory: [],
     issueDate: '2024-01-15',
     dueDate: '2024-02-15',
     from: {
@@ -59,6 +60,8 @@ describe('InvoicePreview', () => {
     currency: 'USD',
     paymentTerms: 'NET_30',
     pageSize: 'A4',
+    tags: [],
+    isArchived: false,
     showDetailedHours: false,
     pdfTheme: 'light',
     createdAt: '2024-01-15T00:00:00Z',
@@ -95,13 +98,16 @@ describe('InvoicePreview', () => {
   })
 
   describe('Successful Render', () => {
-    it('renders PDF iframe after generation', async () => {
+    it('renders PDF viewer after generation', async () => {
       mockGeneratePDFBlob.mockResolvedValue(new Blob(['pdf content'], { type: 'application/pdf' }))
 
       render(<InvoicePreview invoice={mockInvoice} />)
 
       await waitFor(() => {
-        expect(screen.getByTitle('Invoice Preview')).toBeInTheDocument()
+        // Find the object element (primary PDF viewer)
+        const elements = screen.getAllByTitle('Invoice Preview')
+        const objectElement = elements.find(el => el.tagName.toLowerCase() === 'object')
+        expect(objectElement).toBeInTheDocument()
       })
     })
 
@@ -183,14 +189,24 @@ describe('InvoicePreview', () => {
   })
 
   describe('Security', () => {
-    it('iframe has sandbox attribute', async () => {
+    it('uses object tag for secure PDF rendering with iframe fallback', async () => {
       mockGeneratePDFBlob.mockResolvedValue(new Blob(['pdf content'], { type: 'application/pdf' }))
 
       render(<InvoicePreview invoice={mockInvoice} />)
 
       await waitFor(() => {
-        const iframe = screen.getByTitle('Invoice Preview')
-        expect(iframe).toHaveAttribute('sandbox', 'allow-same-origin')
+        // Find object and iframe elements by title
+        const elements = screen.getAllByTitle('Invoice Preview')
+        const objectElement = elements.find(el => el.tagName.toLowerCase() === 'object')
+        const iframeElement = elements.find(el => el.tagName.toLowerCase() === 'iframe')
+
+        // Primary: object tag for native PDF rendering (no sandbox needed)
+        expect(objectElement).toBeTruthy()
+        expect(objectElement).toHaveAttribute('type', 'application/pdf')
+
+        // Fallback: iframe with restrictive sandbox (allow-same-origin only)
+        expect(iframeElement).toBeTruthy()
+        expect(iframeElement).toHaveAttribute('sandbox', 'allow-same-origin')
       })
     })
   })
@@ -208,13 +224,14 @@ describe('InvoicePreview', () => {
       })
     })
 
-    it('iframe has title for accessibility', async () => {
+    it('PDF viewer elements have title for accessibility', async () => {
       mockGeneratePDFBlob.mockResolvedValue(new Blob(['pdf content'], { type: 'application/pdf' }))
 
       render(<InvoicePreview invoice={mockInvoice} />)
 
       await waitFor(() => {
-        expect(screen.getByTitle('Invoice Preview')).toBeInTheDocument()
+        const elements = screen.getAllByTitle('Invoice Preview')
+        expect(elements.length).toBeGreaterThan(0)
       })
     })
   })

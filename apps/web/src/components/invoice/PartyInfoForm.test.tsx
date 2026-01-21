@@ -314,7 +314,7 @@ describe('PartyInfoForm', () => {
       render(<PartyInfoForm {...defaultProps} />)
 
       const nameInput = screen.getByLabelText(/name \/ company/i)
-      await user.type(nameInput, 'ABCDEF', { delay: 1 })
+      await user.type(nameInput, 'ABCDEF')
 
       expect(defaultProps.onChange).toHaveBeenCalledTimes(6)
     })

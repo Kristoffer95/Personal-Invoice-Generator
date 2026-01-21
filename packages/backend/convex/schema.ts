@@ -39,6 +39,25 @@ const lineItemValidator = v.object({
   amount: v.number(),
 });
 
+// Extended status options
+const invoiceStatusValidator = v.union(
+  v.literal("DRAFT"),
+  v.literal("TO_SEND"),
+  v.literal("SENT"),
+  v.literal("PARTIAL_PAYMENT"),
+  v.literal("PAID"),
+  v.literal("OVERDUE"),
+  v.literal("CANCELLED"),
+  v.literal("REFUNDED")
+);
+
+// Status change event for history tracking
+const statusChangeEventValidator = v.object({
+  status: invoiceStatusValidator,
+  changedAt: v.string(), // ISO date string
+  notes: v.optional(v.string()),
+});
+
 export default defineSchema({
   users: defineTable({
     // Core identity (synced from Clerk)
@@ -88,6 +107,22 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
 
+  // Tags for organizing invoices and folders
+  tags: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    color: v.optional(v.string()), // Hex color code
+    type: v.union(v.literal("invoice"), v.literal("folder"), v.literal("both")), // What this tag applies to
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_type", ["userId", "type"])
+    .index("by_name", ["userId", "name"]),
+
   // Invoice folders for organization
   invoiceFolders: defineTable({
     userId: v.id("users"),
@@ -97,6 +132,43 @@ export default defineSchema({
 
     // Parent folder for nested structure (null = root)
     parentId: v.optional(v.id("invoiceFolders")),
+
+    // Tags for folder organization
+    tags: v.optional(v.array(v.id("tags"))),
+
+    // Movement locking - prevents all invoices in this folder from being moved
+    isMoveLocked: v.optional(v.boolean()),
+
+    // Client profiles linked to this folder (for auto-filling new invoices)
+    // Multiple clients can be associated with a folder
+    clientProfileIds: v.optional(v.array(v.id("clientProfiles"))),
+
+    // Default invoice settings for this folder
+    defaultHourlyRate: v.optional(v.number()),
+    defaultCurrency: v.optional(
+      v.union(
+        v.literal("USD"),
+        v.literal("EUR"),
+        v.literal("GBP"),
+        v.literal("PHP"),
+        v.literal("JPY"),
+        v.literal("AUD"),
+        v.literal("CAD"),
+        v.literal("SGD")
+      )
+    ),
+    defaultPaymentTerms: v.optional(
+      v.union(
+        v.literal("DUE_ON_RECEIPT"),
+        v.literal("NET_7"),
+        v.literal("NET_15"),
+        v.literal("NET_30"),
+        v.literal("NET_45"),
+        v.literal("NET_60"),
+        v.literal("CUSTOM")
+      )
+    ),
+    defaultJobTitle: v.optional(v.string()),
 
     // Timestamps
     createdAt: v.number(),
@@ -113,19 +185,21 @@ export default defineSchema({
 
     // Basic info
     invoiceNumber: v.string(),
-    status: v.union(
-      v.literal("DRAFT"),
-      v.literal("SENT"),
-      v.literal("PAID"),
-      v.literal("OVERDUE"),
-      v.literal("CANCELLED")
-    ),
+    status: invoiceStatusValidator,
+
+    // Status tracking with history
+    statusHistory: v.optional(v.array(statusChangeEventValidator)),
 
     // Dates
     issueDate: v.string(),
     dueDate: v.optional(v.string()),
     periodStart: v.optional(v.string()),
     periodEnd: v.optional(v.string()),
+
+    // Status-specific dates for easy tracking/querying
+    sentAt: v.optional(v.string()),
+    paidAt: v.optional(v.string()),
+    viewedAt: v.optional(v.string()),
 
     // Parties
     from: partyInfoValidator,
@@ -181,6 +255,16 @@ export default defineSchema({
     terms: v.optional(v.string()),
     jobTitle: v.optional(v.string()),
 
+    // Tags for organization
+    tags: v.optional(v.array(v.id("tags"))),
+
+    // Archiving
+    isArchived: v.optional(v.boolean()),
+    archivedAt: v.optional(v.string()),
+
+    // Movement locking - prevents this invoice from being moved
+    isMoveLocked: v.optional(v.boolean()),
+
     // Display settings
     showDetailedHours: v.boolean(),
     pdfTheme: v.union(v.literal("light"), v.literal("dark")),
@@ -206,12 +290,14 @@ export default defineSchema({
     .index("by_folder_id", ["folderId"])
     .index("by_user_and_status", ["userId", "status"])
     .index("by_user_and_created", ["userId", "createdAt"])
-    .index("by_invoice_number", ["userId", "invoiceNumber"]),
+    .index("by_invoice_number", ["userId", "invoiceNumber"])
+    .index("by_user_and_archived", ["userId", "isArchived"]),
 
   // Saved client profiles for quick selection
   clientProfiles: defineTable({
     userId: v.id("users"),
-    name: v.string(),
+    name: v.string(), // Contact name or primary name
+    companyName: v.optional(v.string()), // Company/business name
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     state: v.optional(v.string()),
@@ -219,8 +305,10 @@ export default defineSchema({
     country: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    website: v.optional(v.string()),
     taxId: v.optional(v.string()),
     logo: v.optional(v.string()),
+    notes: v.optional(v.string()), // Internal notes about the client
 
     // Timestamps
     createdAt: v.number(),
@@ -229,4 +317,30 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_name", ["userId", "name"]),
+
+  // Status logs for tracking invoice status changes (centralized for filtering)
+  statusLogs: defineTable({
+    userId: v.id("users"),
+    invoiceId: v.id("invoices"),
+
+    // Invoice info at time of log (for display without joins)
+    invoiceNumber: v.string(),
+
+    // Folder info at time of log (for filtering)
+    folderId: v.optional(v.id("invoiceFolders")),
+    folderName: v.optional(v.string()),
+
+    // Status change details
+    previousStatus: v.optional(invoiceStatusValidator),
+    newStatus: invoiceStatusValidator,
+    notes: v.optional(v.string()),
+
+    // Timestamps
+    changedAt: v.number(), // Unix timestamp for efficient querying
+    changedAtStr: v.string(), // ISO string for display
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_and_changed", ["userId", "changedAt"])
+    .index("by_invoice_id", ["invoiceId"])
+    .index("by_folder_id", ["userId", "folderId"]),
 });

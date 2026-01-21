@@ -8,11 +8,14 @@
  * @module
  */
 
+import type * as analytics from "../analytics.js";
 import type * as clientProfiles from "../clientProfiles.js";
 import type * as http from "../http.js";
 import type * as index from "../index.js";
 import type * as invoiceFolders from "../invoiceFolders.js";
 import type * as invoices from "../invoices.js";
+import type * as statusLogs from "../statusLogs.js";
+import type * as tags from "../tags.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as users from "../users.js";
 
@@ -23,11 +26,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   clientProfiles: typeof clientProfiles;
   http: typeof http;
   index: typeof index;
   invoiceFolders: typeof invoiceFolders;
   invoices: typeof invoices;
+  statusLogs: typeof statusLogs;
+  tags: typeof tags;
   userProfiles: typeof userProfiles;
   users: typeof users;
 }>;

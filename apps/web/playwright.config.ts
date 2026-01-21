@@ -3,6 +3,15 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Playwright E2E test configuration for Invoice Generator
  * @see https://playwright.dev/docs/test-configuration
+ *
+ * E2E Testing Setup:
+ *
+ * For local development:
+ * 1. Start the dev server with E2E bypass: `pnpm dev:e2e`
+ * 2. Run tests: `pnpm test:e2e`
+ *
+ * For CI:
+ * - Tests will automatically start the server with E2E_TESTING=true
  */
 export default defineConfig({
   testDir: './e2e',
@@ -61,8 +70,10 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'pnpm dev',
+    command: 'E2E_TESTING=true pnpm dev',
     url: 'http://localhost:3005',
+    /* In local dev, reuse existing server (must be started with pnpm dev:e2e) */
+    /* In CI, start fresh server with E2E_TESTING=true */
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
     env: {

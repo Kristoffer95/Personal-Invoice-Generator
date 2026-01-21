@@ -68,9 +68,10 @@ import { LineItemsEditor } from './LineItemsEditor'
 import { BackgroundSelector } from './BackgroundSelector'
 import { PageSizeSelector } from './PageSizeSelector'
 import { InvoicePreview } from './InvoicePreview'
-import { useUserProfile, useNextInvoiceNumber } from '@/hooks/use-user-profile'
-import { useInvoice, useInvoiceMutations } from '@/hooks/use-invoices'
+import { useUserProfile } from '@/hooks/use-user-profile'
+import { useInvoice, useInvoiceMutations, useNextInvoiceNumberForFolder } from '@/hooks/use-invoices'
 import { useClientMutations } from '@/hooks/use-client-profiles'
+import { useFolderWithClientProfiles } from '@/hooks/use-invoice-folders'
 import type { Invoice, PageSizeKey, DailyWorkHours } from '@invoice-generator/shared-types'
 import { CURRENCY_SYMBOLS } from '@invoice-generator/shared-types'
 import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
@@ -106,7 +107,6 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
 
   // Get Convex hooks for cloud sync
   const { data: profileData, user: authUser, profile: userProfile } = useUserProfile()
-  const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber()
   const { createInvoice, updateInvoice } = useInvoiceMutations()
   const { upsertFromInvoice: saveClientFromInvoice } = useClientMutations()
 
@@ -114,6 +114,20 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   const invoiceIdParam = searchParams.get('invoiceId')
   const folderIdParam = searchParams.get('folderId')
   const { invoice: loadedInvoice } = useInvoice(invoiceIdParam as Id<'invoices'> | undefined)
+
+  // Get next invoice number based on folder - this is now folder-scoped
+  // For new invoices in a folder, use the folder ID from URL params
+  // Otherwise, use undefined for unfiled invoices
+  const folderIdForInvoiceNumber = folderIdParam && !invoiceIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined
+  const { formatted: nextInvoiceNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumberForFolder(folderIdForInvoiceNumber)
+
+  // Get folder with client profiles for auto-filling new invoices
+  const { folder: linkedFolder, clientProfiles: folderClientProfiles } = useFolderWithClientProfiles(
+    folderIdParam && !invoiceIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined
+  )
+  const [hasAppliedFolderDefaults, setHasAppliedFolderDefaults] = useState(false)
+  const [showClientSelector, setShowClientSelector] = useState(false)
+  const [pendingClientSelection, setPendingClientSelection] = useState(false)
 
   const {
     currentInvoice,
@@ -177,10 +191,16 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         pageSize: loadedInvoice.pageSize,
       })
       setIsManualOverride(true)
+
+      // Navigate calendar to the invoice's coverage month
+      if (loadedInvoice.periodStart) {
+        setCurrentMonth(parseISO(loadedInvoice.periodStart))
+      }
     }
   }, [loadedInvoice, hasLoadedInvoice, setCurrentInvoice])
 
-  // Auto-fill from user profile for new invoices
+  // Auto-fill from user profile for new invoices - ALWAYS apply user profile data
+  // This ensures the logged-in user's business details are pre-filled every time
   useEffect(() => {
     if (profileData && authUser && userProfile && !hasAppliedProfile && !invoiceIdParam) {
       setHasAppliedProfile(true)
@@ -191,8 +211,9 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         || `${authUser.firstName ?? ''} ${authUser.lastName ?? ''}`.trim()
         || authUser.email
 
-      // Only update if we have meaningful data and the from name is empty
-      if (displayName && !currentInvoice.from?.name) {
+      // ALWAYS apply user profile data for new invoices
+      // This overrides any stale data from the persisted store
+      if (displayName) {
         updateFromInfo({
           name: displayName,
           address: userProfile.address ?? '',
@@ -213,7 +234,163 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         }
       }
     }
-  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceIdParam, currentInvoice.from?.name, updateFromInfo, updateCurrentInvoice])
+  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceIdParam, updateFromInfo, updateCurrentInvoice])
+
+  // Auto-fill from folder's linked client profiles and default settings for new invoices
+  useEffect(() => {
+    if (linkedFolder && !hasAppliedFolderDefaults && !invoiceIdParam && !pendingClientSelection) {
+      // Handle client profiles based on count:
+      // 0 clients → no auto-fill (manual entry)
+      // 1 client → auto-fill with that client
+      // 2+ clients → show client selector dialog
+      const clientCount = folderClientProfiles.length
+
+      if (clientCount === 0) {
+        // No clients linked - proceed with defaults only, no client auto-fill
+        setHasAppliedFolderDefaults(true)
+      } else if (clientCount === 1 && !currentInvoice.to?.name) {
+        // Exactly 1 client - auto-fill with that client
+        const client = folderClientProfiles[0]
+        updateToInfo({
+          name: client.name,
+          address: client.address ?? '',
+          city: client.city ?? '',
+          state: client.state ?? '',
+          postalCode: client.postalCode ?? '',
+          country: client.country ?? '',
+          email: client.email ?? '',
+          phone: client.phone ?? '',
+          taxId: client.taxId ?? '',
+        })
+        setHasAppliedFolderDefaults(true)
+      } else if (clientCount > 1 && !currentInvoice.to?.name) {
+        // Multiple clients - show selector dialog
+        setPendingClientSelection(true)
+        setShowClientSelector(true)
+        return // Don't apply other defaults until client is selected
+      } else {
+        // Client already filled, just apply other defaults
+        setHasAppliedFolderDefaults(true)
+      }
+
+      // Apply folder default settings (only if not waiting for client selection)
+      if (!pendingClientSelection) {
+        const updates: Partial<typeof currentInvoice> = {}
+
+        if (linkedFolder.defaultHourlyRate && !currentInvoice.hourlyRate) {
+          setHourlyRate(linkedFolder.defaultHourlyRate)
+        }
+
+        if (linkedFolder.defaultCurrency && !currentInvoice.currency) {
+          updates.currency = linkedFolder.defaultCurrency
+        }
+
+        if (linkedFolder.defaultPaymentTerms && !currentInvoice.paymentTerms) {
+          updates.paymentTerms = linkedFolder.defaultPaymentTerms
+        }
+
+        if (linkedFolder.defaultJobTitle && !currentInvoice.jobTitle) {
+          updates.jobTitle = linkedFolder.defaultJobTitle
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updateCurrentInvoice(updates)
+        }
+      }
+    }
+  }, [
+    linkedFolder,
+    folderClientProfiles,
+    hasAppliedFolderDefaults,
+    invoiceIdParam,
+    pendingClientSelection,
+    currentInvoice.to?.name,
+    currentInvoice.hourlyRate,
+    currentInvoice.currency,
+    currentInvoice.paymentTerms,
+    currentInvoice.jobTitle,
+    updateToInfo,
+    setHourlyRate,
+    updateCurrentInvoice,
+  ])
+
+  // Handle client selection from dialog
+  const handleClientSelection = useCallback((clientId: string) => {
+    const selectedClient = folderClientProfiles.find(c => c._id === clientId)
+    if (selectedClient) {
+      updateToInfo({
+        name: selectedClient.name,
+        address: selectedClient.address ?? '',
+        city: selectedClient.city ?? '',
+        state: selectedClient.state ?? '',
+        postalCode: selectedClient.postalCode ?? '',
+        country: selectedClient.country ?? '',
+        email: selectedClient.email ?? '',
+        phone: selectedClient.phone ?? '',
+        taxId: selectedClient.taxId ?? '',
+      })
+    }
+    setShowClientSelector(false)
+    setPendingClientSelection(false)
+    setHasAppliedFolderDefaults(true)
+
+    // Now apply other folder defaults
+    if (linkedFolder) {
+      const updates: Partial<typeof currentInvoice> = {}
+
+      if (linkedFolder.defaultHourlyRate && !currentInvoice.hourlyRate) {
+        setHourlyRate(linkedFolder.defaultHourlyRate)
+      }
+
+      if (linkedFolder.defaultCurrency && !currentInvoice.currency) {
+        updates.currency = linkedFolder.defaultCurrency
+      }
+
+      if (linkedFolder.defaultPaymentTerms && !currentInvoice.paymentTerms) {
+        updates.paymentTerms = linkedFolder.defaultPaymentTerms
+      }
+
+      if (linkedFolder.defaultJobTitle && !currentInvoice.jobTitle) {
+        updates.jobTitle = linkedFolder.defaultJobTitle
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateCurrentInvoice(updates)
+      }
+    }
+  }, [folderClientProfiles, linkedFolder, updateToInfo, setHourlyRate, updateCurrentInvoice, currentInvoice.hourlyRate, currentInvoice.currency, currentInvoice.paymentTerms, currentInvoice.jobTitle])
+
+  // Handle skipping client selection (manual entry)
+  const handleSkipClientSelection = useCallback(() => {
+    setShowClientSelector(false)
+    setPendingClientSelection(false)
+    setHasAppliedFolderDefaults(true)
+
+    // Apply other folder defaults
+    if (linkedFolder) {
+      const updates: Partial<typeof currentInvoice> = {}
+
+      if (linkedFolder.defaultHourlyRate && !currentInvoice.hourlyRate) {
+        setHourlyRate(linkedFolder.defaultHourlyRate)
+      }
+
+      if (linkedFolder.defaultCurrency && !currentInvoice.currency) {
+        updates.currency = linkedFolder.defaultCurrency
+      }
+
+      if (linkedFolder.defaultPaymentTerms && !currentInvoice.paymentTerms) {
+        updates.paymentTerms = linkedFolder.defaultPaymentTerms
+      }
+
+      if (linkedFolder.defaultJobTitle && !currentInvoice.jobTitle) {
+        updates.jobTitle = linkedFolder.defaultJobTitle
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateCurrentInvoice(updates)
+      }
+    }
+  }, [linkedFolder, setHourlyRate, updateCurrentInvoice, currentInvoice.hourlyRate, currentInvoice.currency, currentInvoice.paymentTerms, currentInvoice.jobTitle])
 
   // Auto-generate invoice number from profile settings
   useEffect(() => {
@@ -440,8 +617,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
       } else {
         // Create new invoice
         await createInvoice(invoiceData)
-        // Increment the invoice number counter
-        await incrementNumber()
+        // No need to increment a global counter - invoice numbers are derived from folder invoices
         // Save client profile for reuse
         if (currentInvoice.to?.name) {
           await saveClientFromInvoice(currentInvoice.to)
@@ -452,9 +628,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         })
       }
     } catch (error) {
+      // Extract meaningful error message from Convex mutation errors
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save invoice. Please try again.'
       toast({
         title: 'Error saving to cloud',
-        description: 'Failed to save invoice. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -467,7 +645,6 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     folderIdParam,
     createInvoice,
     updateInvoice,
-    incrementNumber,
     saveClientFromInvoice,
     toast,
   ])
@@ -1373,6 +1550,48 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
             >
               <FileDown className="mr-2 h-4 w-4" />
               Export PDF
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Selector Dialog - shown when folder has multiple linked clients */}
+      <Dialog open={showClientSelector} onOpenChange={(open) => {
+        if (!open) {
+          handleSkipClientSelection()
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Client</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              This folder has multiple clients linked. Please select which client this invoice is for:
+            </p>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {folderClientProfiles.map((client) => (
+                <button
+                  key={client._id}
+                  onClick={() => handleClientSelection(client._id)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent hover:border-primary transition-colors text-left"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{client.name}</p>
+                    {client.email && (
+                      <p className="text-xs text-muted-foreground truncate">{client.email}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button variant="outline" onClick={handleSkipClientSelection}>
+              Enter Manually
             </Button>
           </div>
         </DialogContent>

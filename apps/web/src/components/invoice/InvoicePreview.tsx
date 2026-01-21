@@ -216,13 +216,21 @@ export function InvoicePreview({ invoice, backgroundDesign }: InvoicePreviewProp
         }}
       >
         {pdfViewUrl && (
-          <iframe
-            src={pdfViewUrl}
+          <object
+            data={pdfViewUrl}
+            type="application/pdf"
             style={iframeStyle}
             title="Invoice Preview"
-            // Security: sandbox restricts iframe capabilities
-            sandbox="allow-same-origin"
-          />
+            aria-label="Invoice Preview"
+          >
+            {/* Fallback for browsers that don't support embedded PDFs */}
+            <iframe
+              src={pdfViewUrl}
+              style={iframeStyle}
+              title="Invoice Preview"
+              sandbox="allow-same-origin"
+            />
+          </object>
         )}
       </div>
     </div>
