@@ -1576,3 +1576,79 @@ export const quickCreateInvoice = mutation({
     };
   },
 });
+
+// Get the next invoice number based on the latest invoice in a folder
+// This is the preferred method for generating invoice numbers as it's folder-scoped
+export const getNextInvoiceNumberForFolder = query({
+  args: {
+    folderId: v.optional(v.id("invoiceFolders")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserFromIdentityOrE2E(ctx);
+    if (!user) {
+      return { number: 1, formatted: "001" };
+    }
+
+    // Get user profile for prefix
+    const userProfiles = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+    const userProfile = userProfiles[0];
+    const prefix = userProfile?.invoicePrefix ?? "";
+
+    // Get all invoices for the user (in the specific folder or unfiled)
+    let invoices;
+    if (args.folderId) {
+      // SECURITY: Verify folder belongs to the current user
+      const folder = await ctx.db.get(args.folderId);
+      if (!folder || folder.userId !== user._id || folder.deletedAt) {
+        // Return default for unauthorized folder access
+        const formatted = prefix ? `${prefix}-001` : "001";
+        return { number: 1, formatted };
+      }
+
+      // Get invoices from specific folder (ownership already verified via folder)
+      invoices = await ctx.db
+        .query("invoices")
+        .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
+        .collect();
+      // Filter to only non-deleted invoices (user ownership verified via folder)
+      invoices = invoices.filter((i) => !i.deletedAt);
+    } else {
+      // Get unfiled invoices
+      invoices = await ctx.db
+        .query("invoices")
+        .withIndex("by_folder_id", (q) => q.eq("folderId", undefined))
+        .collect();
+      invoices = invoices.filter((i) => i.userId === user._id && !i.deletedAt);
+    }
+
+    if (invoices.length === 0) {
+      // No invoices in this folder - start at 001
+      const formatted = prefix ? `${prefix}-001` : "001";
+      return { number: 1, formatted };
+    }
+
+    // Extract numeric part from invoice numbers and find the highest
+    // Supports formats like: "001", "INV-001", "INV-2024-001", etc.
+    let maxNumber = 0;
+    for (const invoice of invoices) {
+      // Extract all numbers from the invoice number and take the last one
+      const matches = invoice.invoiceNumber.match(/(\d+)/g);
+      if (matches && matches.length > 0) {
+        // Take the last number group (e.g., "001" from "INV-2024-001")
+        const lastNumber = parseInt(matches[matches.length - 1], 10);
+        if (!isNaN(lastNumber) && lastNumber > maxNumber) {
+          maxNumber = lastNumber;
+        }
+      }
+    }
+
+    const nextNumber = maxNumber + 1;
+    const paddedNumber = nextNumber.toString().padStart(3, "0");
+    const formatted = prefix ? `${prefix}-${paddedNumber}` : paddedNumber;
+
+    return { number: nextNumber, formatted };
+  },
+});

@@ -68,8 +68,8 @@ import { LineItemsEditor } from './LineItemsEditor'
 import { BackgroundSelector } from './BackgroundSelector'
 import { PageSizeSelector } from './PageSizeSelector'
 import { InvoicePreview } from './InvoicePreview'
-import { useUserProfile, useNextInvoiceNumber } from '@/hooks/use-user-profile'
-import { useInvoice, useInvoiceMutations } from '@/hooks/use-invoices'
+import { useUserProfile } from '@/hooks/use-user-profile'
+import { useInvoice, useInvoiceMutations, useNextInvoiceNumberForFolder } from '@/hooks/use-invoices'
 import { useClientMutations } from '@/hooks/use-client-profiles'
 import { useFolderWithClientProfiles } from '@/hooks/use-invoice-folders'
 import type { Invoice, PageSizeKey, DailyWorkHours } from '@invoice-generator/shared-types'
@@ -107,7 +107,6 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
 
   // Get Convex hooks for cloud sync
   const { data: profileData, user: authUser, profile: userProfile } = useUserProfile()
-  const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber()
   const { createInvoice, updateInvoice } = useInvoiceMutations()
   const { upsertFromInvoice: saveClientFromInvoice } = useClientMutations()
 
@@ -115,6 +114,12 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   const invoiceIdParam = searchParams.get('invoiceId')
   const folderIdParam = searchParams.get('folderId')
   const { invoice: loadedInvoice } = useInvoice(invoiceIdParam as Id<'invoices'> | undefined)
+
+  // Get next invoice number based on folder - this is now folder-scoped
+  // For new invoices in a folder, use the folder ID from URL params
+  // Otherwise, use undefined for unfiled invoices
+  const folderIdForInvoiceNumber = folderIdParam && !invoiceIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined
+  const { formatted: nextInvoiceNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumberForFolder(folderIdForInvoiceNumber)
 
   // Get folder with client profiles for auto-filling new invoices
   const { folder: linkedFolder, clientProfiles: folderClientProfiles } = useFolderWithClientProfiles(
@@ -612,8 +617,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
       } else {
         // Create new invoice
         await createInvoice(invoiceData)
-        // Increment the invoice number counter
-        await incrementNumber()
+        // No need to increment a global counter - invoice numbers are derived from folder invoices
         // Save client profile for reuse
         if (currentInvoice.to?.name) {
           await saveClientFromInvoice(currentInvoice.to)
@@ -641,7 +645,6 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     folderIdParam,
     createInvoice,
     updateInvoice,
-    incrementNumber,
     saveClientFromInvoice,
     toast,
   ])

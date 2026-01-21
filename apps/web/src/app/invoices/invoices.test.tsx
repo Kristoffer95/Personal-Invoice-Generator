@@ -38,6 +38,7 @@ vi.mock("@invoice-generator/backend/convex/_generated/api", () => ({
       duplicateInvoice: "invoices:duplicateInvoice",
       moveToFolder: "invoices:moveToFolder",
       updateStatus: "invoices:updateStatus",
+      getNextInvoiceNumberForFolder: "invoices:getNextInvoiceNumberForFolder",
     },
     invoiceFolders: {
       listWithCounts: "invoiceFolders:listWithCounts",
@@ -50,6 +51,8 @@ vi.mock("@invoice-generator/backend/convex/_generated/api", () => ({
     userProfiles: {
       getNextInvoiceNumber: "userProfiles:getNextInvoiceNumber",
       incrementInvoiceNumber: "userProfiles:incrementInvoiceNumber",
+      getProfile: "userProfiles:getProfile",
+      upsert: "userProfiles:upsert",
     },
   },
 }));

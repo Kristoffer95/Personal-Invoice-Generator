@@ -65,8 +65,9 @@ import {
   useInvoiceMutations,
   useAllInvoicesCount,
   useNextBillingPeriod,
+  useNextInvoiceNumberForFolder,
 } from "@/hooks/use-invoices";
-import { useNextInvoiceNumber } from "@/hooks/use-user-profile";
+import { useUserProfile } from "@/hooks/use-user-profile";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { FolderTree, FolderBreadcrumb, UNCATEGORIZED_FOLDER, type FolderSelection } from "@/components/folders/FolderTree";
 import {
@@ -154,12 +155,17 @@ export default function InvoicesPage() {
   } = useInvoiceMutations();
   const { toggleFolderMoveLock } = useFolderMutations();
   const { tree: folderTree } = useFolderTree();
-  const { formatted: nextInvoiceNumber, incrementNumber } = useNextInvoiceNumber();
   const { resetCurrentInvoice } = useInvoiceStore();
 
   // View state
   const [activeTab, setActiveTab] = useState<"invoices" | "clients" | "analytics" | "tags" | "logs">("invoices");
   const [selectedFolder, setSelectedFolder] = useState<FolderSelection>(undefined);
+
+  // Get next invoice number based on folder - this is now folder-scoped
+  // For "All Invoices" view (undefined), use unfiled invoices
+  // For UNCATEGORIZED_FOLDER, also use unfiled invoices
+  const selectedFolderIdForInvoiceNumber = selectedFolder && selectedFolder !== UNCATEGORIZED_FOLDER ? selectedFolder : undefined;
+  const { formatted: nextInvoiceNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumberForFolder(selectedFolderIdForInvoiceNumber);
   const [filters, setFilters] = useState<InvoiceFiltersState>(defaultFilters);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
 
@@ -324,7 +330,7 @@ export default function InvoicesPage() {
         newInvoiceNumber: newNumber,
         folderId: invoice.folderId,
       });
-      await incrementNumber();
+      // No need to increment a global counter - invoice numbers are derived from folder invoices
       toast({ title: "Invoice duplicated", description: `Created invoice ${newNumber}` });
     } catch {
       toast({ title: "Error", description: "Failed to duplicate invoice", variant: "destructive" });
@@ -480,7 +486,7 @@ export default function InvoicesPage() {
         clientProfileId: clientId,
         invoiceNumber: nextInvoiceNumber,
       });
-      await incrementNumber();
+      // No need to increment a global counter - invoice numbers are derived from folder invoices
 
       // Format period for toast message
       const periodLabel = result.batchType === "1st_batch" ? "1st batch" : "2nd batch";

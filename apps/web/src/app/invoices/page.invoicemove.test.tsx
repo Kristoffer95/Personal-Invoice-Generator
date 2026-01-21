@@ -150,6 +150,11 @@ vi.mock("@/hooks/use-invoices", () => ({
     period: null,
     isLoading: false,
   }),
+  useNextInvoiceNumberForFolder: () => ({
+    number: 4,
+    formatted: "INV-004",
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/hooks/use-invoice-folders", () => ({
@@ -182,9 +187,13 @@ vi.mock("@/hooks/use-toast", () => ({
 }));
 
 vi.mock("@/hooks/use-user-profile", () => ({
-  useNextInvoiceNumber: () => ({
-    formatted: "INV-004",
-    incrementNumber: mockIncrementNumber,
+  useUserProfile: () => ({
+    data: null,
+    user: null,
+    profile: null,
+    isLoading: false,
+    upsertProfile: vi.fn(),
+    updateNumbering: vi.fn(),
   }),
 }));
 

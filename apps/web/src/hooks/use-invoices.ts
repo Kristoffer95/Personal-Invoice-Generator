@@ -285,3 +285,20 @@ export function useNextBillingPeriod(folderId: Id<"invoiceFolders"> | undefined)
     isLoading: period === undefined,
   };
 }
+
+// Hook to get the next invoice number based on the folder's latest invoice
+// This is the preferred method for generating invoice numbers as it's folder-scoped
+export function useNextInvoiceNumberForFolder(folderId: Id<"invoiceFolders"> | undefined) {
+  const data = useQuery(
+    api.invoices.getNextInvoiceNumberForFolder,
+    // For "All" or uncategorized invoices, pass undefined folderId (unfiled invoices)
+    // Otherwise pass the specific folderId
+    { folderId: folderId ?? undefined }
+  );
+
+  return {
+    number: data?.number ?? 1,
+    formatted: data?.formatted ?? "001",
+    isLoading: data === undefined,
+  };
+}

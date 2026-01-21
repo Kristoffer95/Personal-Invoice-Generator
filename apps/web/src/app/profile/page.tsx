@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { ArrowLeft, Save, Building2, CreditCard, FileText } from "lucide-react";
+import { ArrowLeft, Save, Building2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,20 +24,13 @@ interface ProfileFormData {
   email: string;
   phone: string;
   taxId: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  routingNumber: string;
-  swiftCode: string;
-  iban: string;
   invoicePrefix: string;
-  nextInvoiceNumber: number;
 }
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data, user, profile, isLoading, upsertProfile, updateNumbering } = useUserProfile();
+  const { data, user, profile, isLoading, upsertProfile } = useUserProfile();
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -51,14 +44,7 @@ export default function ProfilePage() {
     email: "",
     phone: "",
     taxId: "",
-    bankName: "",
-    accountName: "",
-    accountNumber: "",
-    routingNumber: "",
-    swiftCode: "",
-    iban: "",
     invoicePrefix: "",
-    nextInvoiceNumber: 1,
   });
 
   // Load existing profile data
@@ -75,14 +61,7 @@ export default function ProfilePage() {
         email: profile.email ?? user.email ?? "",
         phone: profile.phone ?? "",
         taxId: profile.taxId ?? "",
-        bankName: profile.bankDetails?.bankName ?? "",
-        accountName: profile.bankDetails?.accountName ?? "",
-        accountNumber: profile.bankDetails?.accountNumber ?? "",
-        routingNumber: profile.bankDetails?.routingNumber ?? "",
-        swiftCode: profile.bankDetails?.swiftCode ?? "",
-        iban: profile.bankDetails?.iban ?? "",
         invoicePrefix: profile.invoicePrefix ?? "",
-        nextInvoiceNumber: profile.nextInvoiceNumber ?? 1,
       });
     } else if (user && !profile) {
       // Initialize from Clerk user data
@@ -112,16 +91,7 @@ export default function ProfilePage() {
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         taxId: formData.taxId || undefined,
-        bankDetails: {
-          bankName: formData.bankName || undefined,
-          accountName: formData.accountName || undefined,
-          accountNumber: formData.accountNumber || undefined,
-          routingNumber: formData.routingNumber || undefined,
-          swiftCode: formData.swiftCode || undefined,
-          iban: formData.iban || undefined,
-        },
         invoicePrefix: formData.invoicePrefix || undefined,
-        nextInvoiceNumber: formData.nextInvoiceNumber,
       });
 
       toast({
@@ -168,16 +138,11 @@ export default function ProfilePage() {
       {/* Main Content */}
       <main className="container py-6 max-w-3xl">
         <Tabs defaultValue="business" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="business" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Business Info</span>
               <span className="sm:hidden">Business</span>
-            </TabsTrigger>
-            <TabsTrigger value="banking" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Bank Details</span>
-              <span className="sm:hidden">Banking</span>
             </TabsTrigger>
             <TabsTrigger value="invoicing" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -303,127 +268,27 @@ export default function ProfilePage() {
             </Card>
           </TabsContent>
 
-          {/* Bank Details Tab */}
-          <TabsContent value="banking">
-            <Card>
-              <CardHeader>
-                <CardTitle>Bank Details</CardTitle>
-                <CardDescription>
-                  Default payment information that will appear on your invoices.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="bankName">Bank Name</Label>
-                    <Input
-                      id="bankName"
-                      value={formData.bankName}
-                      onChange={(e) => handleChange("bankName", e.target.value)}
-                      placeholder="Chase Bank"
-                    />
-                  </div>
-
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="accountName">Account Name</Label>
-                    <Input
-                      id="accountName"
-                      value={formData.accountName}
-                      onChange={(e) => handleChange("accountName", e.target.value)}
-                      placeholder="Your Company LLC"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="accountNumber">Account Number</Label>
-                    <Input
-                      id="accountNumber"
-                      value={formData.accountNumber}
-                      onChange={(e) => handleChange("accountNumber", e.target.value)}
-                      placeholder="****1234"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="routingNumber">Routing Number</Label>
-                    <Input
-                      id="routingNumber"
-                      value={formData.routingNumber}
-                      onChange={(e) => handleChange("routingNumber", e.target.value)}
-                      placeholder="021000021"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="swiftCode">SWIFT / BIC Code</Label>
-                    <Input
-                      id="swiftCode"
-                      value={formData.swiftCode}
-                      onChange={(e) => handleChange("swiftCode", e.target.value)}
-                      placeholder="CHASUS33"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="iban">IBAN</Label>
-                    <Input
-                      id="iban"
-                      value={formData.iban}
-                      onChange={(e) => handleChange("iban", e.target.value)}
-                      placeholder="US12 3456 7890 1234 5678 90"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Invoice Settings Tab */}
           <TabsContent value="invoicing">
             <Card>
               <CardHeader>
                 <CardTitle>Invoice Numbering</CardTitle>
                 <CardDescription>
-                  Configure how your invoice numbers are generated.
+                  Configure the prefix for your invoice numbers. The number will be automatically derived from the latest invoice in each folder.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="invoicePrefix">Invoice Prefix (Optional)</Label>
-                    <Input
-                      id="invoicePrefix"
-                      value={formData.invoicePrefix}
-                      onChange={(e) => handleChange("invoicePrefix", e.target.value.toUpperCase())}
-                      placeholder="INV"
-                      maxLength={10}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Example: INV-001, ACME-001
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="nextInvoiceNumber">Next Invoice Number</Label>
-                    <Input
-                      id="nextInvoiceNumber"
-                      type="number"
-                      min={1}
-                      value={formData.nextInvoiceNumber}
-                      onChange={(e) => handleChange("nextInvoiceNumber", parseInt(e.target.value) || 1)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Start from any number you prefer.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-muted p-4">
-                  <p className="text-sm font-medium">Preview</p>
-                  <p className="text-lg font-mono mt-1">
-                    {formData.invoicePrefix
-                      ? `${formData.invoicePrefix}-${formData.nextInvoiceNumber.toString().padStart(3, "0")}`
-                      : formData.nextInvoiceNumber.toString().padStart(3, "0")}
+                <div className="space-y-2">
+                  <Label htmlFor="invoicePrefix">Invoice Prefix (Optional)</Label>
+                  <Input
+                    id="invoicePrefix"
+                    value={formData.invoicePrefix}
+                    onChange={(e) => handleChange("invoicePrefix", e.target.value.toUpperCase())}
+                    placeholder="INV"
+                    maxLength={10}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Example: INV-001, ACME-001. The number will increment automatically based on your existing invoices.
                   </p>
                 </div>
               </CardContent>
