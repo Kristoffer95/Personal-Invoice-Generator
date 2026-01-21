@@ -10,7 +10,7 @@ const isPublicRoute = createRouteMatcher([
 // Allow E2E testing bypass in development/test environments
 const isE2ETestingEnabled = process.env.E2E_TESTING === "true";
 
-export default clerkMiddleware(async (auth, req) => {
+export const proxy = clerkMiddleware(async (auth, req) => {
   // Bypass authentication for E2E testing in non-production environments
   if (isE2ETestingEnabled && process.env.NODE_ENV !== "production") {
     return NextResponse.next();
