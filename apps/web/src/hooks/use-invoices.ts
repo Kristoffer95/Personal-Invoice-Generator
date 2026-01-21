@@ -288,6 +288,8 @@ export function useNextBillingPeriod(folderId: Id<"invoiceFolders"> | undefined)
 
 // Hook to get the next invoice number based on the folder's latest invoice
 // This is the preferred method for generating invoice numbers as it's folder-scoped
+// Returns skipped numbers info for display purposes, but does NOT auto-show toasts
+// Toast notifications should be shown by the calling component when an invoice is actually created
 export function useNextInvoiceNumberForFolder(folderId: Id<"invoiceFolders"> | undefined) {
   const data = useQuery(
     api.invoices.getNextInvoiceNumberForFolder,
@@ -299,6 +301,7 @@ export function useNextInvoiceNumberForFolder(folderId: Id<"invoiceFolders"> | u
   return {
     number: data?.number ?? 1,
     formatted: data?.formatted ?? "001",
+    skippedNumbers: data?.skippedNumbers ?? [],
     isLoading: data === undefined,
   };
 }

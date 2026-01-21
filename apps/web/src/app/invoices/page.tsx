@@ -77,6 +77,7 @@ import {
 } from "@/components/invoice/InvoiceFilters";
 import { InvoiceStatusSelect, InvoiceStatusBadge } from "@/components/invoice/InvoiceStatusSelect";
 import { InvoicePreviewPopover } from "@/components/invoice/InvoicePreviewPopover";
+import { InvoiceNumberQuickEdit } from "@/components/invoice/InvoiceNumberQuickEdit";
 import { TagBadgeList } from "@/components/tags/TagSelector";
 import { useFolderTree, useFolderMutations, useFolderWithClientProfiles } from "@/hooks/use-invoice-folders";
 import { TagManager } from "@/components/tags/TagManager";
@@ -324,16 +325,20 @@ export default function InvoicesPage() {
 
   const handleDuplicateInvoice = async (invoice: InvoiceItem) => {
     try {
-      const newNumber = nextInvoiceNumber ?? "001";
-      await duplicateInvoice({
+      // Let the backend auto-generate the invoice number based on the target folder
+      // This ensures the number is correct even if the user has a different folder selected in the sidebar
+      const result = await duplicateInvoice({
         sourceInvoiceId: invoice._id,
-        newInvoiceNumber: newNumber,
+        // Don't pass newInvoiceNumber - let backend auto-generate based on source folder
         folderId: invoice.folderId,
       });
-      // No need to increment a global counter - invoice numbers are derived from folder invoices
-      toast({ title: "Invoice duplicated", description: `Created invoice ${newNumber}` });
-    } catch {
-      toast({ title: "Error", description: "Failed to duplicate invoice", variant: "destructive" });
+      toast({ title: "Invoice duplicated", description: `Created invoice ${result.invoiceNumber}` });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to duplicate invoice",
+        variant: "destructive",
+      });
     }
   };
 
@@ -475,28 +480,47 @@ export default function InvoicesPage() {
 
   // Quick create invoice with a specific client
   const handleQuickCreateWithClient = async (clientId: Id<"clientProfiles">) => {
-    if (!selectedFolder || selectedFolder === UNCATEGORIZED_FOLDER || !nextInvoiceNumber) {
+    if (!selectedFolder || selectedFolder === UNCATEGORIZED_FOLDER) {
       return;
     }
 
     setIsQuickCreating(true);
     try {
+      // Let the backend auto-generate the invoice number if not provided
+      // This ensures the number is always correct based on the folder's invoices
       const result = await quickCreateInvoice({
         folderId: selectedFolder,
         clientProfileId: clientId,
+        // Optionally pass the cached next number for faster response, or let backend generate it
         invoiceNumber: nextInvoiceNumber,
       });
-      // No need to increment a global counter - invoice numbers are derived from folder invoices
 
       // Format period for toast message
       const periodLabel = result.batchType === "1st_batch" ? "1st batch" : "2nd batch";
       const periodDate = new Date(result.periodStart);
       const monthLabel = periodDate.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
-      toast({
-        title: "Invoice created",
-        description: `Created invoice for ${monthLabel} ${periodLabel}`,
-      });
+      // Build toast based on whether there are skipped numbers
+      const hasSkipped = result.skippedNumbers && result.skippedNumbers.length > 0;
+
+      if (hasSkipped) {
+        // Use warning variant with bold text for skipped archived numbers
+        toast({
+          title: "Invoice created",
+          description: (
+            <span>
+              Created invoice {result.invoiceNumber} for {monthLabel} {periodLabel}. Skipped{" "}
+              <strong className="font-bold">{result.skippedNumbers.join(", ")} (archived)</strong>
+            </span>
+          ),
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Invoice created",
+          description: `Created invoice ${result.invoiceNumber} for ${monthLabel} ${periodLabel}`,
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -958,6 +982,10 @@ export default function InvoicesPage() {
                                     <span className="font-medium">
                                       {invoice.invoiceNumber}
                                     </span>
+                                    <InvoiceNumberQuickEdit
+                                      invoiceId={invoice._id}
+                                      currentNumber={invoice.invoiceNumber}
+                                    />
                                     <InvoiceStatusBadge status={invoice.status} />
                                     {invoice.isArchived && (
                                       <Badge variant="outline" className="text-xs">

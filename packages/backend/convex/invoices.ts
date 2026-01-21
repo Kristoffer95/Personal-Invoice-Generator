@@ -105,11 +105,11 @@ async function isInvoiceNumberUniqueInFolder(
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
     .collect();
 
-  // Filter to find duplicates in the same folder
+  // Filter to find duplicates in the same folder (exclude soft-deleted invoices)
   const duplicates = invoices.filter(
     (i) =>
       i.invoiceNumber === invoiceNumber &&
-      !i.deletedAt &&
+      i.deletedAt === undefined &&
       i._id !== excludeInvoiceId
   );
 
@@ -167,7 +167,7 @@ export const listInvoices = query({
     }
 
     // Apply filters
-    let filteredInvoices = invoices.filter((i) => !i.deletedAt);
+    let filteredInvoices = invoices.filter((i) => i.deletedAt === undefined);
 
     // Filter by archived status (default: show non-archived)
     if (args.isArchived !== undefined) {
@@ -264,7 +264,7 @@ export const listRecent = query({
       .order("desc")
       .take(args.limit ?? 10);
 
-    return invoices.filter((i) => !i.deletedAt);
+    return invoices.filter((i) => i.deletedAt === undefined);
   },
 });
 
@@ -521,6 +521,21 @@ export const updateInvoice = mutation({
       }
     }
 
+    // Validate invoice number format and length (defense-in-depth)
+    if (args.invoiceNumber !== undefined) {
+      const trimmedNumber = args.invoiceNumber.trim();
+      if (trimmedNumber.length === 0) {
+        throw new Error("Invoice number is required");
+      }
+      if (trimmedNumber.length > 50) {
+        throw new Error("Invoice number must be 50 characters or less");
+      }
+      // Allow alphanumeric, hyphens, and underscores only
+      if (!/^[a-zA-Z0-9\-_]+$/.test(trimmedNumber)) {
+        throw new Error("Invoice number can only contain letters, numbers, hyphens, and underscores");
+      }
+    }
+
     // Validate invoice number uniqueness when changing invoice number or folder
     const newInvoiceNumber = args.invoiceNumber ?? invoice.invoiceNumber;
     const newFolderId = args.folderId !== undefined ? args.folderId : invoice.folderId;
@@ -602,11 +617,109 @@ export const removeInvoice = mutation({
   },
 });
 
+// Helper function to extract the numeric part from an invoice number
+function extractInvoiceNumber(invoiceNumber: string): number | null {
+  const matches = invoiceNumber.match(/(\d+)/g);
+  if (matches && matches.length > 0) {
+    // Take the last number group (e.g., "001" from "INV-2024-001")
+    const num = parseInt(matches[matches.length - 1], 10);
+    return isNaN(num) ? null : num;
+  }
+  return null;
+}
+
+// Helper function to find skipped archived invoice numbers
+// Returns archived invoice numbers that are greater than the highest active number
+// but less than the next number (i.e., the numbers being "skipped" due to archived invoices)
+function findSkippedArchivedNumbers(
+  invoices: Array<{ invoiceNumber: string; isArchived?: boolean }>,
+  highestActiveNumber: number,
+  nextNumber: number
+): string[] {
+  const skippedNumbers: string[] = [];
+
+  for (const invoice of invoices) {
+    if (invoice.isArchived) {
+      const num = extractInvoiceNumber(invoice.invoiceNumber);
+      if (num !== null && num > highestActiveNumber && num < nextNumber) {
+        skippedNumbers.push(invoice.invoiceNumber);
+      }
+    }
+  }
+
+  // Sort by extracted number
+  return skippedNumbers.sort((a, b) => {
+    const numA = extractInvoiceNumber(a) ?? 0;
+    const numB = extractInvoiceNumber(b) ?? 0;
+    return numA - numB;
+  });
+}
+
+// Helper function to get next invoice number for a folder
+// This is used internally by mutations to generate invoice numbers
+// Logic: Find the HIGHEST invoice number (including archived), and add 1
+async function getNextInvoiceNumberForFolderInternal(
+  ctx: { db: { query: (table: string) => { withIndex: (indexName: string, indexFn: (q: { eq: (field: string, value: unknown) => unknown }) => unknown) => { collect: () => Promise<Array<{ invoiceNumber: string; userId: string; createdAt: number; deletedAt?: number; isArchived?: boolean }>> } } } },
+  userId: string,
+  folderId: string | undefined,
+  prefix: string
+): Promise<{ number: number; formatted: string; skippedNumbers: string[] }> {
+  // Get all non-deleted invoices for the folder (including archived)
+  let invoices;
+  if (folderId) {
+    invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_folder_id", (q) => q.eq("folderId", folderId))
+      .collect();
+    invoices = invoices.filter((i) => i.userId === userId && i.deletedAt === undefined);
+  } else {
+    invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_folder_id", (q) => q.eq("folderId", undefined))
+      .collect();
+    invoices = invoices.filter((i) => i.userId === userId && i.deletedAt === undefined);
+  }
+
+  if (invoices.length === 0) {
+    // No invoices in this folder - start at 001
+    const formatted = prefix ? `${prefix}-001` : "001";
+    return { number: 1, formatted, skippedNumbers: [] };
+  }
+
+  // Find the HIGHEST invoice number across ALL invoices (active + archived)
+  // and separately track the highest ACTIVE invoice number
+  let highestNumber = 0;
+  let highestActiveNumber = 0;
+
+  for (const invoice of invoices) {
+    const num = extractInvoiceNumber(invoice.invoiceNumber);
+    if (num !== null) {
+      if (num > highestNumber) {
+        highestNumber = num;
+      }
+      if (!invoice.isArchived && num > highestActiveNumber) {
+        highestActiveNumber = num;
+      }
+    }
+  }
+
+  // Next number is highest + 1
+  const nextNumber = highestNumber + 1;
+  const paddedNumber = nextNumber.toString().padStart(3, "0");
+  const formatted = prefix ? `${prefix}-${paddedNumber}` : paddedNumber;
+
+  // Find skipped archived numbers (between highest active and next)
+  const skippedNumbers = findSkippedArchivedNumbers(invoices, highestActiveNumber, nextNumber);
+
+  return { number: nextNumber, formatted, skippedNumbers };
+}
+
 // Duplicate an invoice (for quick creation based on existing)
+// If newInvoiceNumber is not provided, it will be auto-generated based on the target folder
 export const duplicateInvoice = mutation({
   args: {
     sourceInvoiceId: v.id("invoices"),
-    newInvoiceNumber: v.string(),
+    newInvoiceNumber: v.optional(v.string()), // Optional - auto-generated if not provided
     folderId: v.optional(v.id("invoiceFolders")),
     copyWorkHours: v.optional(v.boolean()), // Option to copy work hours
     copyTags: v.optional(v.boolean()), // Option to copy tags
@@ -625,11 +738,31 @@ export const duplicateInvoice = mutation({
     // Determine target folder (explicit arg or inherit from source)
     const targetFolderId = args.folderId ?? sourceInvoice.folderId;
 
+    // Get user profile for prefix
+    const userProfiles = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .collect();
+    const userProfile = userProfiles[0];
+    const prefix = userProfile?.invoicePrefix ?? "";
+
+    // Auto-generate invoice number if not provided
+    let invoiceNumber = args.newInvoiceNumber;
+    if (!invoiceNumber) {
+      const nextNumber = await getNextInvoiceNumberForFolderInternal(
+        ctx as Parameters<typeof getNextInvoiceNumberForFolderInternal>[0],
+        user._id,
+        targetFolderId,
+        prefix
+      );
+      invoiceNumber = nextNumber.formatted;
+    }
+
     // Validate invoice number uniqueness in target folder
     const isUnique = await isInvoiceNumberUniqueInFolder(
       ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
       user._id,
-      args.newInvoiceNumber,
+      invoiceNumber,
       targetFolderId
     );
     if (!isUnique) {
@@ -688,7 +821,7 @@ export const duplicateInvoice = mutation({
       ...invoiceData,
       ...workHoursData,
       ...tagsData,
-      invoiceNumber: args.newInvoiceNumber,
+      invoiceNumber, // Use the auto-generated or provided invoice number
       folderId: args.folderId ?? sourceInvoice.folderId,
       status: "DRAFT",
       issueDate: today,
@@ -706,7 +839,7 @@ export const duplicateInvoice = mutation({
       updatedAt: now,
     });
 
-    return newInvoiceId;
+    return { invoiceId: newInvoiceId, invoiceNumber };
   },
 });
 
@@ -846,13 +979,13 @@ export const bulkMoveToFolder = mutation({
 
     const destinationInvoiceNumbers = new Set(
       destinationInvoices
-        .filter((i) => !i.deletedAt && (args.folderId ? i.folderId === args.folderId : !i.folderId))
+        .filter((i) => i.deletedAt === undefined && (args.folderId ? i.folderId === args.folderId : !i.folderId))
         .map((i) => i.invoiceNumber)
     );
 
     for (const invoiceId of args.invoiceIds) {
       const invoice = await ctx.db.get(invoiceId);
-      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+      if (invoice && invoice.userId === user._id && invoice.deletedAt === undefined) {
         // Check if invoice is move locked
         if (invoice.isMoveLocked) {
           results.locked++;
@@ -1047,7 +1180,7 @@ export const getArchivedInvoices = query({
       .collect();
 
     const sortedInvoices = invoices
-      .filter((i) => !i.deletedAt)
+      .filter((i) => i.deletedAt === undefined)
       .sort((a, b) => b.createdAt - a.createdAt);
 
     if (args.limit) {
@@ -1074,7 +1207,7 @@ export const bulkArchiveInvoices = mutation({
 
     for (const invoiceId of args.invoiceIds) {
       const invoice = await ctx.db.get(invoiceId);
-      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+      if (invoice && invoice.userId === user._id && invoice.deletedAt === undefined) {
         await ctx.db.patch(invoiceId, {
           isArchived: true,
           archivedAt: nowStr,
@@ -1103,7 +1236,7 @@ export const bulkDeleteInvoices = mutation({
 
     for (const invoiceId of args.invoiceIds) {
       const invoice = await ctx.db.get(invoiceId);
-      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+      if (invoice && invoice.userId === user._id && invoice.deletedAt === undefined) {
         await ctx.db.patch(invoiceId, { deletedAt: now });
         deletedCount++;
       }
@@ -1134,7 +1267,7 @@ export const bulkUpdateStatus = mutation({
 
     for (const invoiceId of args.invoiceIds) {
       const invoice = await ctx.db.get(invoiceId);
-      if (invoice && invoice.userId === user._id && !invoice.deletedAt) {
+      if (invoice && invoice.userId === user._id && invoice.deletedAt === undefined) {
         const currentHistory = invoice.statusHistory || [];
         const previousStatus = invoice.status;
         const patchData: Record<string, unknown> = {
@@ -1209,7 +1342,7 @@ export const getByClient = query({
     return invoices
       .filter(
         (i) =>
-          !i.deletedAt &&
+          i.deletedAt === undefined &&
           i.to.name.toLowerCase().includes(args.clientName.toLowerCase())
       )
       .sort((a, b) => b.createdAt - a.createdAt);
@@ -1231,7 +1364,7 @@ export const getUnfiled = query({
       .collect();
 
     return invoices
-      .filter((i) => i.userId === user._id && !i.deletedAt)
+      .filter((i) => i.userId === user._id && i.deletedAt === undefined)
       .sort((a, b) => b.createdAt - a.createdAt);
   },
 });
@@ -1258,7 +1391,7 @@ export const getNextBillingPeriod = query({
       .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
       .collect();
 
-    const activeInvoices = invoices.filter((i) => !i.deletedAt && i.periodEnd);
+    const activeInvoices = invoices.filter((i) => i.deletedAt === undefined && i.periodEnd);
 
     if (activeInvoices.length === 0) {
       // No invoices yet - start with current month 1st batch
@@ -1331,11 +1464,12 @@ export const getNextBillingPeriod = query({
 });
 
 // Quick create invoice with minimal input - auto-fills from folder defaults and client profile
+// If invoiceNumber is not provided, it will be auto-generated based on the target folder
 export const quickCreateInvoice = mutation({
   args: {
     folderId: v.id("invoiceFolders"),
     clientProfileId: v.id("clientProfiles"),
-    invoiceNumber: v.string(),
+    invoiceNumber: v.optional(v.string()), // Optional - auto-generated if not provided
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUserFromIdentity(ctx);
@@ -1355,23 +1489,36 @@ export const quickCreateInvoice = mutation({
       throw new Error("Client not found");
     }
 
-    // Validate invoice number uniqueness in the folder
-    const isUnique = await isInvoiceNumberUniqueInFolder(
-      ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
-      user._id,
-      args.invoiceNumber,
-      args.folderId
-    );
-    if (!isUnique) {
-      throw new Error("Invoice number already exists in this folder");
-    }
-
-    // Get user profile for "from" info
+    // Get user profile for "from" info and prefix
     const userProfiles = await ctx.db
       .query("userProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", user._id))
       .collect();
     const userProfile = userProfiles[0];
+    const prefix = userProfile?.invoicePrefix ?? "";
+
+    // Auto-generate invoice number if not provided
+    let invoiceNumber = args.invoiceNumber;
+    if (!invoiceNumber) {
+      const nextNumber = await getNextInvoiceNumberForFolderInternal(
+        ctx as Parameters<typeof getNextInvoiceNumberForFolderInternal>[0],
+        user._id,
+        args.folderId,
+        prefix
+      );
+      invoiceNumber = nextNumber.formatted;
+    }
+
+    // Validate invoice number uniqueness in the folder
+    const isUnique = await isInvoiceNumberUniqueInFolder(
+      ctx as Parameters<typeof isInvoiceNumberUniqueInFolder>[0],
+      user._id,
+      invoiceNumber,
+      args.folderId
+    );
+    if (!isUnique) {
+      throw new Error("Invoice number already exists in this folder");
+    }
 
     // Get all non-deleted invoices in the folder to determine next period
     const invoices = await ctx.db
@@ -1379,7 +1526,7 @@ export const quickCreateInvoice = mutation({
       .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
       .collect();
 
-    const activeInvoices = invoices.filter((i) => !i.deletedAt && i.periodEnd);
+    const activeInvoices = invoices.filter((i) => i.deletedAt === undefined && i.periodEnd);
 
     // Calculate next period
     let nextYear: number;
@@ -1516,7 +1663,7 @@ export const quickCreateInvoice = mutation({
     const invoiceId = await ctx.db.insert("invoices", {
       userId: user._id,
       folderId: args.folderId,
-      invoiceNumber: args.invoiceNumber,
+      invoiceNumber, // Use the auto-generated or provided invoice number
       status: "DRAFT",
       statusHistory: [
         {
@@ -1558,7 +1705,7 @@ export const quickCreateInvoice = mutation({
     await ctx.db.insert("statusLogs", {
       userId: user._id,
       invoiceId,
-      invoiceNumber: args.invoiceNumber,
+      invoiceNumber, // Use the auto-generated or provided invoice number
       folderId: args.folderId,
       folderName: folder.name,
       previousStatus: undefined,
@@ -1568,17 +1715,45 @@ export const quickCreateInvoice = mutation({
       changedAtStr: nowStr,
     });
 
+    // Get skipped numbers info for the toast notification
+    // Reuse 'invoices' we already queried earlier for determining next period
+    // Filter to only this user's non-deleted invoices
+    const invoicesForSkipped = invoices.filter(
+      (i) => i.userId === user._id && i.deletedAt === undefined
+    );
+
+    // Find the highest active (non-archived) number
+    let highestActiveNumber = 0;
+    for (const invoice of invoicesForSkipped) {
+      if (!invoice.isArchived) {
+        const num = extractInvoiceNumber(invoice.invoiceNumber);
+        if (num !== null && num > highestActiveNumber) {
+          highestActiveNumber = num;
+        }
+      }
+    }
+
+    // The current invoice number we just created
+    const createdNum = extractInvoiceNumber(invoiceNumber);
+    const skippedNumbers = createdNum !== null
+      ? findSkippedArchivedNumbers(invoicesForSkipped, highestActiveNumber, createdNum)
+      : [];
+
     return {
       invoiceId,
+      invoiceNumber, // Include the invoice number in the response
       periodStart,
       periodEnd,
       batchType,
+      skippedNumbers, // Include skipped archived numbers for toast notification
     };
   },
 });
 
 // Get the next invoice number based on the latest invoice in a folder
 // This is the preferred method for generating invoice numbers as it's folder-scoped
+// Logic: Find the HIGHEST invoice number (including archived), and add 1
+// Also returns skipped archived numbers for notification purposes
 export const getNextInvoiceNumberForFolder = query({
   args: {
     folderId: v.optional(v.id("invoiceFolders")),
@@ -1586,7 +1761,7 @@ export const getNextInvoiceNumberForFolder = query({
   handler: async (ctx, args) => {
     const user = await getUserFromIdentityOrE2E(ctx);
     if (!user) {
-      return { number: 1, formatted: "001" };
+      return { number: 1, formatted: "001", skippedNumbers: [] };
     }
 
     // Get user profile for prefix
@@ -1597,7 +1772,7 @@ export const getNextInvoiceNumberForFolder = query({
     const userProfile = userProfiles[0];
     const prefix = userProfile?.invoicePrefix ?? "";
 
-    // Get all invoices for the user (in the specific folder or unfiled)
+    // Get all non-deleted invoices for the user in the specific folder or unfiled (including archived)
     let invoices;
     if (args.folderId) {
       // SECURITY: Verify folder belongs to the current user
@@ -1605,50 +1780,56 @@ export const getNextInvoiceNumberForFolder = query({
       if (!folder || folder.userId !== user._id || folder.deletedAt) {
         // Return default for unauthorized folder access
         const formatted = prefix ? `${prefix}-001` : "001";
-        return { number: 1, formatted };
+        return { number: 1, formatted, skippedNumbers: [] };
       }
 
-      // Get invoices from specific folder (ownership already verified via folder)
+      // Get non-deleted invoices from specific folder (including archived)
       invoices = await ctx.db
         .query("invoices")
         .withIndex("by_folder_id", (q) => q.eq("folderId", args.folderId))
         .collect();
-      // Filter to only non-deleted invoices (user ownership verified via folder)
-      invoices = invoices.filter((i) => !i.deletedAt);
+      // Filter to only this user's non-deleted invoices
+      invoices = invoices.filter((i) => i.userId === user._id && i.deletedAt === undefined);
     } else {
-      // Get unfiled invoices
+      // Get unfiled non-deleted invoices (including archived)
       invoices = await ctx.db
         .query("invoices")
         .withIndex("by_folder_id", (q) => q.eq("folderId", undefined))
         .collect();
-      invoices = invoices.filter((i) => i.userId === user._id && !i.deletedAt);
+      invoices = invoices.filter((i) => i.userId === user._id && i.deletedAt === undefined);
     }
 
     if (invoices.length === 0) {
       // No invoices in this folder - start at 001
       const formatted = prefix ? `${prefix}-001` : "001";
-      return { number: 1, formatted };
+      return { number: 1, formatted, skippedNumbers: [] };
     }
 
-    // Extract numeric part from invoice numbers and find the highest
-    // Supports formats like: "001", "INV-001", "INV-2024-001", etc.
-    let maxNumber = 0;
+    // Find the HIGHEST invoice number across ALL invoices (active + archived)
+    // and separately track the highest ACTIVE invoice number
+    let highestNumber = 0;
+    let highestActiveNumber = 0;
+
     for (const invoice of invoices) {
-      // Extract all numbers from the invoice number and take the last one
-      const matches = invoice.invoiceNumber.match(/(\d+)/g);
-      if (matches && matches.length > 0) {
-        // Take the last number group (e.g., "001" from "INV-2024-001")
-        const lastNumber = parseInt(matches[matches.length - 1], 10);
-        if (!isNaN(lastNumber) && lastNumber > maxNumber) {
-          maxNumber = lastNumber;
+      const num = extractInvoiceNumber(invoice.invoiceNumber);
+      if (num !== null) {
+        if (num > highestNumber) {
+          highestNumber = num;
+        }
+        if (!invoice.isArchived && num > highestActiveNumber) {
+          highestActiveNumber = num;
         }
       }
     }
 
-    const nextNumber = maxNumber + 1;
+    // Next number is highest + 1
+    const nextNumber = highestNumber + 1;
     const paddedNumber = nextNumber.toString().padStart(3, "0");
     const formatted = prefix ? `${prefix}-${paddedNumber}` : paddedNumber;
 
-    return { number: nextNumber, formatted };
+    // Find skipped archived numbers (between highest active and next)
+    const skippedNumbers = findSkippedArchivedNumbers(invoices, highestActiveNumber, nextNumber);
+
+    return { number: nextNumber, formatted, skippedNumbers };
   },
 });
