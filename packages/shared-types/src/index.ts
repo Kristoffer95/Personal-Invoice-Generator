@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+// Re-export all template types
+export * from './template'
+
 // Page size definitions with dimensions in mm
 export const PAGE_SIZES = {
   A4: { width: 210, height: 297, label: 'A4' },

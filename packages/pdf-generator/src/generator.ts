@@ -1,11 +1,17 @@
 import { pdf } from '@react-pdf/renderer'
-import type { Invoice, BackgroundDesign, ExportConfig } from '@invoice-generator/shared-types'
+import type { Invoice, BackgroundDesign, ExportConfig, InvoiceTemplate } from '@invoice-generator/shared-types'
 import { InvoicePDF } from './InvoicePDF'
+import { TemplatePDF } from './TemplatePDF'
 
 export interface PDFGeneratorOptions {
   invoice: Invoice
   backgroundDesign?: BackgroundDesign
   exportConfig?: ExportConfig
+}
+
+export interface TemplateGeneratorOptions {
+  template: InvoiceTemplate
+  invoice: Invoice
 }
 
 /**
@@ -54,6 +60,45 @@ export async function downloadPDF(
   const { invoice } = options
 
   const defaultFilename = `invoice-${invoice.invoiceNumber}-${invoice.issueDate}.pdf`
+  const finalFilename = filename || defaultFilename
+
+  // Create download link
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = finalFilename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * Generate a PDF blob from a template and invoice data
+ */
+export async function generateTemplatePDFBlob(
+  options: TemplateGeneratorOptions
+): Promise<Blob> {
+  const { template, invoice } = options
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const element = TemplatePDF({ template, invoice }) as any
+
+  const blob = await pdf(element).toBlob()
+  return blob
+}
+
+/**
+ * Generate template-based PDF and trigger download in browser
+ */
+export async function downloadTemplatePDF(
+  options: TemplateGeneratorOptions,
+  filename?: string
+): Promise<void> {
+  const blob = await generateTemplatePDFBlob(options)
+  const { invoice, template } = options
+
+  const defaultFilename = `${template.name}-${invoice.invoiceNumber}-${invoice.issueDate}.pdf`
   const finalFilename = filename || defaultFilename
 
   // Create download link
