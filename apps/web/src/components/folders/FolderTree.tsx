@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Folder,
   FolderOpen,
@@ -8,7 +9,7 @@ import {
   ChevronDown,
   Plus,
   MoreHorizontal,
-  Pencil,
+  Settings,
   Trash2,
   FolderInput,
   FileText,
@@ -75,6 +76,7 @@ type FolderNode = {
   defaultCurrency?: Currency;
   defaultPaymentTerms?: PaymentTerms;
   defaultJobTitle?: string;
+  defaultShowDetailedHours?: boolean;
   children: FolderNode[];
   // Allow additional properties from Convex
   [key: string]: unknown;
@@ -141,31 +143,29 @@ function FolderTreeItem({
           )}
         </button>
 
-        {/* Folder Icon */}
-        <div
-          className="flex items-center justify-center w-5 h-5"
+        {/* Folder Icon and Name - Wrapped in Link for navigation */}
+        <Link
+          href={`/folders/${folder._id}`}
+          className="flex items-center gap-1 flex-1 min-w-0"
           onClick={() => onSelect(folder._id)}
         >
-          {isExpanded ? (
-            <FolderOpen
-              className="h-4 w-4"
-              style={{ color: folder.color || undefined }}
-            />
-          ) : (
-            <Folder
-              className="h-4 w-4"
-              style={{ color: folder.color || undefined }}
-            />
-          )}
-        </div>
-
-        {/* Folder Name */}
-        <span
-          className="flex-1 truncate text-sm font-medium"
-          onClick={() => onSelect(folder._id)}
-        >
-          {folder.name}
-        </span>
+          <div className="flex items-center justify-center w-5 h-5 shrink-0">
+            {isExpanded ? (
+              <FolderOpen
+                className="h-4 w-4"
+                style={{ color: folder.color || undefined }}
+              />
+            ) : (
+              <Folder
+                className="h-4 w-4"
+                style={{ color: folder.color || undefined }}
+              />
+            )}
+          </div>
+          <span className="flex-1 truncate text-sm font-medium">
+            {folder.name}
+          </span>
+        </Link>
 
         {/* Lock Indicator */}
         {folder.isMoveLocked && (
@@ -198,8 +198,8 @@ function FolderTreeItem({
               Add Subfolder
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEdit(folder)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onMove(folder)}>
               <FolderInput className="h-4 w-4 mr-2" />
@@ -307,6 +307,7 @@ export function FolderTree({
   const [folderDefaultCurrency, setFolderDefaultCurrency] = useState<Currency | undefined>();
   const [folderDefaultPaymentTerms, setFolderDefaultPaymentTerms] = useState<PaymentTerms | undefined>();
   const [folderDefaultJobTitle, setFolderDefaultJobTitle] = useState<string>("");
+  const [folderDefaultShowDetailedHours, setFolderDefaultShowDetailedHours] = useState<boolean | undefined>();
 
   const handleToggleExpand = useCallback((folderId: string) => {
     setExpandedFolders((prev) => {
@@ -332,6 +333,7 @@ export function FolderTree({
     setFolderDefaultCurrency(undefined);
     setFolderDefaultPaymentTerms(undefined);
     setFolderDefaultJobTitle("");
+    setFolderDefaultShowDetailedHours(undefined);
     setFolderDialogOpen(true);
   };
 
@@ -347,6 +349,7 @@ export function FolderTree({
     setFolderDefaultCurrency(folder.defaultCurrency);
     setFolderDefaultPaymentTerms(folder.defaultPaymentTerms);
     setFolderDefaultJobTitle(folder.defaultJobTitle || "");
+    setFolderDefaultShowDetailedHours(folder.defaultShowDetailedHours);
     setFolderDialogOpen(true);
   };
 
@@ -361,6 +364,7 @@ export function FolderTree({
         const clearDefaultCurrency = !folderDefaultCurrency && !!editingFolder.defaultCurrency;
         const clearDefaultPaymentTerms = !folderDefaultPaymentTerms && !!editingFolder.defaultPaymentTerms;
         const clearDefaultJobTitle = !folderDefaultJobTitle && !!editingFolder.defaultJobTitle;
+        const clearDefaultShowDetailedHours = folderDefaultShowDetailedHours === undefined && editingFolder.defaultShowDetailedHours !== undefined;
 
         await updateFolder({
           folderId: editingFolder._id,
@@ -373,11 +377,13 @@ export function FolderTree({
           defaultCurrency: folderDefaultCurrency,
           defaultPaymentTerms: folderDefaultPaymentTerms,
           defaultJobTitle: folderDefaultJobTitle || undefined,
+          defaultShowDetailedHours: folderDefaultShowDetailedHours,
           clearClientProfiles,
           clearDefaultHourlyRate,
           clearDefaultCurrency,
           clearDefaultPaymentTerms,
           clearDefaultJobTitle,
+          clearDefaultShowDetailedHours,
         });
         toast({ title: "Folder updated" });
       } else {
@@ -392,6 +398,7 @@ export function FolderTree({
           defaultCurrency: folderDefaultCurrency,
           defaultPaymentTerms: folderDefaultPaymentTerms,
           defaultJobTitle: folderDefaultJobTitle || undefined,
+          defaultShowDetailedHours: folderDefaultShowDetailedHours,
         });
         toast({ title: "Folder created" });
 
@@ -536,7 +543,8 @@ export function FolderTree({
 
       {/* All Invoices Option */}
       {showAllInvoices && (
-        <div
+        <Link
+          href="/"
           className={cn(
             "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors",
             selectedFolderId === undefined
@@ -552,12 +560,13 @@ export function FolderTree({
               {allInvoicesCount}
             </Badge>
           )}
-        </div>
+        </Link>
       )}
 
       {/* Uncategorized Option - invoices not in any folder */}
       {showUncategorized && (
-        <div
+        <Link
+          href="/folders/uncategorized"
           className={cn(
             "flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors",
             selectedFolderId === UNCATEGORIZED_FOLDER
@@ -573,7 +582,7 @@ export function FolderTree({
               {uncategorizedCount}
             </Badge>
           )}
-        </div>
+        </Link>
       )}
 
       {/* Folder Tree */}
@@ -780,6 +789,24 @@ export function FolderTree({
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label>Display Settings</Label>
+                <label className="flex items-center gap-3 p-3 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={folderDefaultShowDetailedHours === true}
+                    onChange={(e) => setFolderDefaultShowDetailedHours(e.target.checked ? true : undefined)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">Show detailed hours by default</span>
+                    <span className="text-xs text-muted-foreground">
+                      New invoices will display the daily hours table in the PDF
+                    </span>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -884,13 +911,13 @@ export function FolderBreadcrumb({ folderId, onNavigate }: FolderBreadcrumbProps
   if (folderId === UNCATEGORIZED_FOLDER) {
     return (
       <nav className="flex items-center gap-1 text-sm">
-        <button
-          type="button"
+        <Link
+          href="/"
           className="text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => onNavigate(undefined)}
         >
           All
-        </button>
+        </Link>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium">Uncategorized</span>
       </nav>
@@ -903,26 +930,26 @@ export function FolderBreadcrumb({ folderId, onNavigate }: FolderBreadcrumbProps
 
   return (
     <nav className="flex items-center gap-1 text-sm">
-      <button
-        type="button"
+      <Link
+        href="/"
         className="text-muted-foreground hover:text-foreground transition-colors"
         onClick={() => onNavigate(undefined)}
       >
         All
-      </button>
+      </Link>
       {path.map((item, index) => (
         <span key={item._id} className="flex items-center gap-1">
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
           {index === path.length - 1 ? (
             <span className="font-medium">{item.name}</span>
           ) : (
-            <button
-              type="button"
+            <Link
+              href={`/folders/${item._id}`}
               className="text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => onNavigate(item._id as Id<"invoiceFolders">)}
             >
               {item.name}
-            </button>
+            </Link>
           )}
         </span>
       ))}

@@ -169,6 +169,7 @@ export default defineSchema({
       )
     ),
     defaultJobTitle: v.optional(v.string()),
+    defaultShowDetailedHours: v.optional(v.boolean()),
 
     // Timestamps
     createdAt: v.number(),

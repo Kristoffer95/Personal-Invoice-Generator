@@ -24,6 +24,9 @@ interface TemplateState {
   // All saved templates
   savedTemplates: InvoiceTemplate[]
 
+  // Default template ID for quick exports
+  defaultTemplateId: string | null
+
   // Selected element
   selectedElementId: string | null
 
@@ -45,6 +48,11 @@ interface TemplateState {
   loadTemplate: (id: string) => void
   deleteTemplate: (id: string) => void
   duplicateTemplate: (id: string) => InvoiceTemplate | null
+
+  // Default template actions
+  setDefaultTemplate: (id: string) => void
+  clearDefaultTemplate: () => void
+  getDefaultTemplate: () => InvoiceTemplate | null
 
   // Element actions
   addElement: (element: Omit<TemplateElement, 'id'>) => string
@@ -119,6 +127,7 @@ export const useTemplateStore = create<TemplateState>()(
     (set, get) => ({
       currentTemplate: null,
       savedTemplates: [],
+      defaultTemplateId: null,
       selectedElementId: null,
       editorSettings: defaultEditorSettings,
       history: [],
@@ -207,6 +216,9 @@ export const useTemplateStore = create<TemplateState>()(
           savedTemplates: state.savedTemplates.filter((t) => t.id !== id),
           currentTemplate:
             state.currentTemplate?.id === id ? null : state.currentTemplate,
+          // Clear defaultTemplateId if the deleted template was the default
+          defaultTemplateId:
+            state.defaultTemplateId === id ? null : state.defaultTemplateId,
         })),
 
       duplicateTemplate: (id) => {
@@ -233,6 +245,48 @@ export const useTemplateStore = create<TemplateState>()(
         }))
 
         return duplicated
+      },
+
+      // Default template actions
+      setDefaultTemplate: (id) =>
+        set((state) => {
+          // Verify template exists
+          const templateExists = state.savedTemplates.some((t) => t.id === id)
+          if (!templateExists) return state
+
+          return {
+            defaultTemplateId: id,
+            // Update isDefault flag on all templates
+            savedTemplates: state.savedTemplates.map((t) => ({
+              ...t,
+              isDefault: t.id === id,
+            })),
+            // Also update current template if it matches
+            currentTemplate:
+              state.currentTemplate?.id === id
+                ? { ...state.currentTemplate, isDefault: true }
+                : state.currentTemplate
+                  ? { ...state.currentTemplate, isDefault: false }
+                  : null,
+          }
+        }),
+
+      clearDefaultTemplate: () =>
+        set((state) => ({
+          defaultTemplateId: null,
+          savedTemplates: state.savedTemplates.map((t) => ({
+            ...t,
+            isDefault: false,
+          })),
+          currentTemplate: state.currentTemplate
+            ? { ...state.currentTemplate, isDefault: false }
+            : null,
+        })),
+
+      getDefaultTemplate: () => {
+        const state = get()
+        if (!state.defaultTemplateId) return null
+        return state.savedTemplates.find((t) => t.id === state.defaultTemplateId) || null
       },
 
       // Element actions
@@ -744,6 +798,7 @@ export const useTemplateStore = create<TemplateState>()(
       name: 'template-storage',
       partialize: (state) => ({
         savedTemplates: state.savedTemplates,
+        defaultTemplateId: state.defaultTemplateId,
         editorSettings: state.editorSettings,
       }),
     }

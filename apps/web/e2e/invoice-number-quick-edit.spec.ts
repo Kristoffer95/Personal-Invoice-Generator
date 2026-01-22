@@ -3,8 +3,10 @@ import { test, expect } from '@playwright/test'
 test.describe('Invoice Number Quick Edit', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the invoices page (E2E_TESTING env var bypasses auth in middleware)
-    await page.goto('/invoices')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/')
+    // Use domcontentloaded instead of networkidle since Convex keeps websocket connections open
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
   })
 
   test.describe('Quick Edit Trigger', () => {
@@ -217,8 +219,9 @@ test.describe('Invoice Number Quick Edit', () => {
 
 test.describe('Invoice Status Colors', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/invoices')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
   })
 
   test('should display status badges with appropriate colors', async ({ page }) => {
@@ -287,14 +290,15 @@ test.describe('Invoice Numbering on Empty Folder', () => {
   test('should start with 001 when creating first invoice in folder', async ({ page }) => {
     // Navigate to main invoice creation page
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
 
-    // Open settings to check invoice number
-    await page.getByLabel(/Settings/i).first().click()
+    // Open settings to check invoice number - use button role with exact match
+    await page.getByRole('button', { name: 'Settings', exact: true }).first().click()
     await expect(page.getByRole('heading', { name: /Invoice Settings/i })).toBeVisible({ timeout: 10000 })
 
-    // Look for invoice number input
-    const invoiceNumberInput = page.getByLabel(/Invoice Number/i)
+    // Look for invoice number input - use placeholder pattern
+    const invoiceNumberInput = page.getByPlaceholder(/INV-/i)
     await expect(invoiceNumberInput).toBeVisible({ timeout: 5000 })
 
     // Check if it starts with 001 or a padded number format
@@ -309,8 +313,8 @@ test.describe('Invoice Numbering on Empty Folder', () => {
 
 test.describe('Security - Invoice Number Quick Edit', () => {
   test('should prevent XSS in invoice number input', async ({ page }) => {
-    await page.goto('/invoices')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(2000)
 
     const invoiceCard = page.locator('[role="article"]').first().or(page.locator('.card').first())
@@ -342,8 +346,8 @@ test.describe('Security - Invoice Number Quick Edit', () => {
   })
 
   test('should enforce maxLength on input', async ({ page }) => {
-    await page.goto('/invoices')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(2000)
 
     const invoiceCard = page.locator('[role="article"]').first().or(page.locator('.card').first())

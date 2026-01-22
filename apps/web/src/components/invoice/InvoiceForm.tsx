@@ -24,10 +24,16 @@ import { FinancialSettings } from './FinancialSettings'
 import { PageSizeSelector } from './PageSizeSelector'
 import { InvoiceSummary } from './InvoiceSummary'
 import { InvoicePreview } from './InvoicePreview'
-import type { Invoice, PageSizeKey } from '@invoice-generator/shared-types'
+import type { Invoice, PageSizeKey, InvoiceTemplate } from '@invoice-generator/shared-types'
+import { ExportButton } from '@/components/export'
+
+interface ExportOptions {
+  template?: InvoiceTemplate
+  theme?: 'light' | 'dark'
+}
 
 interface InvoiceFormProps {
-  onExportPDF: (invoice: Invoice) => Promise<void>
+  onExportPDF: (invoice: Invoice, options?: ExportOptions) => Promise<void>
 }
 
 export interface ValidationErrors {
@@ -208,10 +214,40 @@ export function InvoiceForm({ onExportPDF }: InvoiceFormProps) {
             <Eye className="mr-2 h-4 w-4" />
             Preview
           </Button>
-          <Button onClick={handleExport} disabled={isExporting}>
-            <FileDown className="mr-2 h-4 w-4" />
-            {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
+          <ExportButton
+            invoice={currentInvoice as Invoice}
+            backgroundDesign={backgroundDesigns.find(d => d.id === currentInvoice.backgroundDesignId)}
+            onExportPDF={async (invoice, options) => {
+              if (!validateInvoice()) {
+                toast({
+                  title: 'Cannot export',
+                  description: 'Please fill in required fields (marked in red) before exporting.',
+                  variant: 'destructive',
+                })
+                return
+              }
+              setIsExporting(true)
+              try {
+                const saved = saveInvoice()
+                if (saved) {
+                  await onExportPDF(saved, options)
+                  toast({
+                    title: 'PDF exported',
+                    description: 'Your invoice has been downloaded.',
+                  })
+                }
+              } catch {
+                toast({
+                  title: 'Export failed',
+                  description: 'There was an error exporting the PDF.',
+                  variant: 'destructive',
+                })
+              } finally {
+                setIsExporting(false)
+              }
+            }}
+            disabled={isExporting}
+          />
         </div>
       </div>
 
@@ -509,13 +545,33 @@ export function InvoiceForm({ onExportPDF }: InvoiceFormProps) {
             <Button variant="outline" onClick={() => setShowPreview(false)}>
               Close
             </Button>
-            <Button onClick={async () => {
-              setShowPreview(false)
-              await handleExport()
-            }} disabled={isExporting}>
-              <FileDown className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
+            <ExportButton
+              invoice={currentInvoice as Invoice}
+              backgroundDesign={backgroundDesigns.find(d => d.id === currentInvoice.backgroundDesignId)}
+              onExportPDF={async (invoice, options) => {
+                setShowPreview(false)
+                setIsExporting(true)
+                try {
+                  const saved = saveInvoice()
+                  if (saved) {
+                    await onExportPDF(saved, options)
+                    toast({
+                      title: 'PDF exported',
+                      description: 'Your invoice has been downloaded.',
+                    })
+                  }
+                } catch {
+                  toast({
+                    title: 'Export failed',
+                    description: 'There was an error exporting the PDF.',
+                    variant: 'destructive',
+                  })
+                } finally {
+                  setIsExporting(false)
+                }
+              }}
+              disabled={isExporting}
+            />
           </div>
         </DialogContent>
       </Dialog>

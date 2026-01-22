@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import {
   format,
@@ -25,9 +25,13 @@ import {
   DollarSign,
   ChevronUp,
   User,
-  FolderOpen,
   Cloud,
   CloudOff,
+  Palette,
+  Sun,
+  Moon,
+  Star,
+  ArrowLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,6 +58,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { useInvoiceStore } from '@/lib/store'
+import { useTemplateStore } from '@/lib/template-store'
 import { cn } from '@/lib/utils'
 import {
   detectInvoicePeriod,
@@ -65,19 +70,28 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { PartyInfoForm } from './PartyInfoForm'
 import { LineItemsEditor } from './LineItemsEditor'
-import { BackgroundSelector } from './BackgroundSelector'
 import { PageSizeSelector } from './PageSizeSelector'
 import { InvoicePreview } from './InvoicePreview'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useInvoice, useInvoiceMutations, useNextInvoiceNumberForFolder } from '@/hooks/use-invoices'
 import { useClientMutations } from '@/hooks/use-client-profiles'
 import { useFolderWithClientProfiles } from '@/hooks/use-invoice-folders'
-import type { Invoice, PageSizeKey, DailyWorkHours } from '@invoice-generator/shared-types'
+import type { Invoice, PageSizeKey, DailyWorkHours, InvoiceTemplate } from '@invoice-generator/shared-types'
 import { CURRENCY_SYMBOLS } from '@invoice-generator/shared-types'
 import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
+import { ExportButton } from '@/components/export'
+
+interface ExportOptions {
+  template?: InvoiceTemplate
+  theme?: 'light' | 'dark'
+}
 
 interface InvoiceCalendarPageProps {
-  onExportPDF: (invoice: Invoice) => Promise<void>
+  /** Folder ID for the invoice. undefined = uncategorized */
+  folderId?: string
+  /** Invoice ID when editing an existing invoice */
+  invoiceId?: Id<'invoices'>
+  onExportPDF: (invoice: Invoice, options?: ExportOptions) => Promise<void>
 }
 
 interface ValidationErrors {
@@ -88,9 +102,7 @@ interface ValidationErrors {
   defaultHoursPerDay?: boolean
 }
 
-export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: InvoiceCalendarPageProps) {
   const { toast } = useToast()
   const [isExporting, setIsExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -110,24 +122,26 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   const { createInvoice, updateInvoice } = useInvoiceMutations()
   const { upsertFromInvoice: saveClientFromInvoice } = useClientMutations()
 
-  // Get invoice ID and folder ID from URL params
-  const invoiceIdParam = searchParams.get('invoiceId')
-  const folderIdParam = searchParams.get('folderId')
-  const { invoice: loadedInvoice } = useInvoice(invoiceIdParam as Id<'invoices'> | undefined)
+  // Use props for invoice and folder IDs
+  const { invoice: loadedInvoice } = useInvoice(invoiceId)
 
   // Get next invoice number based on folder - this is now folder-scoped
   // For new invoices in a folder, use the folder ID from URL params
   // Otherwise, use undefined for unfiled invoices
-  const folderIdForInvoiceNumber = folderIdParam && !invoiceIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined
+  const folderIdForInvoiceNumber = folderId && !invoiceId ? (folderId as Id<'invoiceFolders'>) : undefined
   const { formatted: nextInvoiceNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumberForFolder(folderIdForInvoiceNumber)
 
   // Get folder with client profiles for auto-filling new invoices
   const { folder: linkedFolder, clientProfiles: folderClientProfiles } = useFolderWithClientProfiles(
-    folderIdParam && !invoiceIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined
+    folderId && !invoiceId ? (folderId as Id<'invoiceFolders'>) : undefined
   )
   const [hasAppliedFolderDefaults, setHasAppliedFolderDefaults] = useState(false)
   const [showClientSelector, setShowClientSelector] = useState(false)
   const [pendingClientSelection, setPendingClientSelection] = useState(false)
+
+  // Preview style selection - 'classic-light', 'classic-dark', or template ID
+  const [previewStyleId, setPreviewStyleId] = useState<string>('classic-light')
+  const { savedTemplates } = useTemplateStore()
 
   const {
     currentInvoice,
@@ -143,7 +157,6 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     updateLineItem,
     removeLineItem,
     setPageSize,
-    setBackgroundDesign,
     setHourlyRate,
     updateScheduleConfig,
     saveInvoice,
@@ -202,7 +215,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   // Auto-fill from user profile for new invoices - ALWAYS apply user profile data
   // This ensures the logged-in user's business details are pre-filled every time
   useEffect(() => {
-    if (profileData && authUser && userProfile && !hasAppliedProfile && !invoiceIdParam) {
+    if (profileData && authUser && userProfile && !hasAppliedProfile && !invoiceId) {
       setHasAppliedProfile(true)
 
       // Build the name from profile or user data
@@ -234,11 +247,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         }
       }
     }
-  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceIdParam, updateFromInfo, updateCurrentInvoice])
+  }, [profileData, authUser, userProfile, hasAppliedProfile, invoiceId, updateFromInfo, updateCurrentInvoice])
 
   // Auto-fill from folder's linked client profiles and default settings for new invoices
   useEffect(() => {
-    if (linkedFolder && !hasAppliedFolderDefaults && !invoiceIdParam && !pendingClientSelection) {
+    if (linkedFolder && !hasAppliedFolderDefaults && !invoiceId && !pendingClientSelection) {
       // Handle client profiles based on count:
       // 0 clients → no auto-fill (manual entry)
       // 1 client → auto-fill with that client
@@ -293,6 +306,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
           updates.jobTitle = linkedFolder.defaultJobTitle
         }
 
+        // Apply defaultShowDetailedHours if set in folder
+        if (linkedFolder.defaultShowDetailedHours !== undefined) {
+          updates.showDetailedHours = linkedFolder.defaultShowDetailedHours
+        }
+
         if (Object.keys(updates).length > 0) {
           updateCurrentInvoice(updates)
         }
@@ -302,7 +320,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     linkedFolder,
     folderClientProfiles,
     hasAppliedFolderDefaults,
-    invoiceIdParam,
+    invoiceId,
     pendingClientSelection,
     currentInvoice.to?.name,
     currentInvoice.hourlyRate,
@@ -354,6 +372,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         updates.jobTitle = linkedFolder.defaultJobTitle
       }
 
+      // Apply defaultShowDetailedHours if set in folder
+      if (linkedFolder.defaultShowDetailedHours !== undefined) {
+        updates.showDetailedHours = linkedFolder.defaultShowDetailedHours
+      }
+
       if (Object.keys(updates).length > 0) {
         updateCurrentInvoice(updates)
       }
@@ -386,6 +409,11 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         updates.jobTitle = linkedFolder.defaultJobTitle
       }
 
+      // Apply defaultShowDetailedHours if set in folder
+      if (linkedFolder.defaultShowDetailedHours !== undefined) {
+        updates.showDetailedHours = linkedFolder.defaultShowDetailedHours
+      }
+
       if (Object.keys(updates).length > 0) {
         updateCurrentInvoice(updates)
       }
@@ -394,10 +422,10 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
 
   // Auto-generate invoice number from profile settings
   useEffect(() => {
-    if (nextInvoiceNumber && !currentInvoice.invoiceNumber && !invoiceIdParam) {
+    if (nextInvoiceNumber && !currentInvoice.invoiceNumber && !invoiceId) {
       updateCurrentInvoice({ invoiceNumber: nextInvoiceNumber })
     }
-  }, [nextInvoiceNumber, currentInvoice.invoiceNumber, invoiceIdParam, updateCurrentInvoice])
+  }, [nextInvoiceNumber, currentInvoice.invoiceNumber, invoiceId, updateCurrentInvoice])
 
   // Set issue date to today on mount if not already set
   useEffect(() => {
@@ -570,7 +598,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
     setIsSavingToCloud(true)
     try {
       const invoiceData = {
-        folderId: folderIdParam ? (folderIdParam as Id<'invoiceFolders'>) : undefined,
+        folderId: folderId ? (folderId as Id<'invoiceFolders'>) : undefined,
         invoiceNumber: currentInvoice.invoiceNumber!,
         status: currentInvoice.status ?? 'DRAFT',
         issueDate: currentInvoice.issueDate ?? format(new Date(), 'yyyy-MM-dd'),
@@ -604,10 +632,10 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
         pageSize: currentInvoice.pageSize ?? 'A4',
       }
 
-      if (invoiceIdParam) {
+      if (invoiceId) {
         // Update existing invoice
         await updateInvoice({
-          invoiceId: invoiceIdParam as Id<'invoices'>,
+          invoiceId: invoiceId as Id<'invoices'>,
           ...invoiceData,
         })
         toast({
@@ -641,8 +669,8 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
   }, [
     validateInvoice,
     currentInvoice,
-    invoiceIdParam,
-    folderIdParam,
+    invoiceId,
+    folderId,
     createInvoice,
     updateInvoice,
     saveClientFromInvoice,
@@ -774,33 +802,61 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
 
   const currencySymbol = CURRENCY_SYMBOLS[currentInvoice.currency || 'USD']
 
+  // Get selected template for preview (if custom template is selected)
+  const selectedPreviewTemplate = useMemo(() => {
+    if (previewStyleId === 'classic-light' || previewStyleId === 'classic-dark') {
+      return undefined
+    }
+    return savedTemplates.find((t) => t.id === previewStyleId)
+  }, [previewStyleId, savedTemplates])
+
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       {/* Header - Responsive with mobile menu */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:px-4 md:px-6">
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-bold sm:text-xl">Invoice Generator</h1>
-            {selectedPeriod && (
-              <p className="truncate text-xs text-muted-foreground sm:text-sm">
-                {selectedPeriod.label}
-                {selectedPeriod.isAutoDetected && !isManualOverride && (
-                  <span className="ml-1 text-xs text-primary sm:ml-2">(Auto)</span>
-                )}
-              </p>
-            )}
-          </div>
-          {/* Desktop action buttons */}
+        <div className="flex h-14 items-center sm:h-16">
+          {/* Back button - Outside container */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="shrink-0 ml-2 sm:ml-4" asChild>
+                  <Link href={folderId ? `/folders/${folderId}` : '/'}>
+                    <ArrowLeft className="h-5 w-5" />
+                    <span className="sr-only">Back to invoices</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Back to invoices</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Main header content in container */}
+          <div className="container mx-auto flex flex-1 items-center justify-between gap-2 px-3 sm:px-4 md:px-6">
+            {/* Title */}
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-lg font-bold sm:text-xl">Invoice Generator</h1>
+              {selectedPeriod && (
+                <p className="truncate text-xs text-muted-foreground sm:text-sm">
+                  {selectedPeriod.label}
+                  {selectedPeriod.isAutoDetected && !isManualOverride && (
+                    <span className="ml-1 text-xs text-primary sm:ml-2">(Auto)</span>
+                  )}
+                </p>
+              )}
+            </div>
+            {/* Desktop action buttons */}
           <div className="hidden items-center gap-1.5 sm:flex sm:gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => router.push('/invoices')}>
-                    <FolderOpen className="mr-1.5 h-4 w-4 sm:mr-2" />
-                    <span className="hidden md:inline">Invoices</span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/style-editor">
+                      <Palette className="mr-1.5 h-4 w-4 sm:mr-2" />
+                      <span className="hidden md:inline">Style Editor</span>
+                    </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>View all invoices</TooltipContent>
+                <TooltipContent>Custom invoice template editor</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <Button variant="outline" size="sm" onClick={handleReset}>
@@ -831,18 +887,51 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               <Eye className="mr-1.5 h-4 w-4 sm:mr-2" />
               <span className="hidden md:inline">Preview</span>
             </Button>
-            <Button size="sm" onClick={handleExport} disabled={isExporting}>
-              <FileDown className="mr-1.5 h-4 w-4 sm:mr-2" />
-              <span className="hidden md:inline">{isExporting ? 'Exporting...' : 'Export'}</span>
-            </Button>
+            <ExportButton
+              invoice={currentInvoice as Invoice}
+              backgroundDesign={backgroundDesigns.find((d) => d.id === currentInvoice.backgroundDesignId)}
+              onExportPDF={async (invoice, options) => {
+                if (!validateInvoice()) {
+                  toast({
+                    title: 'Cannot export',
+                    description: 'Please fill in required fields: Invoice Number, From/To names, Hourly Rate, and Hours/Day.',
+                    variant: 'destructive',
+                  })
+                  return
+                }
+                setIsExporting(true)
+                try {
+                  const saved = saveInvoice()
+                  if (saved) {
+                    await onExportPDF(saved, options)
+                    toast({
+                      title: 'PDF exported',
+                      description: 'Your invoice has been downloaded.',
+                    })
+                  }
+                } catch {
+                  toast({
+                    title: 'Export failed',
+                    description: 'There was an error exporting the PDF.',
+                    variant: 'destructive',
+                  })
+                } finally {
+                  setIsExporting(false)
+                }
+              }}
+              disabled={isExporting}
+              size="sm"
+            />
             <Separator orientation="vertical" className="mx-1 h-6" />
             <ThemeToggle />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => router.push('/profile')}>
-                    <User className="h-4 w-4" />
-                    <span className="sr-only">Profile</span>
+                  <Button variant="outline" size="icon" asChild>
+                    <Link href="/profile">
+                      <User className="h-4 w-4" />
+                      <span className="sr-only">Profile</span>
+                    </Link>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Profile settings</TooltipContent>
@@ -862,6 +951,7 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               <span className="sr-only">Settings</span>
             </Button>
             <UserButton afterSignOutUrl="/sign-in" />
+          </div>
           </div>
         </div>
       </header>
@@ -1265,10 +1355,45 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               <Eye className="h-4 w-4" />
               <span className="sr-only">Preview</span>
             </Button>
-            <Button size="sm" onClick={handleExport} disabled={isExporting} className="h-8 px-3">
-              <FileDown className="mr-1.5 h-4 w-4" />
-              Export
-            </Button>
+            <ExportButton
+              invoice={currentInvoice as Invoice}
+              backgroundDesign={backgroundDesigns.find((d) => d.id === currentInvoice.backgroundDesignId)}
+              onExportPDF={async (invoice, options) => {
+                if (!validateInvoice()) {
+                  toast({
+                    title: 'Cannot export',
+                    description: 'Please fill in required fields.',
+                    variant: 'destructive',
+                  })
+                  if (validationErrors.hourlyRate || validationErrors.defaultHoursPerDay) {
+                    setShowMobileQuickSettings(true)
+                  }
+                  return
+                }
+                setIsExporting(true)
+                try {
+                  const saved = saveInvoice()
+                  if (saved) {
+                    await onExportPDF(saved, options)
+                    toast({
+                      title: 'PDF exported',
+                      description: 'Your invoice has been downloaded.',
+                    })
+                  }
+                } catch {
+                  toast({
+                    title: 'Export failed',
+                    description: 'There was an error exporting the PDF.',
+                    variant: 'destructive',
+                  })
+                } finally {
+                  setIsExporting(false)
+                }
+              }}
+              disabled={isExporting}
+              size="sm"
+              className="h-8"
+            />
           </div>
         </div>
       </div>
@@ -1467,17 +1592,10 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
               {/* Design */}
               <div className="space-y-4">
                 <h3 className="font-semibold">Design</h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <BackgroundSelector
-                    designs={backgroundDesigns}
-                    selectedId={currentInvoice.backgroundDesignId}
-                    onSelect={setBackgroundDesign}
-                  />
-                  <PageSizeSelector
-                    selectedSize={(currentInvoice.pageSize as PageSizeKey) || 'A4'}
-                    onSelect={setPageSize}
-                  />
-                </div>
+                <PageSizeSelector
+                  selectedSize={(currentInvoice.pageSize as PageSizeKey) || 'A4'}
+                  onSelect={setPageSize}
+                />
               </div>
 
               <Separator />
@@ -1528,11 +1646,52 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Invoice Preview</DialogTitle>
           </DialogHeader>
+
+          {/* Style Selector */}
+          <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+            <span className="text-sm text-muted-foreground">Style:</span>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                variant={previewStyleId === 'classic-light' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setPreviewStyleId('classic-light')}
+                className="h-8 gap-1.5"
+              >
+                <Sun className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Classic Light</span>
+                <span className="sm:hidden">Light</span>
+              </Button>
+              <Button
+                variant={previewStyleId === 'classic-dark' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setPreviewStyleId('classic-dark')}
+                className="h-8 gap-1.5"
+              >
+                <Moon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Classic Dark</span>
+                <span className="sm:hidden">Dark</span>
+              </Button>
+              {savedTemplates.map((template) => (
+                <Button
+                  key={template.id}
+                  variant={previewStyleId === template.id ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewStyleId(template.id)}
+                  className="h-8 gap-1.5"
+                >
+                  {template.isDefault && <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />}
+                  <span className="max-w-[100px] truncate">{template.name}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex-1 overflow-auto">
             {showPreview && (
               <InvoicePreview
                 invoice={currentInvoice as Invoice}
                 backgroundDesign={backgroundDesigns.find((d) => d.id === currentInvoice.backgroundDesignId)}
+                template={selectedPreviewTemplate}
               />
             )}
           </div>
@@ -1540,17 +1699,42 @@ export function InvoiceCalendarPage({ onExportPDF }: InvoiceCalendarPageProps) {
             <Button variant="outline" onClick={() => setShowPreview(false)} className="w-full sm:w-auto">
               Close
             </Button>
-            <Button
-              onClick={async () => {
-                setShowPreview(false)
-                await handleExport()
-              }}
-              disabled={isExporting}
-              className="w-full sm:w-auto"
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
+            <div className="w-full sm:w-auto">
+              <ExportButton
+                invoice={currentInvoice as Invoice}
+                backgroundDesign={backgroundDesigns.find((d) => d.id === currentInvoice.backgroundDesignId)}
+                onExportPDF={async (invoice, options) => {
+                  setShowPreview(false)
+                  setIsExporting(true)
+                  try {
+                    const saved = saveInvoice()
+                    if (saved) {
+                      // Use preview style if no explicit options provided
+                      const exportOptions = options || (selectedPreviewTemplate
+                        ? { template: selectedPreviewTemplate }
+                        : previewStyleId === 'classic-dark'
+                          ? { theme: 'dark' as const }
+                          : { theme: 'light' as const })
+                      await onExportPDF(saved, exportOptions)
+                      toast({
+                        title: 'PDF exported',
+                        description: 'Your invoice has been downloaded.',
+                      })
+                    }
+                  } catch {
+                    toast({
+                      title: 'Export failed',
+                      description: 'There was an error exporting the PDF.',
+                      variant: 'destructive',
+                    })
+                  } finally {
+                    setIsExporting(false)
+                  }
+                }}
+                disabled={isExporting}
+                className="w-full"
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>

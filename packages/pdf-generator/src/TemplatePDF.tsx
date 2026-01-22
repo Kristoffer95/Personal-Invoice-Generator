@@ -520,9 +520,9 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   const pageSize = PAGE_SIZES[template.pageSize as PageSizeKey] || PAGE_SIZES.A4
   const tokenValues = buildTokenValues(invoice)
 
-  // Sort elements by z-index
+  // Sort elements by z-index, filter out hidden elements (visible defaults to true)
   const sortedElements = [...template.elements]
-    .filter((el) => el.visible)
+    .filter((el) => el.visible !== false)
     .sort((a, b) => a.zIndex - b.zIndex)
 
   const renderElement = (element: TemplateElement) => {
@@ -530,7 +530,7 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
       case 'text':
         return renderTextElement(element, tokenValues)
       case 'table_work_hours':
-        return renderWorkHoursTable(element, invoice, tokenValues)
+        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, tokenValues) : null
       case 'table_line_items':
         return renderLineItemsTable(element, invoice, tokenValues)
       case 'table_summary':

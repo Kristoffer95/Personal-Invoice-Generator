@@ -244,8 +244,9 @@ describe('FolderTree', () => {
       />
     )
 
-    const allItem = screen.getByText('All').closest('div')
-    expect(allItem?.className).toContain('bg-primary')
+    // The All link has bg-primary/10 when selected (not bg-primary)
+    const allItem = screen.getByText('All').closest('a')
+    expect(allItem?.className).toContain('bg-primary/10')
   })
 
   it('opens create folder dialog when add button is clicked', async () => {

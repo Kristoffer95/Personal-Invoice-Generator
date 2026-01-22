@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import {
   Type,
   Hash,
@@ -58,28 +57,21 @@ interface DraggableElementProps {
 }
 
 function DraggableElement({ id, name, description, icon }: DraggableElementProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     data: { type: 'panel-element' },
   })
-
-  const style = transform
-    ? {
-        transform: CSS.Translate.toString(transform),
-      }
-    : undefined
 
   const IconComponent = iconMap[icon] || Type
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...listeners}
       {...attributes}
       className={cn(
         'flex cursor-grab items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-accent/50',
-        isDragging && 'opacity-50 cursor-grabbing'
+        isDragging && 'opacity-0 cursor-grabbing'
       )}
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">

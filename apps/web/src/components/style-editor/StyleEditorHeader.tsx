@@ -15,6 +15,7 @@ import {
   Magnet,
   MoreVertical,
   FileText,
+  Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,8 +37,12 @@ import { useTemplateStore } from '@/lib/template-store'
 export function StyleEditorHeader() {
   const {
     currentTemplate,
+    savedTemplates,
+    defaultTemplateId,
     updateCurrentTemplate,
     saveCurrentTemplate,
+    setDefaultTemplate,
+    clearDefaultTemplate,
     editorSettings,
     toggleRulers,
     toggleGrid,
@@ -50,6 +55,26 @@ export function StyleEditorHeader() {
     canUndo,
     canRedo,
   } = useTemplateStore()
+
+  // Check if current template is saved (exists in savedTemplates)
+  const isTemplateSaved = currentTemplate
+    ? savedTemplates.some((t) => t.id === currentTemplate.id)
+    : false
+
+  // Check if current template is the default
+  const isCurrentTemplateDefault = currentTemplate
+    ? defaultTemplateId === currentTemplate.id
+    : false
+
+  const handleToggleDefault = () => {
+    if (!currentTemplate || !isTemplateSaved) return
+
+    if (isCurrentTemplateDefault) {
+      clearDefaultTemplate()
+    } else {
+      setDefaultTemplate(currentTemplate.id)
+    }
+  }
 
   const [isEditing, setIsEditing] = useState(false)
   const [tempName, setTempName] = useState(currentTemplate?.name ?? '')
@@ -231,6 +256,29 @@ export function StyleEditorHeader() {
             <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
+
+          {/* Default toggle - only show when template is saved */}
+          {isTemplateSaved && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isCurrentTemplateDefault ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={handleToggleDefault}
+                  className={isCurrentTemplateDefault ? 'text-yellow-500' : ''}
+                >
+                  <Star
+                    className={`h-4 w-4 ${isCurrentTemplateDefault ? 'fill-current' : ''}`}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isCurrentTemplateDefault
+                  ? 'Remove as default export style'
+                  : 'Set as default export style'}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <Button size="sm" onClick={handleExportPDF}>
             <Download className="mr-2 h-4 w-4" />

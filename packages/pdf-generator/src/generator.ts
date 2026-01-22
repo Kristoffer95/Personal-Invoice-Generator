@@ -81,6 +81,30 @@ export async function generateTemplatePDFBlob(
 ): Promise<Blob> {
   const { template, invoice } = options
 
+  // Validate template has visible elements
+  const visibleElements = template.elements.filter((el) => el.visible !== false)
+  if (visibleElements.length === 0) {
+    console.warn(
+      '[PDF Generator] Warning: Template has no visible elements. The PDF may appear blank.',
+      { templateName: template.name, totalElements: template.elements.length }
+    )
+  }
+
+  // Check for elements positioned outside page bounds (in points, 1mm ≈ 2.83 points)
+  const pageWidthPts = 210 * 2.83465 // A4 default width
+  const pageHeightPts = 297 * 2.83465 // A4 default height
+  const outOfBounds = visibleElements.filter(
+    (el) =>
+      el.position.x + el.position.width > pageWidthPts ||
+      el.position.y + el.position.height > pageHeightPts
+  )
+  if (outOfBounds.length > 0) {
+    console.warn(
+      '[PDF Generator] Warning: Some elements may be positioned outside page bounds.',
+      outOfBounds.map((el) => ({ name: el.name, position: el.position }))
+    )
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const element = TemplatePDF({ template, invoice }) as any
 

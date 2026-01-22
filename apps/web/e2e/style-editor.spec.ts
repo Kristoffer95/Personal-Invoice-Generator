@@ -830,7 +830,8 @@ test.describe('Style Editor Responsive Design', () => {
   test('should still render on small screens', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/style-editor')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(1000)
 
     // Either the editor works on mobile or shows some content
     const content = await page.content()

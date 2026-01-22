@@ -161,6 +161,7 @@ export const createFolder = mutation({
     defaultCurrency: v.optional(currencyValidator),
     defaultPaymentTerms: v.optional(paymentTermsValidator),
     defaultJobTitle: v.optional(v.string()),
+    defaultShowDetailedHours: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUserFromIdentity(ctx);
@@ -212,6 +213,7 @@ export const createFolder = mutation({
       defaultCurrency: args.defaultCurrency,
       defaultPaymentTerms: args.defaultPaymentTerms,
       defaultJobTitle: args.defaultJobTitle,
+      defaultShowDetailedHours: args.defaultShowDetailedHours,
       createdAt: now,
       updatedAt: now,
     });
@@ -234,12 +236,14 @@ export const updateFolder = mutation({
     defaultCurrency: v.optional(currencyValidator),
     defaultPaymentTerms: v.optional(paymentTermsValidator),
     defaultJobTitle: v.optional(v.string()),
+    defaultShowDetailedHours: v.optional(v.boolean()),
     // Allow clearing optional fields by passing null
     clearClientProfiles: v.optional(v.boolean()),
     clearDefaultHourlyRate: v.optional(v.boolean()),
     clearDefaultCurrency: v.optional(v.boolean()),
     clearDefaultPaymentTerms: v.optional(v.boolean()),
     clearDefaultJobTitle: v.optional(v.boolean()),
+    clearDefaultShowDetailedHours: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUserFromIdentity(ctx);
@@ -306,6 +310,7 @@ export const updateFolder = mutation({
       clearDefaultCurrency,
       clearDefaultPaymentTerms,
       clearDefaultJobTitle,
+      clearDefaultShowDetailedHours,
       ...updates
     } = args;
 
@@ -329,6 +334,9 @@ export const updateFolder = mutation({
     }
     if (clearDefaultJobTitle) {
       patchData.defaultJobTitle = undefined;
+    }
+    if (clearDefaultShowDetailedHours) {
+      patchData.defaultShowDetailedHours = undefined;
     }
 
     await ctx.db.patch(folderId, patchData);

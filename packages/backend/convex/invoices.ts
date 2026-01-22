@@ -1694,7 +1694,7 @@ export const quickCreateInvoice = mutation({
       paymentTerms,
       bankDetails: userProfile?.bankDetails,
       jobTitle: folder.defaultJobTitle,
-      showDetailedHours: true,
+      showDetailedHours: folder.defaultShowDetailedHours ?? false,
       pdfTheme: "light",
       pageSize: "A4",
       createdAt: now,

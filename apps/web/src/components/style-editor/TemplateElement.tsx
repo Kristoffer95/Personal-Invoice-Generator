@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useDraggable } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
-import { Lock, Unlock, Move, CornerRightDown } from 'lucide-react'
+import { Lock, Move, CornerRightDown } from 'lucide-react'
 import { useTemplateStore } from '@/lib/template-store'
 import { cn } from '@/lib/utils'
 import type { TemplateElement as TemplateElementType } from '@invoice-generator/shared-types'
@@ -20,7 +19,7 @@ export function TemplateElement({ element, isSelected }: TemplateElementProps) {
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: element.id,
     data: { type: 'canvas-element' },
     disabled: element.locked,
@@ -33,7 +32,7 @@ export function TemplateElement({ element, isSelected }: TemplateElementProps) {
     width: element.position.width,
     height: element.position.height,
     zIndex: element.zIndex,
-    opacity: element.opacity,
+    opacity: isDragging ? 0.3 : element.opacity,
     backgroundColor: element.backgroundColor,
     padding: element.padding,
     ...(element.border && element.border.width > 0 && {
@@ -41,9 +40,6 @@ export function TemplateElement({ element, isSelected }: TemplateElementProps) {
       borderColor: element.border.color,
       borderStyle: element.border.style,
       borderRadius: element.border.radius,
-    }),
-    ...(transform && {
-      transform: CSS.Translate.toString(transform),
     }),
   }
 

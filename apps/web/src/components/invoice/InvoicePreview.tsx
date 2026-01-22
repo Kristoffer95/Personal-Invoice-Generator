@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Loader2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { Invoice, BackgroundDesign } from '@invoice-generator/shared-types'
+import type { Invoice, BackgroundDesign, InvoiceTemplate } from '@invoice-generator/shared-types'
 
 interface InvoicePreviewProps {
   invoice: Invoice
   backgroundDesign?: BackgroundDesign
+  /** Custom template to use for preview. If provided, uses template-based PDF generation. */
+  template?: InvoiceTemplate
 }
 
 /**
@@ -23,7 +25,7 @@ function isIOSOrSafari(): boolean {
   return isIOS || isSafari
 }
 
-export function InvoicePreview({ invoice, backgroundDesign }: InvoicePreviewProps) {
+export function InvoicePreview({ invoice, backgroundDesign, template }: InvoicePreviewProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,11 +48,12 @@ export function InvoicePreview({ invoice, backgroundDesign }: InvoicePreviewProp
         showDetailedHours: invoice.showDetailedHours,
         jobTitle: invoice.jobTitle,
         backgroundDesignId: backgroundDesign?.id,
+        templateId: template?.id,
       })
     } catch {
       return invoice.id || 'default'
     }
-  }, [invoice.id, invoice.invoiceNumber, invoice.totalAmount, invoice.showDetailedHours, invoice.jobTitle, backgroundDesign?.id])
+  }, [invoice.id, invoice.invoiceNumber, invoice.totalAmount, invoice.showDetailedHours, invoice.jobTitle, backgroundDesign?.id, template?.id])
 
   useEffect(() => {
     let isMounted = true
@@ -61,8 +64,16 @@ export function InvoicePreview({ invoice, backgroundDesign }: InvoicePreviewProp
         setIsLoading(true)
         setError(null)
 
-        const { generatePDFBlob } = await import('@invoice-generator/pdf-generator')
-        const blob = await generatePDFBlob({ invoice, backgroundDesign })
+        let blob: Blob
+        if (template) {
+          // Use template-based PDF generation
+          const { generateTemplatePDFBlob } = await import('@invoice-generator/pdf-generator')
+          blob = await generateTemplatePDFBlob({ template, invoice })
+        } else {
+          // Use classic PDF generation
+          const { generatePDFBlob } = await import('@invoice-generator/pdf-generator')
+          blob = await generatePDFBlob({ invoice, backgroundDesign })
+        }
 
         if (isMounted) {
           currentUrl = URL.createObjectURL(blob)
@@ -88,7 +99,7 @@ export function InvoicePreview({ invoice, backgroundDesign }: InvoicePreviewProp
         URL.revokeObjectURL(currentUrl)
       }
     }
-  }, [invoice, backgroundDesign, invoiceKey])
+  }, [invoice, backgroundDesign, template, invoiceKey])
 
   // Zoom controls - using button controls only
   const handleZoomIn = useCallback(() => {
