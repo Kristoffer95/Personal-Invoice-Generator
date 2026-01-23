@@ -13,13 +13,15 @@ describe('Authentication Configuration', () => {
       // These are the required environment variables for authentication
       const requiredEnvVars = [
         'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+        'CLERK_SECRET_KEY', // Required for middleware auth.protect()
         'NEXT_PUBLIC_CONVEX_URL',
       ]
 
       // This test documents the required variables
       // In production, these would be validated at build time
-      expect(requiredEnvVars).toHaveLength(2)
+      expect(requiredEnvVars).toHaveLength(3)
       expect(requiredEnvVars).toContain('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY')
+      expect(requiredEnvVars).toContain('CLERK_SECRET_KEY')
       expect(requiredEnvVars).toContain('NEXT_PUBLIC_CONVEX_URL')
     })
 
