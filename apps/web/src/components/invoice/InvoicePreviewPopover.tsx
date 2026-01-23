@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Eye, ExternalLink, Calendar, Clock, Loader2, Download } from "lucide-react";
+import { Eye, ExternalLink, Calendar, Clock, Loader2, Download, Sun, Moon, Star } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@invoice-generator/backend/convex/_generated/api";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
@@ -23,6 +23,8 @@ import { Separator } from "@/components/ui/separator";
 import { InvoiceStatusBadge } from "./InvoiceStatusSelect";
 import { InvoicePreview } from "./InvoicePreview";
 import { useInvoiceStore } from "@/lib/store";
+import { useTemplateStore } from "@/lib/template-store";
+import type { InvoiceTemplate } from "@invoice-generator/shared-types";
 
 interface InvoicePreviewPopoverProps {
   invoiceId: Id<"invoices">;
@@ -49,6 +51,8 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
   const [showFullPreview, setShowFullPreview] = useState(false);
   const invoice = useQuery(api.invoices.getInvoice, { invoiceId });
   const { backgroundDesigns } = useInvoiceStore();
+  const [previewStyleId, setPreviewStyleId] = useState<string>('classic-light');
+  const { savedTemplates } = useTemplateStore();
 
   const isLoading = invoice === undefined;
   const hasError = invoice === null;
@@ -108,11 +112,27 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
     return backgroundDesigns.find((d) => d.id === invoiceData.backgroundDesignId);
   }, [invoiceData?.backgroundDesignId, backgroundDesigns]);
 
+  const selectedPreviewTemplate = useMemo(() => {
+    if (previewStyleId === 'classic-light' || previewStyleId === 'classic-dark') {
+      return undefined;
+    }
+    return savedTemplates.find((t) => t.id === previewStyleId);
+  }, [previewStyleId, savedTemplates]);
+
   const handleExportPDF = async () => {
     if (!invoiceData) return;
-
-    const { downloadPDF } = await import("@invoice-generator/pdf-generator");
-    await downloadPDF({ invoice: invoiceData, backgroundDesign });
+    if (selectedPreviewTemplate) {
+      const { downloadTemplatePDF } = await import("@invoice-generator/pdf-generator");
+      await downloadTemplatePDF({ template: selectedPreviewTemplate, invoice: invoiceData });
+    } else {
+      const { downloadPDF } = await import("@invoice-generator/pdf-generator");
+      // Set pdfTheme based on selected style (theme is read from invoice.pdfTheme by the PDF generator)
+      const invoiceWithTheme = {
+        ...invoiceData,
+        pdfTheme: previewStyleId === 'classic-dark' ? 'dark' as const : 'light' as const,
+      };
+      await downloadPDF({ invoice: invoiceWithTheme, backgroundDesign });
+    }
   };
 
   return (
@@ -269,11 +289,50 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
               </div>
             </div>
           </DialogHeader>
+          {/* Style Selector */}
+          <div className="flex flex-wrap items-center gap-2 border-b px-6 pb-3">
+            <span className="text-sm text-muted-foreground">Style:</span>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                variant={previewStyleId === 'classic-light' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setPreviewStyleId('classic-light')}
+                className="h-8 gap-1.5"
+              >
+                <Sun className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Classic Light</span>
+                <span className="sm:hidden">Light</span>
+              </Button>
+              <Button
+                variant={previewStyleId === 'classic-dark' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setPreviewStyleId('classic-dark')}
+                className="h-8 gap-1.5"
+              >
+                <Moon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Classic Dark</span>
+                <span className="sm:hidden">Dark</span>
+              </Button>
+              {savedTemplates.map((template) => (
+                <Button
+                  key={template.id}
+                  variant={previewStyleId === template.id ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewStyleId(template.id)}
+                  className="h-8 gap-1.5"
+                >
+                  {template.isDefault && <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />}
+                  <span className="max-w-[100px] truncate">{template.name}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
           <div className="flex-1 overflow-hidden p-4">
             {invoiceData && (
               <InvoicePreview
                 invoice={invoiceData}
                 backgroundDesign={backgroundDesign}
+                template={selectedPreviewTemplate}
               />
             )}
           </div>

@@ -22,6 +22,15 @@ vi.mock('@invoice-generator/backend/convex/_generated/api', () => ({
   },
 }))
 
+// Mock template store
+const mockTemplateState = vi.hoisted(() => ({
+  savedTemplates: [] as Array<{ id: string; name: string; isDefault: boolean }>,
+}))
+
+vi.mock('@/lib/template-store', () => ({
+  useTemplateStore: () => mockTemplateState,
+}))
+
 // Import after mocks
 import { InvoicePreviewPopover } from './InvoicePreviewPopover'
 import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
@@ -672,6 +681,162 @@ describe('InvoicePreviewPopover', () => {
       await waitFor(() => {
         const phpAmounts = screen.getAllByText('₱50,000.00')
         expect(phpAmounts.length).toBeGreaterThanOrEqual(1)
+      })
+    })
+  })
+
+  describe('style selector in full preview modal', () => {
+    beforeEach(() => {
+      mockTemplateState.savedTemplates = []
+    })
+
+    it('displays style selector when full preview modal is open', async () => {
+      mockState.queryReturns['invoices:getInvoice'] = createMockInvoice()
+
+      render(<InvoicePreviewPopover invoiceId={'invoice_123' as Id<'invoices'>} />)
+
+      // Open popover and then full preview
+      const previewButton = screen.getByRole('button', { name: /preview invoice/i })
+      fireEvent.click(previewButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('View Full Invoice')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /view full invoice/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Style:')).toBeInTheDocument()
+      })
+    })
+
+    it('has Classic Light selected by default', async () => {
+      mockState.queryReturns['invoices:getInvoice'] = createMockInvoice()
+
+      render(<InvoicePreviewPopover invoiceId={'invoice_123' as Id<'invoices'>} />)
+
+      const previewButton = screen.getByRole('button', { name: /preview invoice/i })
+      fireEvent.click(previewButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('View Full Invoice')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /view full invoice/i }))
+
+      await waitFor(() => {
+        // Classic Light button should have 'secondary' variant (be selected)
+        const lightButton = screen.getByRole('button', { name: /classic light|light/i })
+        expect(lightButton).toHaveClass('bg-secondary')
+      })
+    })
+
+    it('switches to Classic Dark when clicked', async () => {
+      mockState.queryReturns['invoices:getInvoice'] = createMockInvoice()
+
+      render(<InvoicePreviewPopover invoiceId={'invoice_123' as Id<'invoices'>} />)
+
+      const previewButton = screen.getByRole('button', { name: /preview invoice/i })
+      fireEvent.click(previewButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('View Full Invoice')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /view full invoice/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Style:')).toBeInTheDocument()
+      })
+
+      // Click Classic Dark button
+      const darkButton = screen.getByRole('button', { name: /classic dark|dark/i })
+      fireEvent.click(darkButton)
+
+      // Dark button should now be selected
+      await waitFor(() => {
+        expect(darkButton).toHaveClass('bg-secondary')
+      })
+    })
+
+    it('displays saved templates in style selector', async () => {
+      mockState.queryReturns['invoices:getInvoice'] = createMockInvoice()
+      mockTemplateState.savedTemplates = [
+        { id: 'template-1', name: 'Custom Template 1', isDefault: false },
+        { id: 'template-2', name: 'Custom Template 2', isDefault: false },
+      ]
+
+      render(<InvoicePreviewPopover invoiceId={'invoice_123' as Id<'invoices'>} />)
+
+      const previewButton = screen.getByRole('button', { name: /preview invoice/i })
+      fireEvent.click(previewButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('View Full Invoice')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /view full invoice/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Custom Template 1')).toBeInTheDocument()
+        expect(screen.getByText('Custom Template 2')).toBeInTheDocument()
+      })
+    })
+
+    it('shows star icon for default template', async () => {
+      mockState.queryReturns['invoices:getInvoice'] = createMockInvoice()
+      mockTemplateState.savedTemplates = [
+        { id: 'template-1', name: 'Default Template', isDefault: true },
+        { id: 'template-2', name: 'Other Template', isDefault: false },
+      ]
+
+      render(<InvoicePreviewPopover invoiceId={'invoice_123' as Id<'invoices'>} />)
+
+      const previewButton = screen.getByRole('button', { name: /preview invoice/i })
+      fireEvent.click(previewButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('View Full Invoice')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /view full invoice/i }))
+
+      await waitFor(() => {
+        const defaultTemplateButton = screen.getByRole('button', { name: /default template/i })
+        // Star icon should be present (fill-yellow-500 class)
+        const starIcon = defaultTemplateButton.querySelector('.fill-yellow-500')
+        expect(starIcon).toBeInTheDocument()
+      })
+    })
+
+    it('can select a custom template', async () => {
+      mockState.queryReturns['invoices:getInvoice'] = createMockInvoice()
+      mockTemplateState.savedTemplates = [
+        { id: 'template-1', name: 'My Custom Style', isDefault: false },
+      ]
+
+      render(<InvoicePreviewPopover invoiceId={'invoice_123' as Id<'invoices'>} />)
+
+      const previewButton = screen.getByRole('button', { name: /preview invoice/i })
+      fireEvent.click(previewButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('View Full Invoice')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /view full invoice/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('My Custom Style')).toBeInTheDocument()
+      })
+
+      // Click the custom template button
+      const customButton = screen.getByRole('button', { name: /my custom style/i })
+      fireEvent.click(customButton)
+
+      // Custom template button should now be selected
+      await waitFor(() => {
+        expect(customButton).toHaveClass('bg-secondary')
       })
     })
   })
