@@ -53,35 +53,35 @@ export const staggerContainer: Variants = {
 };
 
 export const staggerItem: Variants = {
-  initial: { opacity: 0, y: 10 },
+  initial: { opacity: 0, y: 8 },
   animate: {
     opacity: 1,
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 500,
-      damping: 30,
+      stiffness: 200,
+      damping: 20,
     }
   },
 };
 
-// Spring configurations
+// Spring configurations - gentler for professional feel
 export const springConfig = {
   type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
+  stiffness: 200,
+  damping: 20,
 };
 
 export const gentleSpring = {
   type: "spring" as const,
-  stiffness: 300,
-  damping: 25,
+  stiffness: 150,
+  damping: 18,
 };
 
 export const snappySpring = {
   type: "spring" as const,
-  stiffness: 500,
-  damping: 35,
+  stiffness: 300,
+  damping: 25,
 };
 
 // Ease curves

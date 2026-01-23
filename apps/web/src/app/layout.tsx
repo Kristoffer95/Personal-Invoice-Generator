@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
@@ -31,7 +32,7 @@ export const viewport: Viewport = {
   // Theme color for browser chrome
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a1a' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
   // Support for notched devices
   viewportFit: 'cover',
@@ -50,7 +51,7 @@ export default function RootLayout({
         {/* Preconnect for critical resources */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={GeistMono.className}>
+      <body className={`${GeistSans.className} ${GeistSans.variable} ${GeistMono.variable}`}>
         <Providers>
           <ThemeProvider
             attribute="class"

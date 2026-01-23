@@ -1,47 +1,115 @@
 import { StyleSheet } from '@react-pdf/renderer'
 
-export type PdfTheme = 'light' | 'dark'
+export type PdfTheme = 'light' | 'dark' | 'noir' | 'midnight' | 'minimal'
 
-// Light theme colors
+// Light theme colors - clean Swiss-inspired design
 const lightColors = {
-  primary: '#1a1a2e',
-  secondary: '#16213e',
-  accent: '#0f3460',
-  text: '#333333',
-  textLight: '#666666',
-  textMuted: '#999999',
-  border: '#e0e0e0',
-  borderLight: '#f0f0f0',
+  primary: '#000000',
+  secondary: '#404040',
+  accent: '#171717',
+  text: '#171717',
+  textLight: '#525252',
+  textMuted: '#737373',
+  border: '#e5e5e5',
+  borderLight: '#f5f5f5',
   background: '#ffffff',
-  cardBackground: '#f8fafc',
+  cardBackground: '#fafafa',
   tableRowAlt: '#fafafa',
-  workHoursBg: '#f0f9ff',
+  workHoursBg: '#f5f5f5',
   success: '#22c55e',
   warning: '#f59e0b',
   error: '#ef4444',
 }
 
-// Dark theme colors
+// Dark theme colors - slate-based dark mode
 const darkColors = {
+  primary: '#fafafa',
+  secondary: '#a3a3a3',
+  accent: '#60a5fa',
+  text: '#fafafa',
+  textLight: '#a3a3a3',
+  textMuted: '#737373',
+  border: '#404040',
+  borderLight: '#262626',
+  background: '#0a0a0a',
+  cardBackground: '#171717',
+  tableRowAlt: '#171717',
+  workHoursBg: '#1a1a2e',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  error: '#ef4444',
+}
+
+// Noir theme colors - pure black Vercel-inspired aesthetic
+const noirColors = {
+  primary: '#ffffff',
+  secondary: '#a3a3a3',
+  accent: '#ffffff',
+  text: '#ffffff',
+  textLight: '#a3a3a3',
+  textMuted: '#737373',
+  border: '#262626',
+  borderLight: '#171717',
+  background: '#000000',
+  cardBackground: '#0a0a0a',
+  tableRowAlt: '#0a0a0a',
+  workHoursBg: '#0a0a0a',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  error: '#ef4444',
+}
+
+// Midnight theme - deep blue-black elegant
+const midnightColors = {
   primary: '#e2e8f0',
   secondary: '#94a3b8',
-  accent: '#60a5fa',
+  accent: '#38bdf8',
   text: '#e2e8f0',
   textLight: '#94a3b8',
   textMuted: '#64748b',
-  border: '#334155',
-  borderLight: '#1e293b',
-  background: '#0f172a',
-  cardBackground: '#1e293b',
-  tableRowAlt: '#1e293b',
-  workHoursBg: '#1e3a5f',
+  border: '#1e293b',
+  borderLight: '#0f172a',
+  background: '#020617',
+  cardBackground: '#0f172a',
+  tableRowAlt: '#0f172a',
+  workHoursBg: '#0f172a',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  error: '#ef4444',
+}
+
+// Minimal theme - ultra clean light mode
+const minimalColors = {
+  primary: '#18181b',
+  secondary: '#52525b',
+  accent: '#18181b',
+  text: '#18181b',
+  textLight: '#52525b',
+  textMuted: '#a1a1aa',
+  border: '#f4f4f5',
+  borderLight: '#fafafa',
+  background: '#ffffff',
+  cardBackground: '#ffffff',
+  tableRowAlt: '#fafafa',
+  workHoursBg: '#fafafa',
   success: '#22c55e',
   warning: '#f59e0b',
   error: '#ef4444',
 }
 
 export function getColors(theme: PdfTheme = 'light') {
-  return theme === 'dark' ? darkColors : lightColors
+  switch (theme) {
+    case 'noir':
+      return noirColors
+    case 'dark':
+      return darkColors
+    case 'midnight':
+      return midnightColors
+    case 'minimal':
+      return minimalColors
+    default:
+      return lightColors
+  }
 }
 
 // Keep default export for backwards compatibility
@@ -49,20 +117,29 @@ export const colors = lightColors
 
 export function createStyles(theme: PdfTheme = 'light') {
   const c = getColors(theme)
+  const isDark = theme === 'dark' || theme === 'noir' || theme === 'midnight'
+
+  // Use Helvetica as base (Geist not available in react-pdf, Helvetica is closest)
+  const fontFamily = 'Helvetica'
+  const fontBold = 'Helvetica-Bold'
 
   return StyleSheet.create({
     page: {
-      fontFamily: 'Helvetica',
+      fontFamily,
       fontSize: 10,
-      paddingTop: 40,
-      paddingBottom: 60,
-      paddingHorizontal: 40,
+      paddingTop: 48,
+      paddingBottom: 64,
+      paddingHorizontal: 48,
       backgroundColor: c.background,
+      color: c.text,
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 30,
+      marginBottom: 36,
+      paddingBottom: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
     },
     headerLeft: {
       flex: 1,
@@ -72,25 +149,27 @@ export function createStyles(theme: PdfTheme = 'light') {
       alignItems: 'flex-end',
     },
     logo: {
-      maxWidth: 120,
-      maxHeight: 60,
-      marginBottom: 10,
+      maxWidth: 100,
+      maxHeight: 48,
+      marginBottom: 12,
     },
     title: {
-      fontSize: 28,
-      fontFamily: 'Helvetica-Bold',
+      fontSize: 32,
+      fontFamily: fontBold,
       color: c.primary,
-      marginBottom: 5,
+      marginBottom: 4,
+      letterSpacing: -1,
     },
     invoiceNumber: {
-      fontSize: 12,
+      fontSize: 11,
       color: c.textLight,
-      marginBottom: 3,
+      marginBottom: 4,
+      letterSpacing: 0.5,
     },
     partiesSection: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 30,
+      marginBottom: 32,
     },
     partyBox: {
       flex: 1,
@@ -98,29 +177,31 @@ export function createStyles(theme: PdfTheme = 'light') {
     },
     partyLabel: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: fontBold,
       color: c.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: 1,
-      marginBottom: 8,
+      letterSpacing: 1.5,
+      marginBottom: 10,
     },
     partyName: {
-      fontSize: 12,
-      fontFamily: 'Helvetica-Bold',
+      fontSize: 13,
+      fontFamily: fontBold,
       color: c.primary,
-      marginBottom: 4,
+      marginBottom: 6,
     },
     partyDetail: {
       fontSize: 10,
       color: c.text,
       marginBottom: 2,
+      lineHeight: 1.5,
     },
     datesSection: {
       flexDirection: 'row',
-      marginBottom: 25,
-      padding: 15,
+      marginBottom: 28,
+      padding: 16,
       backgroundColor: c.cardBackground,
-      borderRadius: 6,
+      borderRadius: 8,
+      ...(isDark ? { borderWidth: 1, borderColor: c.border } : {}),
     },
     dateBox: {
       flex: 1,
@@ -128,34 +209,37 @@ export function createStyles(theme: PdfTheme = 'light') {
     dateLabel: {
       fontSize: 9,
       color: c.textMuted,
-      marginBottom: 3,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 4,
     },
     dateValue: {
       fontSize: 11,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: fontBold,
       color: c.text,
     },
     table: {
-      marginBottom: 20,
+      marginBottom: 24,
     },
     tableHeader: {
       flexDirection: 'row',
-      backgroundColor: theme === 'dark' ? '#334155' : c.primary,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 4,
+      backgroundColor: isDark ? c.cardBackground : c.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      ...(isDark ? { borderWidth: 1, borderColor: c.border } : {}),
     },
     tableHeaderCell: {
-      color: theme === 'dark' ? c.text : '#ffffff',
+      color: isDark ? c.text : '#ffffff',
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: fontBold,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
     },
     tableRow: {
       flexDirection: 'row',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
       borderBottomWidth: 1,
       borderBottomColor: c.borderLight,
     },
@@ -189,17 +273,17 @@ export function createStyles(theme: PdfTheme = 'light') {
       textAlign: 'right',
     },
     summarySection: {
-      marginTop: 10,
+      marginTop: 16,
       alignItems: 'flex-end',
     },
     summaryBox: {
-      width: 250,
+      width: 260,
     },
     summaryRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingVertical: 6,
-      paddingHorizontal: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
     },
     summaryLabel: {
       fontSize: 10,
@@ -208,60 +292,64 @@ export function createStyles(theme: PdfTheme = 'light') {
     summaryValue: {
       fontSize: 10,
       color: c.text,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: fontBold,
     },
     summaryDivider: {
       borderTopWidth: 1,
       borderTopColor: c.border,
-      marginVertical: 5,
+      marginVertical: 8,
     },
     totalRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      backgroundColor: theme === 'dark' ? '#334155' : c.primary,
-      borderRadius: 4,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      backgroundColor: isDark ? c.cardBackground : c.primary,
+      borderRadius: 6,
+      ...(isDark ? { borderWidth: 1, borderColor: c.border } : {}),
     },
     totalLabel: {
       fontSize: 12,
-      color: theme === 'dark' ? c.text : '#ffffff',
-      fontFamily: 'Helvetica-Bold',
+      color: isDark ? c.text : '#ffffff',
+      fontFamily: fontBold,
+      letterSpacing: 0.5,
     },
     totalValue: {
-      fontSize: 14,
-      color: theme === 'dark' ? c.text : '#ffffff',
-      fontFamily: 'Helvetica-Bold',
+      fontSize: 16,
+      color: isDark ? c.text : '#ffffff',
+      fontFamily: fontBold,
     },
     footer: {
       position: 'absolute',
-      bottom: 40,
-      left: 40,
-      right: 40,
+      bottom: 48,
+      left: 48,
+      right: 48,
     },
     footerSection: {
-      marginBottom: 15,
+      marginBottom: 16,
     },
     footerTitle: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: fontBold,
       color: c.primary,
-      marginBottom: 5,
+      marginBottom: 6,
+      letterSpacing: 0.5,
     },
     footerText: {
       fontSize: 9,
       color: c.textLight,
-      lineHeight: 1.4,
+      lineHeight: 1.6,
     },
     bankDetails: {
-      padding: 12,
+      padding: 14,
       backgroundColor: c.cardBackground,
-      borderRadius: 4,
-      marginBottom: 15,
+      borderRadius: 6,
+      marginBottom: 16,
+      ...(isDark ? { borderWidth: 1, borderColor: c.border } : {}),
     },
     bankDetailRow: {
       flexDirection: 'row',
-      marginBottom: 3,
+      marginBottom: 4,
     },
     bankDetailLabel: {
       fontSize: 9,
@@ -271,42 +359,53 @@ export function createStyles(theme: PdfTheme = 'light') {
     bankDetailValue: {
       fontSize: 9,
       color: c.text,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: fontBold,
     },
     pageNumber: {
       position: 'absolute',
-      bottom: 20,
-      right: 40,
+      bottom: 24,
+      right: 48,
       fontSize: 9,
       color: c.textMuted,
+      letterSpacing: 0.5,
     },
     workHoursSummary: {
       flexDirection: 'row',
-      marginBottom: 20,
-      padding: 15,
+      marginBottom: 24,
+      padding: 18,
       backgroundColor: c.workHoursBg,
-      borderRadius: 6,
-      borderLeftWidth: 4,
+      borderRadius: 8,
+      borderLeftWidth: 3,
       borderLeftColor: c.accent,
+      ...(isDark ? { borderWidth: 1, borderColor: c.border } : {}),
     },
     workHoursStat: {
       flex: 1,
       alignItems: 'center',
     },
     workHoursValue: {
-      fontSize: 18,
-      fontFamily: 'Helvetica-Bold',
+      fontSize: 20,
+      fontFamily: fontBold,
       color: c.primary,
-      marginBottom: 4,
+      marginBottom: 6,
     },
     workHoursLabel: {
       fontSize: 9,
       color: c.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 1,
     },
   })
 }
 
 // Default styles for backwards compatibility
 export const styles = createStyles('light')
+
+// Export theme presets for UI selection
+export const THEME_PRESETS = [
+  { id: 'light', name: 'Light', description: 'Clean Swiss-inspired design' },
+  { id: 'minimal', name: 'Minimal', description: 'Ultra clean and simple' },
+  { id: 'dark', name: 'Dark', description: 'Slate-based dark mode' },
+  { id: 'noir', name: 'Noir', description: 'Pure black Vercel aesthetic' },
+  { id: 'midnight', name: 'Midnight', description: 'Deep blue-black elegant' },
+] as const

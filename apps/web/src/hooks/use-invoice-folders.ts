@@ -184,14 +184,14 @@ export function useFolderTree() {
   useEffect(() => {
     if (tree !== undefined) {
       setCachedFolderData(TREE_CACHE_KEY, tree);
-      setStableData(tree as FolderTreeNode[]);
+      setStableData(tree as unknown as FolderTreeNode[]);
     }
   }, [tree]);
 
   // Determine what data to return
   const result = useMemo((): FolderTreeNode[] => {
     if (tree !== undefined) {
-      return tree as FolderTreeNode[];
+      return tree as unknown as FolderTreeNode[];
     }
     const cached = getCachedFolderData<FolderTreeNode[]>(TREE_CACHE_KEY);
     if (cached) {
