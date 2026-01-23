@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Calendar,
@@ -175,17 +176,26 @@ export function InvoiceFilters({ filters, onChange, onClear }: InvoiceFiltersPro
         </div>
 
         {/* Clear All Button */}
+        <AnimatePresence>
         {(activeFilterCount > 0 || filters.searchQuery) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClear}
-            className="gap-1 text-muted-foreground"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
           >
-            <X className="h-4 w-4" />
-            Clear all
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClear}
+              className="gap-1 text-muted-foreground"
+            >
+              <X className="h-4 w-4" />
+              Clear all
+            </Button>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       {/* Status Pills (Multi-Select) - Always visible for multi-selection */}

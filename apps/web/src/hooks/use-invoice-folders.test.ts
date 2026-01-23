@@ -35,12 +35,13 @@ vi.mock('@invoice-generator/backend/convex/_generated/api', () => ({
 }))
 
 // Import after mocks
-import { useInvoiceFolders, useInvoiceFolder, useFolderWithClientProfiles, useFolderChildren, useFolderTree, useFolderPath, useFolderMutations } from './use-invoice-folders'
+import { useInvoiceFolders, useInvoiceFolder, useFolderWithClientProfiles, useFolderChildren, useFolderTree, useFolderPath, useFolderMutations, invalidateFolderCache } from './use-invoice-folders'
 
 describe('useInvoiceFolders', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockState.queryReturns = {}
+    invalidateFolderCache() // Clear cache before each test
   })
 
   describe('loading state', () => {
@@ -143,6 +144,7 @@ describe('useFolderTree', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockState.queryReturns = {}
+    invalidateFolderCache() // Clear cache before each test
   })
 
   it('should return nested folder tree structure', () => {
@@ -216,6 +218,7 @@ describe('useInvoiceFolders with filters', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockState.queryReturns = {}
+    invalidateFolderCache() // Clear cache before each test
   })
 
   it('should filter folders by tags', () => {
@@ -362,5 +365,60 @@ describe('useFolderWithClientProfiles', () => {
     expect(result.current.folder?.defaultCurrency).toBe('EUR')
     expect(result.current.folder?.defaultPaymentTerms).toBe('NET_15')
     expect(result.current.folder?.defaultJobTitle).toBe('Consulting')
+  })
+})
+
+describe('Folder caching', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockState.queryReturns = {}
+    invalidateFolderCache() // Clear cache before each test
+  })
+
+  it('should return isFetching and isFromCache states', () => {
+    const mockFolders = [
+      { _id: 'folder_1', name: 'Cached Folder', invoiceCount: 2 },
+    ]
+    mockState.queryReturns['invoiceFolders:listWithCounts'] = mockFolders
+
+    const { result } = renderHook(() => useInvoiceFolders())
+
+    expect(result.current.isFetching).toBe(false)
+    expect(result.current.isFromCache).toBe(false)
+  })
+
+  it('should return isFetching state for useFolderTree', () => {
+    const mockTree = [
+      {
+        _id: 'folder_1',
+        name: 'Root Folder',
+        invoiceCount: 5,
+        children: [],
+      },
+    ]
+    mockState.queryReturns['invoiceFolders:getFolderTree'] = mockTree
+
+    const { result } = renderHook(() => useFolderTree())
+
+    expect(result.current.isFetching).toBe(false)
+    expect(result.current.isFromCache).toBe(false)
+  })
+
+  it('should provide invalidateFolderCache function', () => {
+    expect(invalidateFolderCache).toBeDefined()
+    expect(typeof invalidateFolderCache).toBe('function')
+    // Should not throw when called
+    expect(() => invalidateFolderCache()).not.toThrow()
+  })
+
+  it('useFolderMutations should be wrapped for cache invalidation', () => {
+    const { result } = renderHook(() => useFolderMutations())
+
+    // All mutation functions should be defined and wrapped
+    expect(typeof result.current.createFolder).toBe('function')
+    expect(typeof result.current.updateFolder).toBe('function')
+    expect(typeof result.current.deleteFolder).toBe('function')
+    expect(typeof result.current.moveFolder).toBe('function')
+    expect(typeof result.current.toggleFolderMoveLock).toBe('function')
   })
 })

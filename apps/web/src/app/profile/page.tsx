@@ -121,7 +121,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center justify-between">
+        <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => router.push("/")}>
               <ArrowLeft className="h-4 w-4" />
@@ -136,7 +136,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Main Content */}
-      <main className="container py-6 max-w-3xl">
+      <main className="container mx-auto py-6 max-w-3xl px-4 sm:px-6 lg:px-8">
         <Tabs defaultValue="business" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="business" className="flex items-center gap-2">

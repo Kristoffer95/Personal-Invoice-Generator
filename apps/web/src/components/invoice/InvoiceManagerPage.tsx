@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { UserButton } from "@clerk/nextjs";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   FileText,
@@ -81,11 +83,25 @@ import { InvoiceNumberQuickEdit } from "@/components/invoice/InvoiceNumberQuickE
 import { CreateInvoiceWizard } from "@/components/invoice/CreateInvoiceWizard";
 import { TagBadgeList } from "@/components/tags/TagSelector";
 import { useFolderTree, useFolderMutations, useFolderWithClientProfiles } from "@/hooks/use-invoice-folders";
-import { TagManager } from "@/components/tags/TagManager";
-import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
-import { StatusLogList } from "@/components/status-logs/StatusLogList";
 import { InvoiceStatusLogsDialog } from "@/components/status-logs/InvoiceStatusLogsDialog";
-import { ClientManager } from "@/components/clients/ClientManager";
+
+// Dynamic imports for heavy tab components (bundle-dynamic-imports rule)
+const TagManager = dynamic(
+  () => import("@/components/tags/TagManager").then((mod) => mod.TagManager),
+  { ssr: false }
+);
+const AnalyticsDashboard = dynamic(
+  () => import("@/components/analytics/AnalyticsDashboard").then((mod) => mod.AnalyticsDashboard),
+  { ssr: false }
+);
+const StatusLogList = dynamic(
+  () => import("@/components/status-logs/StatusLogList").then((mod) => mod.StatusLogList),
+  { ssr: false }
+);
+const ClientManager = dynamic(
+  () => import("@/components/clients/ClientManager").then((mod) => mod.ClientManager),
+  { ssr: false }
+);
 import {
   CURRENCY_SYMBOLS,
   type Currency,
@@ -654,10 +670,15 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="sticky top-0 z-50 w-full border-b glass-strong"
+      >
         <div className="container mx-auto flex h-14 items-center justify-between px-3 sm:px-4 md:px-6">
           <div className="flex items-center gap-4">
-            <h1 className="font-semibold">Invoice Manager</h1>
+            <h1 className="font-semibold text-lg">Invoice Manager</h1>
           </div>
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -703,7 +724,7 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
             <UserButton afterSignOutUrl="/sign-in" />
           </div>
         </div>
-      </header>
+      </motion.header>
 
       <div className="container mx-auto px-3 py-6 sm:px-4 md:px-6">
         {/* Main Tabs */}
@@ -859,8 +880,15 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                 />
 
                 {/* Bulk Actions Bar */}
+                <AnimatePresence>
                 {selectedInvoices.size > 0 && (
-                  <div className="flex items-center gap-4 p-3 rounded-lg bg-muted">
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center gap-4 p-3 rounded-xl bg-muted border shadow-sm"
+                  >
                     <span className="text-sm font-medium">
                       {selectedInvoices.size} selected
                     </span>
@@ -911,18 +939,46 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                     <Button variant="ghost" size="sm" onClick={clearSelection}>
                       Clear
                     </Button>
-                  </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
 
                 {/* Invoice List */}
+                <AnimatePresence mode="wait">
                 {isLoading ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    Loading invoices...
-                  </div>
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-center py-12 text-muted-foreground"
+                  >
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="inline-block"
+                    >
+                      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                    </motion.div>
+                    <p className="mt-2">Loading invoices...</p>
+                  </motion.div>
                 ) : filteredInvoices.length === 0 ? (
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                      <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.1, duration: 0.3 }}
+                      >
+                        <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                      </motion.div>
                       <p className="text-muted-foreground mb-4">
                         {filters.searchQuery || filters.statuses.length > 0 || filters.tags.length > 0
                           ? "No invoices match your filters"
@@ -957,8 +1013,15 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                       </Button>
                     </CardContent>
                   </Card>
+                  </motion.div>
                 ) : (
-                  <div className="space-y-2">
+                  <motion.div
+                    key="list"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-2"
+                  >
                     {/* Select All Header */}
                     <div className="flex items-center gap-4 px-4 py-2 text-sm text-muted-foreground">
                       <Checkbox
@@ -973,10 +1036,18 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                       </span>
                     </div>
 
-                    {filteredInvoices.map((invoice) => (
-                      <Card
+                    {filteredInvoices.map((invoice, index) => (
+                      <motion.div
                         key={invoice._id}
-                        className={`hover:bg-muted/50 transition-colors ${
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ delay: index * 0.03, duration: 0.2 }}
+                        layout
+                      >
+                      <Card
+                        interactive
+                        className={`${
                           selectedInvoices.has(invoice._id) ? "ring-2 ring-primary" : ""
                         }`}
                       >
@@ -1137,9 +1208,11 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                           </div>
                         </CardContent>
                       </Card>
+                      </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </main>
             </div>
           </TabsContent>
