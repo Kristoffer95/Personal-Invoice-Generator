@@ -7,6 +7,7 @@ import {
   Copy,
   Star,
   Trash2,
+  Lock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,6 +45,7 @@ export function StyleCard({
   onDelete,
   onSelect,
 }: StyleCardProps) {
+  const isSystem = template.isSystem ?? false
   const elementCount = template.elements?.length || 0
   const createdDate = template.createdAt
     ? format(new Date(template.createdAt), 'MMM d, yyyy')
@@ -77,16 +79,27 @@ export function StyleCard({
           <div className="absolute bottom-2 left-2 right-2 h-4 rounded-sm bg-primary/20" />
         </div>
 
-        {/* Default Badge */}
-        {isDefault && (
-          <Badge
-            variant="secondary"
-            className="absolute right-2 top-2 gap-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-          >
-            <Star className="h-3 w-3 fill-current" />
-            Default
-          </Badge>
-        )}
+        {/* System & Default Badges */}
+        <div className="absolute right-2 top-2 flex flex-col gap-1">
+          {isSystem && (
+            <Badge
+              variant="secondary"
+              className="gap-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+            >
+              <Lock className="h-3 w-3" />
+              System
+            </Badge>
+          )}
+          {isDefault && (
+            <Badge
+              variant="secondary"
+              className="gap-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+            >
+              <Star className="h-3 w-3 fill-current" />
+              Default
+            </Badge>
+          )}
+        </div>
 
         {/* Selection Checkbox */}
         {showCheckbox && (
@@ -122,26 +135,43 @@ export function StyleCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={onEdit}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDuplicate}>
-              <Copy className="mr-2 h-4 w-4" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onSetDefault}>
-              <Star className="mr-2 h-4 w-4" />
-              {isDefault ? 'Clear Default' : 'Set as Default'}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onDelete}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
+            {isSystem ? (
+              // System templates: show duplicate option only
+              <>
+                <DropdownMenuItem onClick={onDuplicate}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate to Customize
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onSetDefault}>
+                  <Star className="mr-2 h-4 w-4" />
+                  {isDefault ? 'Clear Default' : 'Set as Default'}
+                </DropdownMenuItem>
+              </>
+            ) : (
+              // User templates: show all options
+              <>
+                <DropdownMenuItem onClick={onEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicate}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onSetDefault}>
+                  <Star className="mr-2 h-4 w-4" />
+                  {isDefault ? 'Clear Default' : 'Set as Default'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -159,12 +189,19 @@ export function StyleCard({
         </div>
       </div>
 
-      {/* Quick Edit Button - visible on hover */}
+      {/* Quick Action Button - visible on hover */}
       <div className="absolute inset-0 flex items-center justify-center bg-background/80 opacity-0 transition-opacity group-hover:opacity-100">
-        <Button onClick={onEdit} size="lg">
-          <Pencil className="mr-2 h-4 w-4" />
-          Edit Style
-        </Button>
+        {isSystem ? (
+          <Button onClick={onDuplicate} size="lg">
+            <Copy className="mr-2 h-4 w-4" />
+            Duplicate to Customize
+          </Button>
+        ) : (
+          <Button onClick={onEdit} size="lg">
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Style
+          </Button>
+        )}
       </div>
     </div>
   )

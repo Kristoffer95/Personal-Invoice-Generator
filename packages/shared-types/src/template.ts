@@ -188,6 +188,7 @@ export const invoiceTemplateSchema = z.object({
   backgroundColor: z.string().default('#ffffff'),
   elements: z.array(templateElementSchema).default([]),
   isDefault: z.boolean().default(false),
+  isSystem: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

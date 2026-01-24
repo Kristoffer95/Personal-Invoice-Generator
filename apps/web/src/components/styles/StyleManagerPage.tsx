@@ -16,6 +16,7 @@ export default function StyleManagerPage() {
   const { toast } = useToast()
   const {
     savedTemplates,
+    getAllTemplates,
     defaultTemplateId,
     setDefaultTemplate,
     clearDefaultTemplate,
@@ -25,19 +26,24 @@ export default function StyleManagerPage() {
     setCurrentTemplate,
   } = useTemplateStore()
 
+  // Get all templates (system + user)
+  const allTemplates = getAllTemplates()
+  const systemTemplates = useMemo(() => allTemplates.filter((t) => t.isSystem), [allTemplates])
+  const userTemplates = useMemo(() => allTemplates.filter((t) => !t.isSystem), [allTemplates])
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [templateToDelete, setTemplateToDelete] = useState<InvoiceTemplate | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDelete, setIsBulkDelete] = useState(false)
 
-  // Memoized selection state
+  // Memoized selection state (only user templates can be selected for bulk operations)
   const isAllSelected = useMemo(
-    () => savedTemplates.length > 0 && selectedIds.size === savedTemplates.length,
-    [savedTemplates.length, selectedIds.size]
+    () => userTemplates.length > 0 && selectedIds.size === userTemplates.length,
+    [userTemplates.length, selectedIds.size]
   )
   const isSomeSelected = useMemo(
-    () => selectedIds.size > 0 && selectedIds.size < savedTemplates.length,
-    [savedTemplates.length, selectedIds.size]
+    () => selectedIds.size > 0 && selectedIds.size < userTemplates.length,
+    [userTemplates.length, selectedIds.size]
   )
   const hasSelection = selectedIds.size > 0
 
@@ -100,10 +106,10 @@ export default function StyleManagerPage() {
     setDeleteDialogOpen(false)
   }
 
-  // Selection handlers
+  // Selection handlers (only user templates can be selected)
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(savedTemplates.map((t) => t.id)))
+      setSelectedIds(new Set(userTemplates.map((t) => t.id)))
     } else {
       setSelectedIds(new Set())
     }
@@ -139,10 +145,10 @@ export default function StyleManagerPage() {
 
   // Get selected template names for delete dialog
   const selectedTemplateNames = useMemo(() => {
-    return savedTemplates
+    return userTemplates
       .filter((t) => selectedIds.has(t.id))
       .map((t) => t.name)
-  }, [savedTemplates, selectedIds])
+  }, [userTemplates, selectedIds])
 
   return (
     <div className="min-h-screen bg-background">
@@ -218,64 +224,91 @@ export default function StyleManagerPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 md:px-6">
-        {savedTemplates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <Palette className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h2 className="mb-2 text-xl font-semibold">No custom styles yet</h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              Create your first custom invoice style to personalize your PDF exports.
-              You can design unique layouts, colors, and typography.
-            </p>
-            <Button onClick={handleCreateNew} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
-              Create Your First Style
-            </Button>
+        {/* System Templates Section */}
+        <section className="mb-10">
+          <h2 className="mb-4 text-lg font-semibold">Default Styles</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Professional templates available to everyone. Duplicate to customize.
+          </p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {systemTemplates.map((template) => (
+              <StyleCard
+                key={template.id}
+                template={template}
+                isDefault={defaultTemplateId === template.id}
+                isSelected={false}
+                showCheckbox={false}
+                onEdit={() => handleEdit(template)}
+                onDuplicate={() => handleDuplicate(template)}
+                onSetDefault={() => handleSetDefault(template)}
+                onDelete={() => {}}
+                onSelect={() => {}}
+              />
+            ))}
           </div>
-        ) : (
-          <>
-            {/* Selection Toolbar */}
-            {!hasSelection && savedTemplates.length > 1 && (
-              <div className="mb-4 flex items-center gap-3">
-                <Checkbox
-                  checked={false}
-                  onCheckedChange={() => handleSelectAll(true)}
-                  aria-label="Select all styles"
-                />
-                <span className="text-sm text-muted-foreground">
-                  Select all ({savedTemplates.length} styles)
-                </span>
+        </section>
+
+        {/* Custom Templates Section */}
+        <section>
+          <h2 className="mb-4 text-lg font-semibold">Custom Styles</h2>
+          {userTemplates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/30 py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Palette className="h-6 w-6 text-muted-foreground" />
               </div>
-            )}
-
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {savedTemplates.map((template) => (
-                <StyleCard
-                  key={template.id}
-                  template={template}
-                  isDefault={defaultTemplateId === template.id}
-                  isSelected={selectedIds.has(template.id)}
-                  showCheckbox={savedTemplates.length > 1}
-                  onEdit={() => handleEdit(template)}
-                  onDuplicate={() => handleDuplicate(template)}
-                  onSetDefault={() => handleSetDefault(template)}
-                  onDelete={() => handleDeleteClick(template)}
-                  onSelect={(selected) => handleSelectOne(template.id, selected)}
-                />
-              ))}
-
-              {/* Add New Card */}
-              <button
-                onClick={handleCreateNew}
-                className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed bg-muted/30 p-6 text-muted-foreground transition-colors hover:border-primary hover:bg-muted/50 hover:text-foreground"
-              >
-                <Plus className="h-10 w-10" />
-                <span className="font-medium">Create New Style</span>
-              </button>
+              <h3 className="mb-2 font-semibold">No custom styles yet</h3>
+              <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+                Create your own style or duplicate a default template to customize.
+              </p>
+              <Button onClick={handleCreateNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Style
+              </Button>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {/* Selection Toolbar */}
+              {!hasSelection && userTemplates.length > 1 && (
+                <div className="mb-4 flex items-center gap-3">
+                  <Checkbox
+                    checked={false}
+                    onCheckedChange={() => handleSelectAll(true)}
+                    aria-label="Select all styles"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Select all ({userTemplates.length} styles)
+                  </span>
+                </div>
+              )}
+
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {userTemplates.map((template) => (
+                  <StyleCard
+                    key={template.id}
+                    template={template}
+                    isDefault={defaultTemplateId === template.id}
+                    isSelected={selectedIds.has(template.id)}
+                    showCheckbox={userTemplates.length > 1}
+                    onEdit={() => handleEdit(template)}
+                    onDuplicate={() => handleDuplicate(template)}
+                    onSetDefault={() => handleSetDefault(template)}
+                    onDelete={() => handleDeleteClick(template)}
+                    onSelect={(selected) => handleSelectOne(template.id, selected)}
+                  />
+                ))}
+
+                {/* Add New Card */}
+                <button
+                  onClick={handleCreateNew}
+                  className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed bg-muted/30 p-6 text-muted-foreground transition-colors hover:border-primary hover:bg-muted/50 hover:text-foreground"
+                >
+                  <Plus className="h-10 w-10" />
+                  <span className="font-medium">Create New Style</span>
+                </button>
+              </div>
+            </>
+          )}
+        </section>
       </main>
 
       {/* Delete Confirmation Dialog */}

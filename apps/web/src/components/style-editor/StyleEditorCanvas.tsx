@@ -144,6 +144,10 @@ export function StyleEditorCanvas() {
                     key={element.id}
                     element={element}
                     isSelected={element.id === selectedElementId}
+                    margins={{
+                      left: currentTemplate.margins.left,
+                      top: currentTemplate.margins.top,
+                    }}
                   />
                 ))}
             </div>

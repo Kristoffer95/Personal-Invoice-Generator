@@ -12,9 +12,10 @@ import { TableElement } from './TableElement'
 interface TemplateElementProps {
   element: TemplateElementType
   isSelected: boolean
+  margins: { top: number; left: number }
 }
 
-export function TemplateElement({ element, isSelected }: TemplateElementProps) {
+export function TemplateElement({ element, isSelected, margins }: TemplateElementProps) {
   const { selectElement, moveElement, resizeElement, updateElement } = useTemplateStore()
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
@@ -27,8 +28,8 @@ export function TemplateElement({ element, isSelected }: TemplateElementProps) {
 
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: element.position.x,
-    top: element.position.y,
+    left: element.position.x + margins.left,
+    top: element.position.y + margins.top,
     width: element.position.width,
     height: element.position.height,
     zIndex: element.zIndex,

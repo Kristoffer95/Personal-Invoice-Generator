@@ -690,4 +690,106 @@ describe('useTemplateStore', () => {
       expect(useTemplateStore.getState().currentTemplate?.elements[0].visible).toBe(true)
     })
   })
+
+  describe('system templates', () => {
+    it('getAllTemplates returns system templates merged with user templates', () => {
+      const { createNewTemplate, saveCurrentTemplate, getAllTemplates } =
+        useTemplateStore.getState()
+
+      // Create and save a user template
+      createNewTemplate('User Template')
+      saveCurrentTemplate()
+
+      const allTemplates = getAllTemplates()
+
+      // Should include system templates (at least 2: Vercel Minimal, Vercel Professional)
+      const systemTemplates = allTemplates.filter((t) => t.isSystem)
+      expect(systemTemplates.length).toBeGreaterThanOrEqual(2)
+
+      // Should include user template
+      const userTemplates = allTemplates.filter((t) => !t.isSystem)
+      expect(userTemplates).toHaveLength(1)
+      expect(userTemplates[0].name).toBe('User Template')
+    })
+
+    it('deleteTemplate prevents deletion of system templates', () => {
+      const { getAllTemplates, deleteTemplate } = useTemplateStore.getState()
+
+      const allTemplates = getAllTemplates()
+      const systemTemplate = allTemplates.find((t) => t.isSystem)
+
+      expect(systemTemplate).toBeDefined()
+
+      const result = deleteTemplate(systemTemplate!.id)
+      expect(result).toBe(false)
+
+      // System template should still exist
+      const templatesAfter = getAllTemplates()
+      const stillExists = templatesAfter.some((t) => t.id === systemTemplate!.id)
+      expect(stillExists).toBe(true)
+    })
+
+    it('loadTemplate can load system templates', () => {
+      const { getAllTemplates, loadTemplate } = useTemplateStore.getState()
+
+      const allTemplates = getAllTemplates()
+      const systemTemplate = allTemplates.find((t) => t.isSystem)
+
+      expect(systemTemplate).toBeDefined()
+
+      loadTemplate(systemTemplate!.id)
+
+      const state = useTemplateStore.getState()
+      expect(state.currentTemplate?.id).toBe(systemTemplate!.id)
+      expect(state.currentTemplate?.isSystem).toBe(true)
+    })
+
+    it('saveCurrentTemplate creates a user copy when saving a system template', () => {
+      const { getAllTemplates, loadTemplate, saveCurrentTemplate } =
+        useTemplateStore.getState()
+
+      const allTemplates = getAllTemplates()
+      const systemTemplate = allTemplates.find((t) => t.isSystem)
+
+      loadTemplate(systemTemplate!.id)
+      const savedTemplate = saveCurrentTemplate()
+
+      // Saved template should have a new ID (not the system template ID)
+      expect(savedTemplate?.id).not.toBe(systemTemplate!.id)
+      // Saved template should not be marked as system
+      expect(savedTemplate?.isSystem).toBe(false)
+
+      // Original system template should still exist
+      const state = useTemplateStore.getState()
+      const systemStillExists = getAllTemplates().some((t) => t.id === systemTemplate!.id)
+      expect(systemStillExists).toBe(true)
+    })
+
+    it('duplicateTemplate can duplicate system templates', () => {
+      const { getAllTemplates, duplicateTemplate } = useTemplateStore.getState()
+
+      const allTemplates = getAllTemplates()
+      const systemTemplate = allTemplates.find((t) => t.isSystem)
+
+      const duplicated = duplicateTemplate(systemTemplate!.id)
+
+      expect(duplicated).not.toBeNull()
+      expect(duplicated?.id).not.toBe(systemTemplate!.id)
+      expect(duplicated?.name).toBe(`${systemTemplate!.name} (Copy)`)
+      expect(duplicated?.isSystem).toBe(false)
+    })
+
+    it('setDefaultTemplate works with system template IDs', () => {
+      const { getAllTemplates, setDefaultTemplate, getDefaultTemplate } =
+        useTemplateStore.getState()
+
+      const allTemplates = getAllTemplates()
+      const systemTemplate = allTemplates.find((t) => t.isSystem)
+
+      setDefaultTemplate(systemTemplate!.id)
+
+      const defaultTemplate = getDefaultTemplate()
+      expect(defaultTemplate?.id).toBe(systemTemplate!.id)
+    })
+  })
 })

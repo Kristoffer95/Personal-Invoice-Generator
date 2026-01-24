@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
-import { Palette, Sun, Moon } from 'lucide-react'
+import { Palette, Sun, Moon, Lock } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { StylePreviewCard } from './StylePreviewCard'
 import { useTemplateStore } from '@/lib/template-store'
 import type { InvoiceTemplate } from '@invoice-generator/shared-types'
@@ -34,11 +35,16 @@ export function StylePickerDialog({
   onSelectBuiltIn,
 }: StylePickerDialogProps) {
   const {
-    savedTemplates,
+    getAllTemplates,
     defaultTemplateId,
     setDefaultTemplate,
     clearDefaultTemplate,
   } = useTemplateStore()
+
+  // Split templates into system and user
+  const allTemplates = getAllTemplates()
+  const systemTemplates = useMemo(() => allTemplates.filter((t) => t.isSystem), [allTemplates])
+  const userTemplates = useMemo(() => allTemplates.filter((t) => !t.isSystem), [allTemplates])
 
   const handleSetDefault = (templateId: string) => {
     if (defaultTemplateId === templateId) {
@@ -70,7 +76,34 @@ export function StylePickerDialog({
 
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-6 pr-4">
-            {/* Built-in Styles */}
+            {/* Default Styles (System Templates) */}
+            {systemTemplates.length > 0 && (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Default Styles
+                  </h3>
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    <Lock className="h-2.5 w-2.5" />
+                    System
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {systemTemplates.map((template) => (
+                    <StylePreviewCard
+                      key={template.id}
+                      template={template}
+                      isDefault={defaultTemplateId === template.id}
+                      onSelect={() => handleSelectTemplate(template)}
+                      onSetDefault={() => handleSetDefault(template.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Classic Built-in Styles */}
+            <Separator />
             <div>
               <h3 className="mb-3 text-sm font-medium text-muted-foreground">
                 Classic Styles
@@ -113,15 +146,15 @@ export function StylePickerDialog({
             </div>
 
             {/* Custom Templates */}
-            {savedTemplates.length > 0 && (
+            {userTemplates.length > 0 && (
               <>
                 <Separator />
                 <div>
                   <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                    Custom Styles ({savedTemplates.length})
+                    Custom Styles ({userTemplates.length})
                   </h3>
                   <div className="grid grid-cols-3 gap-3">
-                    {savedTemplates.map((template) => (
+                    {userTemplates.map((template) => (
                       <StylePreviewCard
                         key={template.id}
                         template={template}

@@ -8,6 +8,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:e2e": "turbo run dev:e2e --filter=@invoice-generator/web",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:unit": "turbo run test:unit",
@@ -23,7 +24,7 @@
     "turbo": "^2.3.0",
     "typescript": "^5.3.3"
   },
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@10.28.1",
   "engines": {
     "node": ">=18"
   }

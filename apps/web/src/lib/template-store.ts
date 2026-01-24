@@ -10,6 +10,12 @@ import type {
   BorderStyle,
   TableStyle,
 } from '@invoice-generator/shared-types'
+import {
+  SYSTEM_TEMPLATES,
+  DEFAULT_SYSTEM_TEMPLATE_ID,
+  isSystemTemplate,
+  getSystemTemplate,
+} from './system-templates'
 
 const MAX_HISTORY_SIZE = 50
 
@@ -21,7 +27,7 @@ interface TemplateState {
   // Current template being edited
   currentTemplate: InvoiceTemplate | null
 
-  // All saved templates
+  // All saved templates (user templates only - use getAllTemplates() for system + user)
   savedTemplates: InvoiceTemplate[]
 
   // Default template ID for quick exports
@@ -46,8 +52,11 @@ interface TemplateState {
   updateCurrentTemplate: (updates: Partial<InvoiceTemplate>) => void
   saveCurrentTemplate: () => InvoiceTemplate | null
   loadTemplate: (id: string) => void
-  deleteTemplate: (id: string) => void
+  deleteTemplate: (id: string) => boolean
   duplicateTemplate: (id: string) => InvoiceTemplate | null
+
+  // Get all templates (system + user)
+  getAllTemplates: () => InvoiceTemplate[]
 
   // Default template actions
   setDefaultTemplate: (id: string) => void
@@ -120,6 +129,7 @@ const defaultTemplate: Omit<InvoiceTemplate, 'id' | 'createdAt' | 'updatedAt'> =
   backgroundColor: '#ffffff',
   elements: [],
   isDefault: false,
+  isSystem: false,
 }
 
 export const useTemplateStore = create<TemplateState>()(
@@ -177,9 +187,16 @@ export const useTemplateStore = create<TemplateState>()(
         const state = get()
         if (!state.currentTemplate) return null
 
+        // Prevent overwriting system templates - create a new user template instead
+        const isSystemTpl = isSystemTemplate(state.currentTemplate.id)
+
         const template = {
           ...state.currentTemplate,
+          // If saving a system template, give it a new ID to create a user copy
+          id: isSystemTpl ? generateId() : state.currentTemplate.id,
+          isSystem: false, // Saved templates are always user templates
           updatedAt: new Date().toISOString(),
+          createdAt: isSystemTpl ? new Date().toISOString() : state.currentTemplate.createdAt,
         }
 
         set((s) => {
@@ -199,7 +216,9 @@ export const useTemplateStore = create<TemplateState>()(
 
       loadTemplate: (id) =>
         set((state) => {
+          // Search both user templates and system templates
           const template = state.savedTemplates.find((t) => t.id === id)
+            || getSystemTemplate(id)
           if (template) {
             return {
               currentTemplate: { ...template },
@@ -211,7 +230,13 @@ export const useTemplateStore = create<TemplateState>()(
           return state
         }),
 
-      deleteTemplate: (id) =>
+      deleteTemplate: (id) => {
+        // Prevent deletion of system templates
+        if (isSystemTemplate(id)) {
+          console.warn('Cannot delete system templates')
+          return false
+        }
+
         set((state) => ({
           savedTemplates: state.savedTemplates.filter((t) => t.id !== id),
           currentTemplate:
@@ -219,11 +244,22 @@ export const useTemplateStore = create<TemplateState>()(
           // Clear defaultTemplateId if the deleted template was the default
           defaultTemplateId:
             state.defaultTemplateId === id ? null : state.defaultTemplateId,
-        })),
+        }))
+        return true
+      },
+
+      getAllTemplates: () => {
+        const state = get()
+        // System templates first, then user templates
+        return [...SYSTEM_TEMPLATES, ...state.savedTemplates]
+      },
 
       duplicateTemplate: (id) => {
         const state = get()
-        const template = state.savedTemplates.find((t) => t.id === id)
+        // Search both user templates and system templates
+        const template =
+          state.savedTemplates.find((t) => t.id === id) ||
+          getSystemTemplate(id)
         if (!template) return null
 
         const now = new Date().toISOString()
@@ -232,6 +268,7 @@ export const useTemplateStore = create<TemplateState>()(
           id: generateId(),
           name: `${template.name} (Copy)`,
           isDefault: false,
+          isSystem: false, // Duplicated templates are always user templates
           elements: template.elements.map((el) => ({
             ...el,
             id: generateId(),
@@ -250,13 +287,15 @@ export const useTemplateStore = create<TemplateState>()(
       // Default template actions
       setDefaultTemplate: (id) =>
         set((state) => {
-          // Verify template exists
-          const templateExists = state.savedTemplates.some((t) => t.id === id)
+          // Verify template exists (check both user and system templates)
+          const templateExists =
+            state.savedTemplates.some((t) => t.id === id) ||
+            isSystemTemplate(id)
           if (!templateExists) return state
 
           return {
             defaultTemplateId: id,
-            // Update isDefault flag on all templates
+            // Update isDefault flag on all user templates
             savedTemplates: state.savedTemplates.map((t) => ({
               ...t,
               isDefault: t.id === id,
@@ -286,7 +325,12 @@ export const useTemplateStore = create<TemplateState>()(
       getDefaultTemplate: () => {
         const state = get()
         if (!state.defaultTemplateId) return null
-        return state.savedTemplates.find((t) => t.id === state.defaultTemplateId) || null
+        // Check both user templates and system templates
+        return (
+          state.savedTemplates.find((t) => t.id === state.defaultTemplateId) ||
+          getSystemTemplate(state.defaultTemplateId) ||
+          null
+        )
       },
 
       // Element actions
@@ -801,6 +845,12 @@ export const useTemplateStore = create<TemplateState>()(
         defaultTemplateId: state.defaultTemplateId,
         editorSettings: state.editorSettings,
       }),
+      onRehydrateStorage: () => (state) => {
+        // On first load (or if no default is set), set the default system template
+        if (state && !state.defaultTemplateId) {
+          state.defaultTemplateId = DEFAULT_SYSTEM_TEMPLATE_ID
+        }
+      },
     }
   )
 )
