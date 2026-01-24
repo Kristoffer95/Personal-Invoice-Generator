@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Save,
@@ -56,6 +56,8 @@ export function StyleEditorHeader() {
     canRedo,
   } = useTemplateStore()
 
+  const router = useRouter()
+
   // Check if current template is saved (exists in savedTemplates)
   const isTemplateSaved = currentTemplate
     ? savedTemplates.some((t) => t.id === currentTemplate.id)
@@ -106,13 +108,11 @@ export function StyleEditorHeader() {
         <div className="flex items-center gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="/">
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
+              <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Back to Dashboard</TooltipContent>
+            <TooltipContent>Go Back</TooltipContent>
           </Tooltip>
 
           <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { format } from 'date-fns'
 import {
   MoreVertical,
@@ -45,6 +46,7 @@ export function StyleCard({
   onDelete,
   onSelect,
 }: StyleCardProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSystem = template.isSystem ?? false
   const elementCount = template.elements?.length || 0
   const createdDate = template.createdAt
@@ -62,8 +64,11 @@ export function StyleCard({
     <div
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-all hover:border-primary hover:shadow-md',
-        isSelected && 'border-primary ring-2 ring-primary/20'
+        isSelected && 'border-primary ring-2 ring-primary/20',
+        isMenuOpen && 'border-primary shadow-md',
+        showCheckbox && 'cursor-pointer'
       )}
+      onClick={showCheckbox ? () => onSelect?.(!isSelected) : undefined}
     >
       {/* Preview Area */}
       <div
@@ -80,7 +85,7 @@ export function StyleCard({
         </div>
 
         {/* System & Default Badges */}
-        <div className="absolute right-2 top-2 flex flex-col gap-1">
+        <div className="absolute right-2 top-12 flex flex-col gap-1">
           {isSystem && (
             <Badge
               variant="secondary"
@@ -105,8 +110,10 @@ export function StyleCard({
         {showCheckbox && (
           <div
             className={cn(
-              'absolute left-2 top-2 z-10 transition-opacity',
-              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              'absolute left-2 top-2 z-20 transition-opacity',
+              isSelected || isMenuOpen
+                ? 'opacity-100'
+                : 'opacity-0 group-hover:opacity-100'
             )}
             onClick={handleCheckboxClick}
           >
@@ -120,21 +127,22 @@ export function StyleCard({
         )}
 
         {/* Actions Menu */}
-        <DropdownMenu>
+        <div onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="secondary"
               size="icon"
               className={cn(
-                'absolute h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100',
-                showCheckbox ? 'left-9 top-2' : 'left-2 top-2'
+                'absolute right-2 top-2 z-20 h-8 w-8 transition-opacity',
+                isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
             >
               <MoreVertical className="h-4 w-4" />
               <span className="sr-only">Actions</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
+          <DropdownMenuContent align="end">
             {isSystem ? (
               // System templates: show duplicate option only
               <>
@@ -174,6 +182,7 @@ export function StyleCard({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* Info Section */}
@@ -189,15 +198,20 @@ export function StyleCard({
         </div>
       </div>
 
-      {/* Quick Action Button - visible on hover */}
-      <div className="absolute inset-0 flex items-center justify-center bg-background/80 opacity-0 transition-opacity group-hover:opacity-100">
+      {/* Quick Action Button - visible on hover or when menu is open */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 flex items-center justify-center bg-background/80 transition-opacity',
+          isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        )}
+      >
         {isSystem ? (
-          <Button onClick={onDuplicate} size="lg">
+          <Button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} size="lg" className="pointer-events-auto">
             <Copy className="mr-2 h-4 w-4" />
             Duplicate to Customize
           </Button>
         ) : (
-          <Button onClick={onEdit} size="lg">
+          <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} size="lg" className="pointer-events-auto">
             <Pencil className="mr-2 h-4 w-4" />
             Edit Style
           </Button>

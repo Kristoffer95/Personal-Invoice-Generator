@@ -174,54 +174,6 @@ export default function StyleManagerPage() {
         </div>
       </header>
 
-      {/* Bulk Action Bar - shown when items are selected */}
-      {hasSelection && (
-        <div className="sticky top-16 z-30 border-b bg-primary/10 backdrop-blur">
-          <div className="container mx-auto flex h-12 items-center justify-between gap-4 px-4 md:px-6">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={isAllSelected}
-                ref={(el) => {
-                  if (el) {
-                    // Handle indeterminate state
-                    const input = el.querySelector('button')
-                    if (input) {
-                      (input as HTMLButtonElement).dataset.state = isSomeSelected
-                        ? 'indeterminate'
-                        : isAllSelected
-                          ? 'checked'
-                          : 'unchecked'
-                    }
-                  }
-                }}
-                onCheckedChange={handleSelectAll}
-                aria-label="Select all styles"
-              />
-              <span className="text-sm font-medium">
-                {selectedIds.size} selected
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSelection}
-                className="h-7 px-2"
-              >
-                <X className="mr-1 h-3 w-3" />
-                Clear
-              </Button>
-            </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkDeleteClick}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete ({selectedIds.size})
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 md:px-6">
         {/* System Templates Section */}
@@ -268,16 +220,71 @@ export default function StyleManagerPage() {
           ) : (
             <>
               {/* Selection Toolbar */}
-              {!hasSelection && userTemplates.length > 1 && (
-                <div className="mb-4 flex items-center gap-3">
-                  <Checkbox
-                    checked={false}
-                    onCheckedChange={() => handleSelectAll(true)}
-                    aria-label="Select all styles"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    Select all ({userTemplates.length} styles)
-                  </span>
+              {userTemplates.length > 1 && (
+                <div className="sticky top-16 z-30 -mx-4 mb-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:-mx-6 md:px-6">
+                  <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={isAllSelected}
+                      ref={(el) => {
+                        if (el) {
+                          const input = el.querySelector('button')
+                          if (input) {
+                            (input as HTMLButtonElement).dataset.state = isSomeSelected
+                              ? 'indeterminate'
+                              : isAllSelected
+                                ? 'checked'
+                                : 'unchecked'
+                          }
+                        }
+                      }}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all styles"
+                    />
+                    {hasSelection ? (
+                      <>
+                        <span className="text-sm font-medium">
+                          {selectedIds.size} selected
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearSelection}
+                          className="h-7 px-2"
+                        >
+                          <X className="mr-1 h-3 w-3" />
+                          Clear
+                        </Button>
+                      </>
+                    ) : (
+                      <span
+                        className="cursor-pointer text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => handleSelectAll(true)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            handleSelectAll(true)
+                          }
+                        }}
+                      >
+                        Select all ({userTemplates.length} styles)
+                      </span>
+                    )}
+                  </div>
+
+                  {hasSelection && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDeleteClick}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete ({selectedIds.size})
+                    </Button>
+                  )}
+                  </div>
                 </div>
               )}
 
