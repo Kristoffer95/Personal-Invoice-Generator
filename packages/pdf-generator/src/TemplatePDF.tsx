@@ -132,15 +132,16 @@ function mapFontFamily(fontFamily: string | undefined): string {
 // Render text element
 function renderTextElement(
   element: TemplateElement,
-  tokenValues: Record<AllowedToken, string>
+  tokenValues: Record<AllowedToken, string>,
+  margins: { top: number; left: number }
 ) {
   const { fontStyle, position, content, padding, backgroundColor, border, opacity } = element
   const interpolatedContent = interpolateTokens(content || '', tokenValues)
 
   const style: PdfStyle = {
     position: 'absolute',
-    left: position.x,
-    top: position.y,
+    left: position.x + margins.left,
+    top: position.y + margins.top,
     width: position.width,
     height: position.height,
     fontFamily: mapFontFamily(fontStyle?.fontFamily),
@@ -195,7 +196,8 @@ function renderTextElement(
 function renderWorkHoursTable(
   element: TemplateElement,
   invoice: Invoice,
-  tokenValues: Record<AllowedToken, string>
+  tokenValues: Record<AllowedToken, string>,
+  margins: { top: number; left: number }
 ) {
   const { position, tableStyle } = element
   const workDays = invoice.dailyWorkHours.filter((d) => d.isWorkday && d.hours > 0)
@@ -213,8 +215,8 @@ function renderWorkHoursTable(
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      left: position.x,
-      top: position.y,
+      left: position.x + margins.left,
+      top: position.y + margins.top,
       width: position.width,
     },
     header: {
@@ -279,7 +281,8 @@ function renderWorkHoursTable(
 function renderLineItemsTable(
   element: TemplateElement,
   invoice: Invoice,
-  tokenValues: Record<AllowedToken, string>
+  tokenValues: Record<AllowedToken, string>,
+  margins: { top: number; left: number }
 ) {
   const { position, tableStyle } = element
 
@@ -296,8 +299,8 @@ function renderLineItemsTable(
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      left: position.x,
-      top: position.y,
+      left: position.x + margins.left,
+      top: position.y + margins.top,
       width: position.width,
     },
     header: {
@@ -359,7 +362,8 @@ function renderLineItemsTable(
 function renderSummaryTable(
   element: TemplateElement,
   invoice: Invoice,
-  tokenValues: Record<AllowedToken, string>
+  tokenValues: Record<AllowedToken, string>,
+  margins: { top: number; left: number }
 ) {
   const { position, tableStyle } = element
   const headerBg = tableStyle?.headerBackgroundColor ?? '#1a1a2e'
@@ -370,8 +374,8 @@ function renderSummaryTable(
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      left: position.x,
-      top: position.y,
+      left: position.x + margins.left,
+      top: position.y + margins.top,
       width: position.width,
     },
     row: {
@@ -445,7 +449,10 @@ function renderSummaryTable(
 }
 
 // Render divider
-function renderDivider(element: TemplateElement) {
+function renderDivider(
+  element: TemplateElement,
+  margins: { top: number; left: number }
+) {
   const { position, backgroundColor } = element
 
   return (
@@ -453,8 +460,8 @@ function renderDivider(element: TemplateElement) {
       key={element.id}
       style={{
         position: 'absolute',
-        left: position.x,
-        top: position.y,
+        left: position.x + margins.left,
+        top: position.y + margins.top,
         width: position.width,
         height: position.height,
         backgroundColor: backgroundColor ?? '#e0e0e0',
@@ -464,13 +471,16 @@ function renderDivider(element: TemplateElement) {
 }
 
 // Render rectangle
-function renderRectangle(element: TemplateElement) {
+function renderRectangle(
+  element: TemplateElement,
+  margins: { top: number; left: number }
+) {
   const { position, backgroundColor, border, opacity } = element
 
   const style: PdfStyle = {
     position: 'absolute',
-    left: position.x,
-    top: position.y,
+    left: position.x + margins.left,
+    top: position.y + margins.top,
     width: position.width,
     height: position.height,
     opacity: opacity ?? 1,
@@ -491,7 +501,11 @@ function renderRectangle(element: TemplateElement) {
 }
 
 // Render logo
-function renderLogo(element: TemplateElement, invoice: Invoice) {
+function renderLogo(
+  element: TemplateElement,
+  invoice: Invoice,
+  margins: { top: number; left: number }
+) {
   const { position, objectFit } = element
   const logoUrl = element.logoUrl || invoice.from?.logo
 
@@ -505,8 +519,8 @@ function renderLogo(element: TemplateElement, invoice: Invoice) {
       src={logoUrl}
       style={{
         position: 'absolute',
-        left: position.x,
-        top: position.y,
+        left: position.x + margins.left,
+        top: position.y + margins.top,
         width: position.width,
         height: position.height,
         objectFit: objectFit ?? 'contain',
@@ -519,6 +533,7 @@ function renderLogo(element: TemplateElement, invoice: Invoice) {
 export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   const pageSize = PAGE_SIZES[template.pageSize as PageSizeKey] || PAGE_SIZES.A4
   const tokenValues = buildTokenValues(invoice)
+  const margins = { top: template.margins.top, left: template.margins.left }
 
   // Sort elements by z-index, filter out hidden elements (visible defaults to true)
   const sortedElements = [...template.elements]
@@ -528,19 +543,19 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   const renderElement = (element: TemplateElement) => {
     switch (element.type) {
       case 'text':
-        return renderTextElement(element, tokenValues)
+        return renderTextElement(element, tokenValues, margins)
       case 'table_work_hours':
-        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, tokenValues) : null
+        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, tokenValues, margins) : null
       case 'table_line_items':
-        return renderLineItemsTable(element, invoice, tokenValues)
+        return renderLineItemsTable(element, invoice, tokenValues, margins)
       case 'table_summary':
-        return renderSummaryTable(element, invoice, tokenValues)
+        return renderSummaryTable(element, invoice, tokenValues, margins)
       case 'divider':
-        return renderDivider(element)
+        return renderDivider(element, margins)
       case 'rectangle':
-        return renderRectangle(element)
+        return renderRectangle(element, margins)
       case 'logo':
-        return renderLogo(element, invoice)
+        return renderLogo(element, invoice, margins)
       default:
         return null
     }
@@ -556,10 +571,7 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         style={{
           position: 'relative',
           backgroundColor: template.backgroundColor,
-          paddingTop: template.margins.top,
-          paddingRight: template.margins.right,
-          paddingBottom: template.margins.bottom,
-          paddingLeft: template.margins.left,
+          // Margins applied via element position offsets, not page padding
         }}
       >
         {sortedElements.map(renderElement)}

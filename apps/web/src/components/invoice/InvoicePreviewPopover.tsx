@@ -24,6 +24,7 @@ import { InvoiceStatusBadge } from "./InvoiceStatusSelect";
 import { InvoicePreview } from "./InvoicePreview";
 import { useInvoiceStore } from "@/lib/store";
 import { useTemplateStore } from "@/lib/template-store";
+import { SYSTEM_TEMPLATE_IDS, getSystemTemplate } from "@/lib/system-templates";
 import type { InvoiceTemplate } from "@invoice-generator/shared-types";
 
 interface InvoicePreviewPopoverProps {
@@ -51,7 +52,7 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
   const [showFullPreview, setShowFullPreview] = useState(false);
   const invoice = useQuery(api.invoices.getInvoice, { invoiceId });
   const { backgroundDesigns } = useInvoiceStore();
-  const [previewStyleId, setPreviewStyleId] = useState<string>('classic-light');
+  const [previewStyleId, setPreviewStyleId] = useState<string>(SYSTEM_TEMPLATE_IDS.CLASSIC_LIGHT);
   const { savedTemplates } = useTemplateStore();
 
   const isLoading = invoice === undefined;
@@ -113,25 +114,21 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
   }, [invoiceData?.backgroundDesignId, backgroundDesigns]);
 
   const selectedPreviewTemplate = useMemo(() => {
-    if (previewStyleId === 'classic-light' || previewStyleId === 'classic-dark') {
-      return undefined;
+    // Check system templates first
+    const systemTemplate = getSystemTemplate(previewStyleId);
+    if (systemTemplate) {
+      return systemTemplate;
     }
+    // Then check user templates
     return savedTemplates.find((t) => t.id === previewStyleId);
   }, [previewStyleId, savedTemplates]);
 
   const handleExportPDF = async () => {
     if (!invoiceData) return;
+    // All styles now use templates (including system templates)
     if (selectedPreviewTemplate) {
       const { downloadTemplatePDF } = await import("@invoice-generator/pdf-generator");
       await downloadTemplatePDF({ template: selectedPreviewTemplate, invoice: invoiceData });
-    } else {
-      const { downloadPDF } = await import("@invoice-generator/pdf-generator");
-      // Set pdfTheme based on selected style (theme is read from invoice.pdfTheme by the PDF generator)
-      const invoiceWithTheme = {
-        ...invoiceData,
-        pdfTheme: previewStyleId === 'classic-dark' ? 'dark' as const : 'light' as const,
-      };
-      await downloadPDF({ invoice: invoiceWithTheme, backgroundDesign });
     }
   };
 
@@ -294,9 +291,9 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
             <span className="text-sm text-muted-foreground">Style:</span>
             <div className="flex flex-wrap gap-1.5">
               <Button
-                variant={previewStyleId === 'classic-light' ? 'secondary' : 'ghost'}
+                variant={previewStyleId === SYSTEM_TEMPLATE_IDS.CLASSIC_LIGHT ? 'secondary' : 'ghost'}
                 size="sm"
-                onClick={() => setPreviewStyleId('classic-light')}
+                onClick={() => setPreviewStyleId(SYSTEM_TEMPLATE_IDS.CLASSIC_LIGHT)}
                 className="h-8 gap-1.5"
               >
                 <Sun className="h-3.5 w-3.5" />
@@ -304,9 +301,9 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
                 <span className="sm:hidden">Light</span>
               </Button>
               <Button
-                variant={previewStyleId === 'classic-dark' ? 'secondary' : 'ghost'}
+                variant={previewStyleId === SYSTEM_TEMPLATE_IDS.CLASSIC_DARK ? 'secondary' : 'ghost'}
                 size="sm"
-                onClick={() => setPreviewStyleId('classic-dark')}
+                onClick={() => setPreviewStyleId(SYSTEM_TEMPLATE_IDS.CLASSIC_DARK)}
                 className="h-8 gap-1.5"
               >
                 <Moon className="h-3.5 w-3.5" />
