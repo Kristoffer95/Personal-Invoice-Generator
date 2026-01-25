@@ -11,6 +11,11 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  ChevronsUp,
+  ChevronsDown,
+  ChevronUp,
+  ChevronDown,
+  Unlink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +48,11 @@ export function PropertiesPanel() {
     toggleElementVisibility,
     bringToFront,
     sendToBack,
+    moveUp,
+    moveDown,
+    addElementToContainer,
+    removeElementFromContainer,
+    updateLayoutConfig,
   } = useTemplateStore()
 
   const element = currentTemplate?.elements.find(
@@ -230,6 +240,253 @@ export function PropertiesPanel() {
 
           <Separator />
 
+          {/* Position Mode - for all elements except layout_container */}
+          {element.type !== 'layout_container' && (
+            <>
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-muted-foreground uppercase">
+                  Positioning
+                </Label>
+                <div className="space-y-2">
+                  <Label className="text-xs">Mode</Label>
+                  <Select
+                    value={element.positionMode ?? 'absolute'}
+                    onValueChange={(value) =>
+                      updateElement(element.id, {
+                        positionMode: value as 'absolute' | 'relative',
+                        parentId: value === 'absolute' ? undefined : element.parentId,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="absolute">Absolute</SelectItem>
+                      <SelectItem value="relative">Relative (In Container)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Parent container dropdown - only for relative elements */}
+                {element.positionMode === 'relative' && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Parent Container</Label>
+                    <Select
+                      value={element.parentId ?? '__none__'}
+                      onValueChange={(value) => {
+                        if (value && value !== '__none__') {
+                          addElementToContainer(element.id, value)
+                        } else {
+                          removeElementFromContainer(element.id)
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select container..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {currentTemplate?.elements
+                          .filter(
+                            (el) =>
+                              el.type === 'layout_container' && el.id !== element.id
+                          )
+                          .map((container) => (
+                            <SelectItem key={container.id} value={container.id}>
+                              {container.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Spacing for relative elements */}
+                {element.positionMode === 'relative' && element.parentId && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Margin</Label>
+                      <div className="grid grid-cols-4 gap-1">
+                        <Input
+                          type="number"
+                          value={element.spacing?.top ?? 0}
+                          onChange={(e) =>
+                            updateElement(element.id, {
+                              spacing: {
+                                ...element.spacing,
+                                top: Number(e.target.value),
+                                right: element.spacing?.right ?? 0,
+                                bottom: element.spacing?.bottom ?? 0,
+                                left: element.spacing?.left ?? 0,
+                              },
+                            })
+                          }
+                          className="h-8"
+                          placeholder="T"
+                        />
+                        <Input
+                          type="number"
+                          value={element.spacing?.right ?? 0}
+                          onChange={(e) =>
+                            updateElement(element.id, {
+                              spacing: {
+                                ...element.spacing,
+                                top: element.spacing?.top ?? 0,
+                                right: Number(e.target.value),
+                                bottom: element.spacing?.bottom ?? 0,
+                                left: element.spacing?.left ?? 0,
+                              },
+                            })
+                          }
+                          className="h-8"
+                          placeholder="R"
+                        />
+                        <Input
+                          type="number"
+                          value={element.spacing?.bottom ?? 0}
+                          onChange={(e) =>
+                            updateElement(element.id, {
+                              spacing: {
+                                ...element.spacing,
+                                top: element.spacing?.top ?? 0,
+                                right: element.spacing?.right ?? 0,
+                                bottom: Number(e.target.value),
+                                left: element.spacing?.left ?? 0,
+                              },
+                            })
+                          }
+                          className="h-8"
+                          placeholder="B"
+                        />
+                        <Input
+                          type="number"
+                          value={element.spacing?.left ?? 0}
+                          onChange={(e) =>
+                            updateElement(element.id, {
+                              spacing: {
+                                ...element.spacing,
+                                top: element.spacing?.top ?? 0,
+                                right: element.spacing?.right ?? 0,
+                                bottom: element.spacing?.bottom ?? 0,
+                                left: Number(e.target.value),
+                              },
+                            })
+                          }
+                          className="h-8"
+                          placeholder="L"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Top, Right, Bottom, Left</p>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => removeElementFromContainer(element.id)}
+                    >
+                      <Unlink className="mr-1 h-4 w-4" />
+                      Remove from container
+                    </Button>
+                  </>
+                )}
+              </div>
+              <Separator />
+            </>
+          )}
+
+          {/* Layout Container Config */}
+          {element.type === 'layout_container' && (
+            <>
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-muted-foreground uppercase">
+                  Layout Config
+                </Label>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Direction</Label>
+                  <Select
+                    value={element.layoutConfig?.direction ?? 'column'}
+                    onValueChange={(value) =>
+                      updateLayoutConfig(element.id, {
+                        direction: value as 'column' | 'row',
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="column">Column (Vertical)</SelectItem>
+                      <SelectItem value="row">Row (Horizontal)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Gap</Label>
+                  <Input
+                    type="number"
+                    value={element.layoutConfig?.gap ?? 8}
+                    onChange={(e) =>
+                      updateLayoutConfig(element.id, { gap: Number(e.target.value) })
+                    }
+                    min={0}
+                    max={100}
+                    className="h-8"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Align Items</Label>
+                  <Select
+                    value={element.layoutConfig?.align ?? 'stretch'}
+                    onValueChange={(value) =>
+                      updateLayoutConfig(element.id, {
+                        align: value as 'start' | 'center' | 'end' | 'stretch',
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="start">Start</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="end">End</SelectItem>
+                      <SelectItem value="stretch">Stretch</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Justify Content</Label>
+                  <Select
+                    value={element.layoutConfig?.justify ?? 'start'}
+                    onValueChange={(value) =>
+                      updateLayoutConfig(element.id, {
+                        justify: value as 'start' | 'center' | 'end' | 'space-between' | 'space-around',
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="start">Start</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="end">End</SelectItem>
+                      <SelectItem value="space-between">Space Between</SelectItem>
+                      <SelectItem value="space-around">Space Around</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
+
           {/* Content (for text elements) */}
           {element.type === 'text' && (
             <>
@@ -330,27 +587,50 @@ export function PropertiesPanel() {
 
           {/* Layer Order */}
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground uppercase">
-              Layer Order
-            </Label>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-muted-foreground uppercase">
+                Layer Order
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                z-index: {element.zIndex}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
-                onClick={() => bringToFront(element.id)}
+                className="h-8 px-2"
+                onClick={() => sendToBack(element.id)}
+                title="Send to back"
               >
-                <ArrowUp className="mr-1 h-4 w-4" />
-                Front
+                <ChevronsDown className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
-                onClick={() => sendToBack(element.id)}
+                className="h-8 px-2"
+                onClick={() => moveDown(element.id)}
+                title="Move down"
               >
-                <ArrowDown className="mr-1 h-4 w-4" />
-                Back
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => moveUp(element.id)}
+                title="Move up"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => bringToFront(element.id)}
+                title="Bring to front"
+              >
+                <ChevronsUp className="h-4 w-4" />
               </Button>
             </div>
           </div>

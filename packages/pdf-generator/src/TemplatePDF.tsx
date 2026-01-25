@@ -8,6 +8,9 @@ import {
   StyleSheet,
 } from '@react-pdf/renderer'
 
+// Font registration is handled in fonts.ts with embedded base64 TTF fonts
+// for reliable @react-pdf/renderer compatibility (woff2 has known issues)
+
 // Style type for @react-pdf/renderer
 type PdfStyle = ReturnType<typeof StyleSheet.create>[string]
 import { format, parseISO } from 'date-fns'
@@ -18,12 +21,14 @@ import type {
   AllowedToken,
   Currency,
   PageSizeKey,
+  LayoutConfig,
 } from '@invoice-generator/shared-types'
 import {
   PAGE_SIZES,
   CURRENCY_SYMBOLS,
   ALLOWED_TOKENS,
   sanitizeForPdf,
+  calculateElementPositions,
 } from '@invoice-generator/shared-types'
 
 interface TemplatePDFProps {
@@ -60,7 +65,11 @@ function buildTokenValues(invoice: Invoice): Record<AllowedToken, string> {
       invoice.periodStart && invoice.periodEnd
         ? `${formatDate(invoice.periodStart)} - ${formatDate(invoice.periodEnd)}`
         : '',
+    // From tokens
     from_name: invoice.from?.name ?? '',
+    from_company: invoice.from?.companyName ?? '',
+    from_name_or_company: invoice.from?.name || invoice.from?.companyName || '',
+    from_company_or_name: invoice.from?.companyName || invoice.from?.name || '',
     from_address: invoice.from?.address ?? '',
     from_city: invoice.from?.city ?? '',
     from_state: invoice.from?.state ?? '',
@@ -69,7 +78,11 @@ function buildTokenValues(invoice: Invoice): Record<AllowedToken, string> {
     from_email: invoice.from?.email ?? '',
     from_phone: invoice.from?.phone ?? '',
     from_tax_id: invoice.from?.taxId ?? '',
+    // To tokens
     to_name: invoice.to?.name ?? '',
+    to_company: invoice.to?.companyName ?? '',
+    to_name_or_company: invoice.to?.name || invoice.to?.companyName || '',
+    to_company_or_name: invoice.to?.companyName || invoice.to?.name || '',
     to_address: invoice.to?.address ?? '',
     to_city: invoice.to?.city ?? '',
     to_state: invoice.to?.state ?? '',
@@ -110,23 +123,56 @@ function interpolateTokens(
   })
 }
 
-// Map fontFamily to react-pdf font
-function mapFontFamily(fontFamily: string | undefined): string {
-  const fontMap: Record<string, string> = {
-    Helvetica: 'Helvetica',
-    'Helvetica-Bold': 'Helvetica-Bold',
-    'Helvetica-Oblique': 'Helvetica-Oblique',
-    'Helvetica-BoldOblique': 'Helvetica-BoldOblique',
-    'Times-Roman': 'Times-Roman',
-    'Times-Bold': 'Times-Bold',
-    'Times-Italic': 'Times-Italic',
-    'Times-BoldItalic': 'Times-BoldItalic',
-    Courier: 'Courier',
-    'Courier-Bold': 'Courier-Bold',
-    'Courier-Oblique': 'Courier-Oblique',
-    'Courier-BoldOblique': 'Courier-BoldOblique',
+// Map fontFamily + fontWeight + fontStyle to react-pdf font
+function mapFontFamily(
+  fontFamily: string | undefined,
+  fontWeight?: 'normal' | 'bold',
+  fontStyle?: 'normal' | 'italic'
+): string {
+  const base = fontFamily ?? 'Helvetica'
+  const isBold = fontWeight === 'bold'
+  const isItalic = fontStyle === 'italic'
+
+  // Handle Helvetica family
+  if (base === 'Helvetica' || base.startsWith('Helvetica')) {
+    if (isBold && isItalic) return 'Helvetica-BoldOblique'
+    if (isBold) return 'Helvetica-Bold'
+    if (isItalic) return 'Helvetica-Oblique'
+    return 'Helvetica'
   }
-  return fontMap[fontFamily ?? 'Helvetica'] ?? 'Helvetica'
+
+  // Handle Times family
+  if (base === 'Times-Roman' || base.startsWith('Times')) {
+    if (isBold && isItalic) return 'Times-BoldItalic'
+    if (isBold) return 'Times-Bold'
+    if (isItalic) return 'Times-Italic'
+    return 'Times-Roman'
+  }
+
+  // Handle Courier family
+  if (base === 'Courier' || base.startsWith('Courier')) {
+    if (isBold && isItalic) return 'Courier-BoldOblique'
+    if (isBold) return 'Courier-Bold'
+    if (isItalic) return 'Courier-Oblique'
+    return 'Courier'
+  }
+
+  // Handle Geist family (custom fonts - bold variant available)
+  if (base === 'Geist' || base === 'Geist Sans' || base === 'GeistSans') {
+    // Geist only has Regular and Bold (no italic variants registered)
+    if (isBold) return 'Geist-Bold'
+    return 'Geist'
+  }
+
+  // Handle Geist Mono family
+  if (base === 'Geist Mono' || base === 'GeistMono') {
+    // Geist Mono only has Regular and Bold (no italic variants registered)
+    if (isBold) return 'Geist Mono-Bold'
+    return 'Geist Mono'
+  }
+
+  // Fallback to the base font
+  return base
 }
 
 // Render text element
@@ -135,41 +181,91 @@ function renderTextElement(
   tokenValues: Record<AllowedToken, string>,
   margins: { top: number; left: number }
 ) {
-  const { fontStyle, position, content, padding, backgroundColor, border, opacity } = element
-  const interpolatedContent = interpolateTokens(content || '', tokenValues)
+  const { fontStyle, position, padding, backgroundColor, border, opacity } = element
 
-  const style: PdfStyle = {
+  // Ensure content is always a string (handle undefined, null, or non-string values)
+  const rawContent = typeof element.content === 'string' ? element.content : ''
+  const interpolatedContent = interpolateTokens(rawContent, tokenValues)
+
+  // DEBUG: Log element rendering details to trace token interpolation issues
+  // Set PDF_DEBUG=true in environment to enable logging
+  if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+    console.log('[PDF DEBUG] renderTextElement:', {
+      id: element.id,
+      name: element.name,
+      contentRaw: element.content,
+      contentType: typeof element.content,
+      contentInterpolated: interpolatedContent,
+      isEmpty: !interpolatedContent || interpolatedContent.trim() === '',
+      visible: element.visible,
+      zIndex: element.zIndex,
+      position,
+      fontStyle: {
+        color: fontStyle?.color,
+        fontSize: fontStyle?.fontSize,
+        fontFamily: fontStyle?.fontFamily,
+        letterSpacing: fontStyle?.letterSpacing,
+      },
+    })
+  }
+
+  // Validate position dimensions - ensure minimum valid values
+  const safePosition = {
+    x: position?.x ?? 0,
+    y: position?.y ?? 0,
+    width: Math.max(position?.width ?? 100, 1),
+    height: Math.max(position?.height ?? 20, 1),
+  }
+
+  // Container style (View)
+  const containerStyle: PdfStyle = {
     position: 'absolute',
-    left: position.x + margins.left,
-    top: position.y + margins.top,
-    width: position.width,
-    height: position.height,
-    fontFamily: mapFontFamily(fontStyle?.fontFamily),
-    fontSize: fontStyle?.fontSize ?? 12,
-    color: fontStyle?.color ?? '#333333',
-    textAlign: fontStyle?.textAlign ?? 'left',
-    lineHeight: fontStyle?.lineHeight ?? 1.2,
-    letterSpacing: fontStyle?.letterSpacing ?? 0,
+    left: safePosition.x + margins.left,
+    top: safePosition.y + margins.top,
+    width: safePosition.width,
+    height: safePosition.height,
     padding: padding ?? 0,
-    opacity: opacity ?? 1,
+    opacity: typeof opacity === 'number' && opacity >= 0 && opacity <= 1 ? opacity : 1,
+  }
+
+  // Validate fontSize to prevent @react-pdf/renderer issues with invalid values
+  const safeFontSize = (fontStyle?.fontSize && fontStyle.fontSize > 0) ? fontStyle.fontSize : 12
+
+  // Validate letterSpacing (must be a finite number)
+  const safeLetterSpacing = (typeof fontStyle?.letterSpacing === 'number' && isFinite(fontStyle.letterSpacing))
+    ? fontStyle.letterSpacing
+    : 0
+
+  // Validate lineHeight (must be positive)
+  const safeLineHeight = (fontStyle?.lineHeight && fontStyle.lineHeight > 0) ? fontStyle.lineHeight : 1.2
+
+  // Text style - must be applied directly to Text component for color to work
+  // @react-pdf/renderer does not inherit color from parent View
+  const textStyle: PdfStyle = {
+    fontFamily: mapFontFamily(fontStyle?.fontFamily, fontStyle?.fontWeight, fontStyle?.fontStyle),
+    fontSize: safeFontSize,
+    color: fontStyle?.color || '#333333',
+    textAlign: fontStyle?.textAlign ?? 'left',
+    lineHeight: safeLineHeight,
+    letterSpacing: safeLetterSpacing,
   }
 
   if (backgroundColor) {
-    style.backgroundColor = backgroundColor
+    containerStyle.backgroundColor = backgroundColor
   }
 
   if (border && border.width > 0) {
-    style.borderWidth = border.width
-    style.borderColor = border.color
-    style.borderStyle = border.style
-    style.borderRadius = border.radius
+    containerStyle.borderWidth = border.width
+    containerStyle.borderColor = border.color
+    containerStyle.borderStyle = border.style
+    containerStyle.borderRadius = border.radius
   }
 
-  // Handle text decoration
+  // Handle text decoration - must be on Text component
   if (fontStyle?.textDecoration === 'underline') {
-    style.textDecoration = 'underline'
+    textStyle.textDecoration = 'underline'
   } else if (fontStyle?.textDecoration === 'line-through') {
-    style.textDecoration = 'line-through'
+    textStyle.textDecoration = 'line-through'
   }
 
   // Handle text transform
@@ -186,8 +282,8 @@ function renderTextElement(
   }
 
   return (
-    <View key={element.id} style={style}>
-      <Text>{displayContent}</Text>
+    <View key={element.id} style={containerStyle}>
+      <Text style={textStyle}>{displayContent}</Text>
     </View>
   )
 }
@@ -529,18 +625,169 @@ function renderLogo(
   )
 }
 
+// Render layout container with flexbox
+function renderLayoutContainer(
+  element: TemplateElement,
+  children: TemplateElement[],
+  tokenValues: Record<AllowedToken, string>,
+  invoice: Invoice,
+  margins: { top: number; left: number },
+  renderElementFn: (el: TemplateElement) => React.ReactNode
+) {
+  const { position, backgroundColor, border, opacity, padding, layoutConfig } = element
+
+  const config = layoutConfig ?? {
+    direction: 'column' as const,
+    gap: 8,
+    align: 'stretch' as const,
+    justify: 'start' as const,
+    wrap: false,
+  }
+
+  // Map align/justify to flexbox values
+  const alignMap = {
+    start: 'flex-start',
+    center: 'center',
+    end: 'flex-end',
+    stretch: 'stretch',
+  } as const
+
+  const justifyMap = {
+    start: 'flex-start',
+    center: 'center',
+    end: 'flex-end',
+    'space-between': 'space-between',
+    'space-around': 'space-around',
+  } as const
+
+  const containerStyle: PdfStyle = {
+    position: 'absolute',
+    left: position.x + margins.left,
+    top: position.y + margins.top,
+    width: position.width,
+    height: position.height,
+    padding: padding ?? 0,
+    opacity: opacity ?? 1,
+    flexDirection: config.direction,
+    gap: config.gap,
+    alignItems: alignMap[config.align as keyof typeof alignMap] ?? 'stretch',
+    justifyContent: justifyMap[config.justify as keyof typeof justifyMap] ?? 'flex-start',
+    flexWrap: config.wrap ? 'wrap' : 'nowrap',
+  }
+
+  if (backgroundColor) {
+    containerStyle.backgroundColor = backgroundColor
+  }
+
+  if (border && border.width > 0) {
+    containerStyle.borderWidth = border.width
+    containerStyle.borderColor = border.color
+    containerStyle.borderStyle = border.style
+    containerStyle.borderRadius = border.radius
+  }
+
+  // Get children sorted by order
+  const sortedChildren = children
+    .filter((el) => el.parentId === element.id && el.visible !== false)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+  return (
+    <View key={element.id} style={containerStyle}>
+      {sortedChildren.map((child) => {
+        const spacing = child.spacing ?? { top: 0, right: 0, bottom: 0, left: 0 }
+        return (
+          <View
+            key={child.id}
+            style={{
+              marginTop: spacing.top,
+              marginRight: spacing.right,
+              marginBottom: spacing.bottom,
+              marginLeft: spacing.left,
+              flexGrow: child.flexGrow ?? 0,
+              flexShrink: child.flexShrink ?? 1,
+            }}
+          >
+            {renderElementFn(child)}
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
 // Main component
 export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   const pageSize = PAGE_SIZES[template.pageSize as PageSizeKey] || PAGE_SIZES.A4
   const tokenValues = buildTokenValues(invoice)
   const margins = { top: template.margins.top, left: template.margins.left }
 
+  // DEBUG: Log invoice data and token values
+  if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+    console.log('[PDF DEBUG] TemplatePDF render:', {
+      templateName: template.name,
+      templateId: template.id,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      tokenValues: {
+        invoice_number: tokenValues.invoice_number,
+        from_name: tokenValues.from_name,
+        to_name: tokenValues.to_name,
+      },
+      totalElements: template.elements.length,
+    })
+  }
+
   // Sort elements by z-index, filter out hidden elements (visible defaults to true)
   const sortedElements = [...template.elements]
     .filter((el) => el.visible !== false)
     .sort((a, b) => a.zIndex - b.zIndex)
 
+  // DEBUG: Log sorted elements with text elements highlighted
+  if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+    console.log('[PDF DEBUG] Sorted text elements:', sortedElements
+      .filter(el => el.type === 'text')
+      .map(el => ({
+        id: el.id,
+        name: el.name,
+        content: el.content,
+        zIndex: el.zIndex,
+        fontSize: el.fontStyle?.fontSize,
+        color: el.fontStyle?.color,
+      })))
+  }
+
+  // Helper to render a single element (used by containers for children)
+  const renderSingleElement = (element: TemplateElement): React.ReactNode => {
+    switch (element.type) {
+      case 'text':
+        // For relative elements inside containers, render without position offset
+        const textMargins = element.positionMode === 'relative' && element.parentId
+          ? { top: 0, left: 0 }
+          : margins
+        return renderTextElement({ ...element, position: { ...element.position, x: 0, y: 0 } }, tokenValues, textMargins)
+      case 'table_work_hours':
+        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, tokenValues, margins) : null
+      case 'table_line_items':
+        return renderLineItemsTable(element, invoice, tokenValues, margins)
+      case 'table_summary':
+        return renderSummaryTable(element, invoice, tokenValues, margins)
+      case 'divider':
+        return renderDivider({ ...element, position: { ...element.position, x: 0, y: 0 } }, { top: 0, left: 0 })
+      case 'rectangle':
+        return renderRectangle({ ...element, position: { ...element.position, x: 0, y: 0 } }, { top: 0, left: 0 })
+      case 'logo':
+        return renderLogo(element, invoice, margins)
+      default:
+        return null
+    }
+  }
+
   const renderElement = (element: TemplateElement) => {
+    // Skip relative elements at top level - they're rendered by their parent containers
+    if (element.positionMode === 'relative' && element.parentId) {
+      return null
+    }
+
     switch (element.type) {
       case 'text':
         return renderTextElement(element, tokenValues, margins)
@@ -556,10 +803,22 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         return renderRectangle(element, margins)
       case 'logo':
         return renderLogo(element, invoice, margins)
+      case 'layout_container':
+        return renderLayoutContainer(
+          element,
+          template.elements,
+          tokenValues,
+          invoice,
+          margins,
+          renderSingleElement
+        )
       default:
         return null
     }
   }
+
+  // Ensure backgroundColor has a fallback - if undefined, PDF defaults to white
+  const resolvedBackgroundColor = template.backgroundColor || '#ffffff'
 
   return (
     <Document>
@@ -570,7 +829,7 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         }}
         style={{
           position: 'relative',
-          backgroundColor: template.backgroundColor,
+          backgroundColor: resolvedBackgroundColor,
           // Margins applied via element position offsets, not page padding
         }}
       >

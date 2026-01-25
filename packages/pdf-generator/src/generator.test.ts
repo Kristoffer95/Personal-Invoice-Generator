@@ -95,6 +95,10 @@ describe('TemplatePDF', () => {
     orientation: 'portrait',
     margins: { top: 40, right: 40, bottom: 60, left: 40 },
     backgroundColor: '#ffffff',
+    isDefault: false,
+    isSystem: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
     elements: [
       {
         id: 'work-hours-table',
@@ -121,9 +125,6 @@ describe('TemplatePDF', () => {
         visible: true,
       },
     ],
-    isDefault: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
   })
 
   it('TemplatePDF returns a valid React element', async () => {

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
-import { Palette, Sun, Moon, Lock } from 'lucide-react'
+import { Palette, Sun, Moon, Lock, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { StylePreviewCard } from './StylePreviewCard'
-import { useTemplateStore } from '@/lib/template-store'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useTemplates, useDefaultTemplate, useTemplateMutations } from '@/hooks/use-templates'
+import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
+import { convexToInvoiceTemplate } from '@/lib/template-utils'
 import type { InvoiceTemplate } from '@invoice-generator/shared-types'
 
 // Built-in style options (not actual templates, just theme indicators)
@@ -34,23 +37,39 @@ export function StylePickerDialog({
   onSelectTemplate,
   onSelectBuiltIn,
 }: StylePickerDialogProps) {
-  const {
-    getAllTemplates,
-    defaultTemplateId,
-    setDefaultTemplate,
-    clearDefaultTemplate,
-  } = useTemplateStore()
+  const { isAuthenticated, isLoading: isAuthLoading } = useCurrentUser()
 
-  // Split templates into system and user
-  const allTemplates = getAllTemplates()
-  const systemTemplates = useMemo(() => allTemplates.filter((t) => t.isSystem), [allTemplates])
-  const userTemplates = useMemo(() => allTemplates.filter((t) => !t.isSystem), [allTemplates])
+  // Convex hooks
+  const { templates: convexTemplates, isLoading: isTemplatesLoading } = useTemplates()
+  const { template: defaultTemplate } = useDefaultTemplate()
+  const { setDefaultTemplate, clearDefaultTemplate } = useTemplateMutations()
 
-  const handleSetDefault = (templateId: string) => {
-    if (defaultTemplateId === templateId) {
-      clearDefaultTemplate()
-    } else {
-      setDefaultTemplate(templateId)
+  // System templates (static, from code)
+  const systemTemplates = SYSTEM_TEMPLATES
+
+  // User templates from Convex
+  const userTemplates = useMemo(() => {
+    return convexTemplates.map(convexToInvoiceTemplate)
+  }, [convexTemplates])
+
+  // Default template ID
+  const defaultTemplateId = defaultTemplate?._id ?? null
+
+  const handleSetDefault = async (templateId: string) => {
+    if (!isAuthenticated) return
+
+    // Only Convex templates can be set as default (not system templates)
+    const isSystemTemplate = systemTemplates.some(t => t.id === templateId)
+    if (isSystemTemplate) return
+
+    try {
+      if (defaultTemplateId === templateId) {
+        await clearDefaultTemplate({})
+      } else {
+        await setDefaultTemplate({ templateId: templateId as any })
+      }
+    } catch (error) {
+      console.error('Failed to set default template:', error)
     }
   }
 
@@ -63,6 +82,8 @@ export function StylePickerDialog({
     onSelectBuiltIn(style)
     onOpenChange(false)
   }
+
+  const isLoading = isAuthLoading || (isAuthenticated && isTemplatesLoading)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,9 +114,9 @@ export function StylePickerDialog({
                     <StylePreviewCard
                       key={template.id}
                       template={template}
-                      isDefault={defaultTemplateId === template.id}
+                      isDefault={false}
                       onSelect={() => handleSelectTemplate(template)}
-                      onSetDefault={() => handleSetDefault(template.id)}
+                      onSetDefault={() => {}}
                     />
                   ))}
                 </div>
@@ -146,24 +167,34 @@ export function StylePickerDialog({
             </div>
 
             {/* Custom Templates */}
-            {userTemplates.length > 0 && (
+            {isAuthenticated && (
               <>
                 <Separator />
                 <div>
                   <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                    Custom Styles ({userTemplates.length})
+                    Custom Styles {userTemplates.length > 0 && `(${userTemplates.length})`}
                   </h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    {userTemplates.map((template) => (
-                      <StylePreviewCard
-                        key={template.id}
-                        template={template}
-                        isDefault={defaultTemplateId === template.id}
-                        onSelect={() => handleSelectTemplate(template)}
-                        onSetDefault={() => handleSetDefault(template.id)}
-                      />
-                    ))}
-                  </div>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : userTemplates.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {userTemplates.map((template) => (
+                        <StylePreviewCard
+                          key={template.id}
+                          template={template}
+                          isDefault={defaultTemplateId === template.id}
+                          onSelect={() => handleSelectTemplate(template)}
+                          onSetDefault={() => handleSetDefault(template.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No custom styles yet. Create one in the Style Manager.
+                    </p>
+                  )}
                 </div>
               </>
             )}

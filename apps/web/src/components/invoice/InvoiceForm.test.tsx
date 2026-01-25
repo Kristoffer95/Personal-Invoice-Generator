@@ -58,6 +58,30 @@ vi.mock('./InvoicePreview', () => ({
   InvoicePreview: vi.fn(() => <div data-testid="invoice-preview">Invoice Preview</div>),
 }))
 
+// Mock Convex hooks used by ExportButton
+vi.mock('@/hooks/use-current-user', () => ({
+  useCurrentUser: () => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+  }),
+}))
+
+vi.mock('@/hooks/use-templates', () => ({
+  useTemplates: () => ({
+    templates: [],
+    isLoading: false,
+  }),
+  useDefaultTemplate: () => ({
+    template: null,
+    isLoading: false,
+  }),
+}))
+
+vi.mock('@/lib/template-utils', () => ({
+  convexToInvoiceTemplate: (t: unknown) => t,
+}))
+
 const createMockStore = (overrides = {}) => ({
   currentInvoice: {
     invoiceNumber: '',

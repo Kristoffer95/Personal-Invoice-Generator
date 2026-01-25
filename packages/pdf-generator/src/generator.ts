@@ -2,6 +2,7 @@ import { pdf } from '@react-pdf/renderer'
 import type { Invoice, BackgroundDesign, ExportConfig, InvoiceTemplate } from '@invoice-generator/shared-types'
 import { InvoicePDF } from './InvoicePDF'
 import { TemplatePDF } from './TemplatePDF'
+import { ensureFontsRegistered } from './fonts'
 
 export interface PDFGeneratorOptions {
   invoice: Invoice
@@ -79,7 +80,30 @@ export async function downloadPDF(
 export async function generateTemplatePDFBlob(
   options: TemplateGeneratorOptions
 ): Promise<Blob> {
+  // Ensure custom fonts are registered before PDF generation
+  ensureFontsRegistered()
+
   const { template, invoice } = options
+
+  // DEBUG: Log input data to trace issues
+  if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+    console.log('[PDF Generator DEBUG] generateTemplatePDFBlob called:', {
+      templateId: template.id,
+      templateName: template.name,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      textElementsCount: template.elements.filter(el => el.type === 'text').length,
+      textElements: template.elements
+        .filter(el => el.type === 'text')
+        .map(el => ({
+          id: el.id,
+          name: el.name,
+          content: el.content,
+          contentType: typeof el.content,
+          hasContent: Boolean(el.content),
+        })),
+    })
+  }
 
   // Validate template has visible elements
   const visibleElements = template.elements.filter((el) => el.visible !== false)

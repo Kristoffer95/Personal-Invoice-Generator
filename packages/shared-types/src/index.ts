@@ -3,6 +3,9 @@ import { z } from 'zod'
 // Re-export all template types
 export * from './template'
 
+// Re-export layout engine
+export * from './layout-engine'
+
 // Page size definitions with dimensions in mm
 export const PAGE_SIZES = {
   A4: { width: 210, height: 297, label: 'A4' },
@@ -194,6 +197,7 @@ export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
 // Company/Client information
 export const partyInfoSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  companyName: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),

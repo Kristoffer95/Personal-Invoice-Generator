@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { useDraggable } from '@dnd-kit/core'
-import { Lock, Move, CornerRightDown } from 'lucide-react'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { Lock, Move, CornerRightDown, Box } from 'lucide-react'
 import { useTemplateStore } from '@/lib/template-store'
 import { cn } from '@/lib/utils'
-import type { TemplateElement as TemplateElementType } from '@invoice-generator/shared-types'
+import type { TemplateElement as TemplateElementType, CalculatedPosition } from '@invoice-generator/shared-types'
 import { TextElement } from './TextElement'
 import { TableElement } from './TableElement'
 
@@ -13,25 +13,51 @@ interface TemplateElementProps {
   element: TemplateElementType
   isSelected: boolean
   margins: { top: number; left: number }
+  calculatedPosition?: CalculatedPosition
+  childCount?: number
 }
 
-export function TemplateElement({ element, isSelected, margins }: TemplateElementProps) {
-  const { selectElement, moveElement, resizeElement, updateElement } = useTemplateStore()
+export function TemplateElement({ element, isSelected, margins, calculatedPosition, childCount }: TemplateElementProps) {
+  const { selectElement, moveElement, resizeElement, updateElement, currentTemplate } = useTemplateStore()
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
 
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const isContainer = element.type === 'layout_container'
+  const isRelative = element.positionMode === 'relative' && element.parentId
+
+  const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
     id: element.id,
     data: { type: 'canvas-element' },
     disabled: element.locked,
   })
 
+  // Make containers droppable
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `container-${element.id}`,
+    disabled: !isContainer,
+    data: { type: 'container', containerId: element.id },
+  })
+
+  // Combine refs for containers
+  const setNodeRef = useCallback(
+    (node: HTMLElement | null) => {
+      setDraggableRef(node)
+      if (isContainer) {
+        setDroppableRef(node)
+      }
+    },
+    [setDraggableRef, setDroppableRef, isContainer]
+  )
+
+  // Use calculated position if available (for relative elements), otherwise use element position
+  const pos = calculatedPosition ?? element.position
+
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: element.position.x + margins.left,
-    top: element.position.y + margins.top,
-    width: element.position.width,
-    height: element.position.height,
+    left: pos.x + margins.left,
+    top: pos.y + margins.top,
+    width: pos.width,
+    height: pos.height,
     zIndex: element.zIndex,
     opacity: isDragging ? 0.3 : element.opacity,
     backgroundColor: element.backgroundColor,
@@ -121,6 +147,37 @@ export function TemplateElement({ element, isSelected, margins }: TemplateElemen
             Logo
           </div>
         )
+      case 'layout_container':
+        return (
+          <div
+            className={cn(
+              'w-full h-full min-h-[40px] min-w-[40px] flex items-center justify-center border-2 border-dashed rounded transition-colors',
+              isOver ? 'border-blue-500 bg-blue-50/50' : 'border-blue-400/50'
+            )}
+            style={{
+              flexDirection: element.layoutConfig?.direction || 'column',
+              gap: element.layoutConfig?.gap || 8,
+              background: isOver
+                ? 'rgba(59, 130, 246, 0.1)'
+                : 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(59, 130, 246, 0.03) 5px, rgba(59, 130, 246, 0.03) 10px)',
+            }}
+          >
+            <div className="absolute top-1 left-1 flex items-center gap-1 text-xs text-blue-500/70 pointer-events-none">
+              <Box className="h-3 w-3" />
+              {element.layoutConfig?.direction === 'row' ? '→ Row' : '↓ Column'}
+            </div>
+            {typeof childCount === 'number' && (
+              <div className="absolute bottom-1 right-1 text-xs text-blue-500/70 pointer-events-none">
+                {childCount} {childCount === 1 ? 'item' : 'items'}
+              </div>
+            )}
+            {childCount === 0 && (
+              <span className="text-xs text-muted-foreground/50 pointer-events-none">
+                Drop elements here
+              </span>
+            )}
+          </div>
+        )
       default:
         return null
     }
@@ -173,6 +230,11 @@ export function TemplateElement({ element, isSelected, margins }: TemplateElemen
               <Move className="h-3 w-3 text-muted-foreground" />
             )}
             <span className="truncate max-w-[100px]">{element.name}</span>
+            {isRelative && (
+              <span className="ml-1 text-blue-500 bg-blue-500/10 px-1 rounded text-[9px]">
+                in container
+              </span>
+            )}
           </div>
         </>
       )}

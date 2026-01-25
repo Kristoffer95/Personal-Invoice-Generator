@@ -4,3 +4,4 @@ export * from "./userProfiles";
 export * from "./invoices";
 export * from "./invoiceFolders";
 export * from "./clientProfiles";
+export * from "./templates";

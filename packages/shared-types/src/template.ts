@@ -12,6 +12,9 @@ export const ALLOWED_TOKENS = [
   'billing_period',
   // From
   'from_name',
+  'from_company',
+  'from_name_or_company',
+  'from_company_or_name',
   'from_address',
   'from_city',
   'from_state',
@@ -22,6 +25,9 @@ export const ALLOWED_TOKENS = [
   'from_tax_id',
   // To
   'to_name',
+  'to_company',
+  'to_name_or_company',
+  'to_company_or_name',
   'to_address',
   'to_city',
   'to_state',
@@ -60,13 +66,49 @@ export const templateElementTypeSchema = z.enum([
   'divider',
   'rectangle',
   'logo',
+  'layout_container',
 ])
+
+// Positioning mode for elements
+export const positionModeSchema = z.enum(['absolute', 'relative'])
+export type PositionMode = z.infer<typeof positionModeSchema>
+
+// Layout direction for containers
+export const layoutDirectionSchema = z.enum(['column', 'row'])
+export type LayoutDirection = z.infer<typeof layoutDirectionSchema>
+
+// Alignment options (cross-axis)
+export const alignmentSchema = z.enum(['start', 'center', 'end', 'stretch'])
+export type Alignment = z.infer<typeof alignmentSchema>
+
+// Justify options (main-axis)
+export const justifySchema = z.enum(['start', 'center', 'end', 'space-between', 'space-around'])
+export type Justify = z.infer<typeof justifySchema>
+
+// Layout container configuration
+export const layoutConfigSchema = z.object({
+  direction: layoutDirectionSchema.default('column'),
+  gap: z.number().min(0).max(100).default(8),
+  align: alignmentSchema.default('stretch'),
+  justify: justifySchema.default('start'),
+  wrap: z.boolean().default(false),
+})
+export type LayoutConfig = z.infer<typeof layoutConfigSchema>
+
+// Spacing for relative elements (margin)
+export const spacingSchema = z.object({
+  top: z.number().default(0),
+  right: z.number().default(0),
+  bottom: z.number().default(0),
+  left: z.number().default(0),
+})
+export type Spacing = z.infer<typeof spacingSchema>
 
 export type TemplateElementType = z.infer<typeof templateElementTypeSchema>
 
 // Font style options
 export const fontStyleSchema = z.object({
-  fontFamily: z.enum(['Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Helvetica-BoldOblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Times-BoldItalic', 'Courier', 'Courier-Bold', 'Courier-Oblique', 'Courier-BoldOblique']).default('Helvetica'),
+  fontFamily: z.enum(['Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Helvetica-BoldOblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Times-BoldItalic', 'Courier', 'Courier-Bold', 'Courier-Oblique', 'Courier-BoldOblique', 'Geist', 'Geist Mono']).default('Helvetica'),
   fontSize: z.number().min(6).max(72).default(12),
   fontWeight: z.enum(['normal', 'bold']).default('normal'),
   fontStyle: z.enum(['normal', 'italic']).default('normal'),
@@ -145,6 +187,16 @@ export const templateElementSchema = z.object({
   // Logo-specific
   logoUrl: z.string().optional(),
   objectFit: z.enum(['contain', 'cover', 'fill']).optional(),
+  // Relative positioning (defaults to absolute for backward compatibility)
+  positionMode: positionModeSchema.default('absolute'),
+  parentId: z.string().optional(), // Container element ID for relative elements
+  order: z.number().default(0), // Sort order within container
+  spacing: spacingSchema.optional(), // Margin around element
+  flexGrow: z.number().min(0).max(1).default(0),
+  flexShrink: z.number().min(0).max(1).default(1),
+  alignSelf: alignmentSchema.optional(), // Override container alignment
+  // Layout container configuration
+  layoutConfig: layoutConfigSchema.optional(),
 })
 
 export type TemplateElement = z.infer<typeof templateElementSchema>
@@ -215,7 +267,7 @@ export type EditorSettings = z.infer<typeof editorSettingsSchema>
 // Predefined element templates for the elements panel
 export interface PredefinedElement {
   id: string
-  category: 'text' | 'contact' | 'tables' | 'decorative'
+  category: 'text' | 'contact' | 'tables' | 'decorative' | 'layout'
   name: string
   description: string
   icon: string

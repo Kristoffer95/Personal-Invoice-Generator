@@ -58,8 +58,10 @@ import {
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { useInvoiceStore } from '@/lib/store'
-import { useTemplateStore } from '@/lib/template-store'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useTemplates, useDefaultTemplate } from '@/hooks/use-templates'
 import { cn } from '@/lib/utils'
+import type { Template } from '@/hooks/use-templates'
 import {
   detectInvoicePeriod,
   generateWorkHoursForPeriod,
@@ -141,7 +143,105 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
 
   // Preview style selection - 'classic-light', 'classic-dark', or template ID
   const [previewStyleId, setPreviewStyleId] = useState<string>('classic-light')
-  const { savedTemplates } = useTemplateStore()
+
+  // Use Convex templates for preview style selection
+  const { isAuthenticated } = useCurrentUser()
+  const { templates: convexTemplates } = useTemplates()
+  const { template: defaultTemplate } = useDefaultTemplate()
+
+  // Convert Convex templates to preview format
+  const userTemplates = useMemo(() => {
+    return convexTemplates.map((t: Template): InvoiceTemplate => ({
+      id: t._id,
+      name: t.name,
+      description: t.description,
+      pageSize: t.pageSize,
+      orientation: t.orientation,
+      margins: t.margins,
+      theme: t.theme ? {
+        primary: t.theme.primary ?? '#1a1a2e',
+        secondary: t.theme.secondary ?? '#16213e',
+        accent: t.theme.accent ?? '#0f3460',
+        text: t.theme.text ?? '#333333',
+        textLight: t.theme.textLight ?? '#666666',
+        background: t.theme.background ?? '#ffffff',
+      } : undefined,
+      backgroundColor: t.backgroundColor,
+      elements: t.elements.map((el) => ({
+        id: el.id,
+        type: el.type,
+        name: el.name ?? 'Untitled Element',
+        position: el.position,
+        content: el.content ?? '',
+        fontStyle: el.fontStyle ? {
+          fontFamily: el.fontStyle.fontFamily ?? 'Helvetica',
+          fontSize: el.fontStyle.fontSize ?? 12,
+          fontWeight: el.fontStyle.fontWeight ?? 'normal',
+          fontStyle: el.fontStyle.fontStyle ?? 'normal',
+          textAlign: el.fontStyle.textAlign ?? 'left',
+          textDecoration: el.fontStyle.textDecoration ?? 'none',
+          textTransform: el.fontStyle.textTransform ?? 'none',
+          letterSpacing: el.fontStyle.letterSpacing ?? 0,
+          lineHeight: el.fontStyle.lineHeight ?? 1.2,
+          color: el.fontStyle.color ?? '#000000',
+        } : undefined,
+        border: el.border ? {
+          width: el.border.width ?? 0,
+          color: el.border.color ?? '#000000',
+          style: el.border.style ?? 'solid',
+          radius: el.border.radius ?? 0,
+        } : undefined,
+        backgroundColor: el.backgroundColor,
+        padding: el.padding ?? 0,
+        opacity: el.opacity ?? 1,
+        zIndex: el.zIndex ?? 0,
+        locked: el.locked ?? false,
+        visible: el.visible ?? true,
+        tableStyle: el.tableStyle ? {
+          headerBackgroundColor: el.tableStyle.headerBackgroundColor ?? '#1a1a2e',
+          headerTextColor: el.tableStyle.headerTextColor ?? '#ffffff',
+          rowBackgroundColor: el.tableStyle.rowBackgroundColor ?? '#ffffff',
+          alternateRowBackgroundColor: el.tableStyle.alternateRowBackgroundColor ?? '#f8fafc',
+          borderColor: el.tableStyle.borderColor ?? '#e0e0e0',
+          showHeaderBorder: el.tableStyle.showHeaderBorder ?? true,
+          showRowBorders: el.tableStyle.showRowBorders ?? true,
+          columns: el.tableStyle.columns?.map((col) => ({
+            id: col.id,
+            header: col.header,
+            field: col.field,
+            width: col.width,
+            align: col.align ?? 'left',
+          })),
+        } : undefined,
+        logoUrl: el.logoUrl,
+        objectFit: el.objectFit,
+        // Relative positioning fields
+        positionMode: el.positionMode ?? 'absolute',
+        parentId: el.parentId,
+        order: el.order ?? 0,
+        spacing: el.spacing ? {
+          top: el.spacing.top ?? 0,
+          right: el.spacing.right ?? 0,
+          bottom: el.spacing.bottom ?? 0,
+          left: el.spacing.left ?? 0,
+        } : undefined,
+        flexGrow: el.flexGrow ?? 0,
+        flexShrink: el.flexShrink ?? 1,
+        alignSelf: el.alignSelf,
+        layoutConfig: el.layoutConfig ? {
+          direction: el.layoutConfig.direction ?? 'column',
+          gap: el.layoutConfig.gap ?? 8,
+          align: el.layoutConfig.align ?? 'stretch',
+          justify: el.layoutConfig.justify ?? 'start',
+          wrap: el.layoutConfig.wrap ?? false,
+        } : undefined,
+      })),
+      isDefault: t.isDefault,
+      isSystem: false,
+      createdAt: new Date(t.createdAt).toISOString(),
+      updatedAt: new Date(t.updatedAt).toISOString(),
+    }))
+  }, [convexTemplates])
 
   const {
     currentInvoice,
@@ -807,8 +907,8 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
     if (previewStyleId === 'classic-light' || previewStyleId === 'classic-dark') {
       return undefined
     }
-    return savedTemplates.find((t) => t.id === previewStyleId)
-  }, [previewStyleId, savedTemplates])
+    return userTemplates.find((t: InvoiceTemplate) => t.id === previewStyleId)
+  }, [previewStyleId, userTemplates])
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
@@ -1671,7 +1771,7 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
                 <span className="hidden sm:inline">Classic Dark</span>
                 <span className="sm:hidden">Dark</span>
               </Button>
-              {savedTemplates.map((template) => (
+              {userTemplates.map((template: InvoiceTemplate) => (
                 <Button
                   key={template.id}
                   variant={previewStyleId === template.id ? 'secondary' : 'ghost'}

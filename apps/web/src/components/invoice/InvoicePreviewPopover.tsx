@@ -23,8 +23,10 @@ import { Separator } from "@/components/ui/separator";
 import { InvoiceStatusBadge } from "./InvoiceStatusSelect";
 import { InvoicePreview } from "./InvoicePreview";
 import { useInvoiceStore } from "@/lib/store";
-import { useTemplateStore } from "@/lib/template-store";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useTemplates } from "@/hooks/use-templates";
 import { SYSTEM_TEMPLATE_IDS, getSystemTemplate } from "@/lib/system-templates";
+import { convexToInvoiceTemplate } from "@/lib/template-utils";
 import type { InvoiceTemplate } from "@invoice-generator/shared-types";
 
 interface InvoicePreviewPopoverProps {
@@ -53,7 +55,15 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
   const invoice = useQuery(api.invoices.getInvoice, { invoiceId });
   const { backgroundDesigns } = useInvoiceStore();
   const [previewStyleId, setPreviewStyleId] = useState<string>(SYSTEM_TEMPLATE_IDS.CLASSIC_LIGHT);
-  const { savedTemplates } = useTemplateStore();
+
+  // Use Convex templates
+  const { isAuthenticated } = useCurrentUser();
+  const { templates: convexTemplates } = useTemplates();
+
+  // Convert Convex templates to InvoiceTemplate format
+  const userTemplates = useMemo(() => {
+    return convexTemplates.map(convexToInvoiceTemplate);
+  }, [convexTemplates]);
 
   const isLoading = invoice === undefined;
   const hasError = invoice === null;
@@ -120,8 +130,8 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
       return systemTemplate;
     }
     // Then check user templates
-    return savedTemplates.find((t) => t.id === previewStyleId);
-  }, [previewStyleId, savedTemplates]);
+    return userTemplates.find((t: InvoiceTemplate) => t.id === previewStyleId);
+  }, [previewStyleId, userTemplates]);
 
   const handleExportPDF = async () => {
     if (!invoiceData) return;
@@ -310,7 +320,7 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
                 <span className="hidden sm:inline">Classic Dark</span>
                 <span className="sm:hidden">Dark</span>
               </Button>
-              {savedTemplates.map((template) => (
+              {userTemplates.map((template: InvoiceTemplate) => (
                 <Button
                   key={template.id}
                   variant={previewStyleId === template.id ? 'secondary' : 'ghost'}

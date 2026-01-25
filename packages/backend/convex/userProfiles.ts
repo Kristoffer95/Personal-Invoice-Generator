@@ -31,6 +31,7 @@ export const getProfile = query({
         imageUrl: user.imageUrl,
       },
       profile: profile ?? null,
+      editorSettings: profile?.editorSettings ?? null,
     };
   },
 });
@@ -168,6 +169,56 @@ export const getNextInvoiceNumber = query({
     const formatted = prefix ? `${prefix}-${paddedNumber}` : paddedNumber;
 
     return { prefix, number, formatted };
+  },
+});
+
+// Update editor settings
+export const updateEditorSettings = mutation({
+  args: {
+    showRulers: v.boolean(),
+    showGrid: v.boolean(),
+    snapToGrid: v.boolean(),
+    gridSize: v.number(),
+    zoomLevel: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUserFromIdentity(ctx);
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const profile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .first();
+
+    const editorSettings = {
+      showRulers: args.showRulers,
+      showGrid: args.showGrid,
+      snapToGrid: args.snapToGrid,
+      gridSize: args.gridSize,
+      zoomLevel: args.zoomLevel,
+    };
+
+    const now = Date.now();
+
+    if (!profile) {
+      // Create profile with editor settings
+      return await ctx.db.insert("userProfiles", {
+        userId: user._id,
+        editorSettings,
+        nextInvoiceNumber: 1,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.db.patch(profile._id, {
+      editorSettings,
+      updatedAt: now,
+    });
+
+    return profile._id;
   },
 });
 

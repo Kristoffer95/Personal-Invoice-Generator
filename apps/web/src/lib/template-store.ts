@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type {
   InvoiceTemplate,
   TemplateElement,
@@ -9,13 +8,21 @@ import type {
   FontStyle,
   BorderStyle,
   TableStyle,
+  LayoutConfig,
+  Spacing,
+  Alignment,
+  CalculatedPosition,
 } from '@invoice-generator/shared-types'
+import { calculateElementPositions, orphanChildren } from '@invoice-generator/shared-types'
+import type { Doc, Id } from '@invoice-generator/backend/convex/_generated/dataModel'
 import {
-  SYSTEM_TEMPLATES,
   DEFAULT_SYSTEM_TEMPLATE_ID,
   isSystemTemplate,
   getSystemTemplate,
 } from './system-templates'
+
+// Type alias for Convex template document
+type ConvexTemplate = Doc<"templates">
 
 const MAX_HISTORY_SIZE = 50
 
@@ -24,19 +31,16 @@ function generateId(): string {
 }
 
 interface TemplateState {
-  // Current template being edited
+  // Current template being edited (in-memory)
   currentTemplate: InvoiceTemplate | null
 
-  // All saved templates (user templates only - use getAllTemplates() for system + user)
-  savedTemplates: InvoiceTemplate[]
-
-  // Default template ID for quick exports
-  defaultTemplateId: string | null
+  // Convex template ID - tracks if current template is from Convex (for save operations)
+  convexTemplateId: Id<"templates"> | null
 
   // Selected element
   selectedElementId: string | null
 
-  // Editor settings
+  // Editor settings (synced with Convex for authenticated users)
   editorSettings: EditorSettings
 
   // Undo/Redo history
@@ -46,22 +50,10 @@ interface TemplateState {
   // Clipboard
   clipboard: TemplateElement | null
 
-  // Actions
+  // Template actions
   createNewTemplate: (name: string, pageSize?: string) => InvoiceTemplate
   setCurrentTemplate: (template: InvoiceTemplate | null) => void
   updateCurrentTemplate: (updates: Partial<InvoiceTemplate>) => void
-  saveCurrentTemplate: () => InvoiceTemplate | null
-  loadTemplate: (id: string) => void
-  deleteTemplate: (id: string) => boolean
-  duplicateTemplate: (id: string) => InvoiceTemplate | null
-
-  // Get all templates (system + user)
-  getAllTemplates: () => InvoiceTemplate[]
-
-  // Default template actions
-  setDefaultTemplate: (id: string) => void
-  clearDefaultTemplate: () => void
-  getDefaultTemplate: () => InvoiceTemplate | null
 
   // Element actions
   addElement: (element: Omit<TemplateElement, 'id'>) => string
@@ -71,6 +63,8 @@ interface TemplateState {
   selectElement: (id: string | null) => void
   bringToFront: (id: string) => void
   sendToBack: (id: string) => void
+  moveUp: (id: string) => void
+  moveDown: (id: string) => void
   moveElement: (id: string, position: Partial<Position>) => void
   resizeElement: (id: string, size: { width: number; height: number }) => void
 
@@ -78,6 +72,12 @@ interface TemplateState {
   updateElementFont: (id: string, fontStyle: Partial<FontStyle>) => void
   updateElementBorder: (id: string, border: Partial<BorderStyle>) => void
   updateElementTableStyle: (id: string, tableStyle: Partial<TableStyle>) => void
+
+  // Container operations
+  addElementToContainer: (elementId: string, containerId: string) => void
+  removeElementFromContainer: (elementId: string) => void
+  reorderElementInContainer: (elementId: string, newOrder: number) => void
+  updateLayoutConfig: (containerId: string, config: Partial<LayoutConfig>) => void
 
   // Clipboard actions
   copyElement: (id: string) => void
@@ -93,6 +93,7 @@ interface TemplateState {
 
   // Editor settings actions
   updateEditorSettings: (settings: Partial<EditorSettings>) => void
+  setEditorSettings: (settings: EditorSettings) => void
   toggleRulers: () => void
   toggleGrid: () => void
   toggleSnapToGrid: () => void
@@ -106,6 +107,17 @@ interface TemplateState {
   deleteSelected: () => void
   lockElement: (id: string, locked: boolean) => void
   toggleElementVisibility: (id: string) => void
+
+  // Convex integration actions
+  setCurrentTemplateFromConvex: (convexTemplate: ConvexTemplate) => void
+  setConvexTemplateId: (id: Id<"templates"> | null) => void
+  getConvexTemplateId: () => Id<"templates"> | null
+
+  // System template helpers
+  loadSystemTemplate: (id: string) => void
+
+  // Helper functions
+  getContainerChildCount: (containerId: string) => number
 }
 
 const defaultEditorSettings: EditorSettings = {
@@ -132,725 +144,935 @@ const defaultTemplate: Omit<InvoiceTemplate, 'id' | 'createdAt' | 'updatedAt'> =
   isSystem: false,
 }
 
-export const useTemplateStore = create<TemplateState>()(
-  persist(
-    (set, get) => ({
-      currentTemplate: null,
-      savedTemplates: [],
-      defaultTemplateId: null,
+export const useTemplateStore = create<TemplateState>()((set, get) => ({
+  currentTemplate: null,
+  convexTemplateId: null,
+  selectedElementId: null,
+  editorSettings: defaultEditorSettings,
+  history: [],
+  historyIndex: -1,
+  clipboard: null,
+
+  createNewTemplate: (name, pageSize = 'A4') => {
+    const now = new Date().toISOString()
+    const template: InvoiceTemplate = {
+      ...defaultTemplate,
+      id: generateId(),
+      name,
+      pageSize: pageSize as InvoiceTemplate['pageSize'],
+      createdAt: now,
+      updatedAt: now,
+    }
+    set({
+      currentTemplate: template,
+      convexTemplateId: null, // New templates don't have a Convex ID yet
       selectedElementId: null,
-      editorSettings: defaultEditorSettings,
       history: [],
       historyIndex: -1,
-      clipboard: null,
-
-      createNewTemplate: (name, pageSize = 'A4') => {
-        const now = new Date().toISOString()
-        const template: InvoiceTemplate = {
-          ...defaultTemplate,
-          id: generateId(),
-          name,
-          pageSize: pageSize as InvoiceTemplate['pageSize'],
-          createdAt: now,
-          updatedAt: now,
-        }
-        set({
-          currentTemplate: template,
-          selectedElementId: null,
-          history: [],
-          historyIndex: -1,
-        })
-        return template
-      },
-
-      setCurrentTemplate: (template) =>
-        set({
-          currentTemplate: template,
-          selectedElementId: null,
-          history: [],
-          historyIndex: -1,
-        }),
-
-      updateCurrentTemplate: (updates) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      saveCurrentTemplate: () => {
-        const state = get()
-        if (!state.currentTemplate) return null
-
-        // Prevent overwriting system templates - create a new user template instead
-        const isSystemTpl = isSystemTemplate(state.currentTemplate.id)
-
-        const template = {
-          ...state.currentTemplate,
-          // If saving a system template, give it a new ID to create a user copy
-          id: isSystemTpl ? generateId() : state.currentTemplate.id,
-          isSystem: false, // Saved templates are always user templates
-          updatedAt: new Date().toISOString(),
-          createdAt: isSystemTpl ? new Date().toISOString() : state.currentTemplate.createdAt,
-        }
-
-        set((s) => {
-          const existingIndex = s.savedTemplates.findIndex((t) => t.id === template.id)
-          const updated =
-            existingIndex >= 0
-              ? s.savedTemplates.map((t, i) => (i === existingIndex ? template : t))
-              : [...s.savedTemplates, template]
-          return {
-            savedTemplates: updated,
-            currentTemplate: template,
-          }
-        })
-
-        return template
-      },
-
-      loadTemplate: (id) =>
-        set((state) => {
-          // Search both user templates and system templates
-          const template = state.savedTemplates.find((t) => t.id === id)
-            || getSystemTemplate(id)
-          if (template) {
-            return {
-              currentTemplate: { ...template },
-              selectedElementId: null,
-              history: [],
-              historyIndex: -1,
-            }
-          }
-          return state
-        }),
-
-      deleteTemplate: (id) => {
-        // Prevent deletion of system templates
-        if (isSystemTemplate(id)) {
-          console.warn('Cannot delete system templates')
-          return false
-        }
-
-        set((state) => ({
-          savedTemplates: state.savedTemplates.filter((t) => t.id !== id),
-          currentTemplate:
-            state.currentTemplate?.id === id ? null : state.currentTemplate,
-          // Clear defaultTemplateId if the deleted template was the default
-          defaultTemplateId:
-            state.defaultTemplateId === id ? null : state.defaultTemplateId,
-        }))
-        return true
-      },
-
-      getAllTemplates: () => {
-        const state = get()
-        // System templates first, then user templates
-        return [...SYSTEM_TEMPLATES, ...state.savedTemplates]
-      },
-
-      duplicateTemplate: (id) => {
-        const state = get()
-        // Search both user templates and system templates
-        const template =
-          state.savedTemplates.find((t) => t.id === id) ||
-          getSystemTemplate(id)
-        if (!template) return null
-
-        const now = new Date().toISOString()
-        const duplicated: InvoiceTemplate = {
-          ...template,
-          id: generateId(),
-          name: `${template.name} (Copy)`,
-          isDefault: false,
-          isSystem: false, // Duplicated templates are always user templates
-          elements: template.elements.map((el) => ({
-            ...el,
-            id: generateId(),
-          })),
-          createdAt: now,
-          updatedAt: now,
-        }
-
-        set((s) => ({
-          savedTemplates: [...s.savedTemplates, duplicated],
-        }))
-
-        return duplicated
-      },
-
-      // Default template actions
-      setDefaultTemplate: (id) =>
-        set((state) => {
-          // Verify template exists (check both user and system templates)
-          const templateExists =
-            state.savedTemplates.some((t) => t.id === id) ||
-            isSystemTemplate(id)
-          if (!templateExists) return state
-
-          return {
-            defaultTemplateId: id,
-            // Update isDefault flag on all user templates
-            savedTemplates: state.savedTemplates.map((t) => ({
-              ...t,
-              isDefault: t.id === id,
-            })),
-            // Also update current template if it matches
-            currentTemplate:
-              state.currentTemplate?.id === id
-                ? { ...state.currentTemplate, isDefault: true }
-                : state.currentTemplate
-                  ? { ...state.currentTemplate, isDefault: false }
-                  : null,
-          }
-        }),
-
-      clearDefaultTemplate: () =>
-        set((state) => ({
-          defaultTemplateId: null,
-          savedTemplates: state.savedTemplates.map((t) => ({
-            ...t,
-            isDefault: false,
-          })),
-          currentTemplate: state.currentTemplate
-            ? { ...state.currentTemplate, isDefault: false }
-            : null,
-        })),
-
-      getDefaultTemplate: () => {
-        const state = get()
-        if (!state.defaultTemplateId) return null
-        // Check both user templates and system templates
-        return (
-          state.savedTemplates.find((t) => t.id === state.defaultTemplateId) ||
-          getSystemTemplate(state.defaultTemplateId) ||
-          null
-        )
-      },
-
-      // Element actions
-      addElement: (element) => {
-        const id = generateId()
-        const state = get()
-        state.pushHistory()
-
-        set((s) => {
-          if (!s.currentTemplate) return s
-          const newElement: TemplateElement = {
-            ...element,
-            id,
-            zIndex: s.currentTemplate.elements.length,
-          }
-          return {
-            currentTemplate: {
-              ...s.currentTemplate,
-              elements: [...s.currentTemplate.elements, newElement],
-              updatedAt: new Date().toISOString(),
-            },
-            selectedElementId: id,
-          }
-        })
-
-        return id
-      },
-
-      updateElement: (id, updates) => {
-        const state = get()
-        state.pushHistory()
-
-        set((s) => {
-          if (!s.currentTemplate) return s
-          return {
-            currentTemplate: {
-              ...s.currentTemplate,
-              elements: s.currentTemplate.elements.map((el) =>
-                el.id === id ? { ...el, ...updates } : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        })
-      },
-
-      removeElement: (id) => {
-        const state = get()
-        state.pushHistory()
-
-        set((s) => {
-          if (!s.currentTemplate) return s
-          return {
-            currentTemplate: {
-              ...s.currentTemplate,
-              elements: s.currentTemplate.elements.filter((el) => el.id !== id),
-              updatedAt: new Date().toISOString(),
-            },
-            selectedElementId: s.selectedElementId === id ? null : s.selectedElementId,
-          }
-        })
-      },
-
-      duplicateElement: (id) => {
-        const state = get()
-        const template = state.currentTemplate
-        if (!template) return null
-
-        const element = template.elements.find((el) => el.id === id)
-        if (!element) return null
-
-        const newId = generateId()
-        state.pushHistory()
-
-        set((s) => {
-          if (!s.currentTemplate) return s
-          const newElement: TemplateElement = {
-            ...element,
-            id: newId,
-            name: `${element.name} (Copy)`,
-            position: {
-              ...element.position,
-              x: element.position.x + 10,
-              y: element.position.y + 10,
-            },
-            zIndex: s.currentTemplate.elements.length,
-          }
-          return {
-            currentTemplate: {
-              ...s.currentTemplate,
-              elements: [...s.currentTemplate.elements, newElement],
-              updatedAt: new Date().toISOString(),
-            },
-            selectedElementId: newId,
-          }
-        })
-
-        return newId
-      },
-
-      selectElement: (id) => set({ selectedElementId: id }),
-
-      bringToFront: (id) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const maxZ = Math.max(...state.currentTemplate.elements.map((el) => el.zIndex))
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id ? { ...el, zIndex: maxZ + 1 } : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      sendToBack: (id) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const minZ = Math.min(...state.currentTemplate.elements.map((el) => el.zIndex))
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id ? { ...el, zIndex: minZ - 1 } : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      moveElement: (id, position) => {
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const { snapToGrid, gridSize } = state.editorSettings
-
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) => {
-                if (el.id !== id || el.locked) return el
-
-                let newX = position.x ?? el.position.x
-                let newY = position.y ?? el.position.y
-
-                // Snap to grid if enabled
-                if (snapToGrid) {
-                  newX = Math.round(newX / gridSize) * gridSize
-                  newY = Math.round(newY / gridSize) * gridSize
-                }
-
-                return {
-                  ...el,
-                  position: {
-                    ...el.position,
-                    x: Math.max(0, newX),
-                    y: Math.max(0, newY),
-                  },
-                }
-              }),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        })
-      },
-
-      resizeElement: (id, size) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const { snapToGrid, gridSize } = state.editorSettings
-
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) => {
-                if (el.id !== id || el.locked) return el
-
-                let newWidth = size.width
-                let newHeight = size.height
-
-                // Snap to grid if enabled
-                if (snapToGrid) {
-                  newWidth = Math.round(newWidth / gridSize) * gridSize
-                  newHeight = Math.round(newHeight / gridSize) * gridSize
-                }
-
-                return {
-                  ...el,
-                  position: {
-                    ...el.position,
-                    width: Math.max(10, newWidth),
-                    height: Math.max(10, newHeight),
-                  },
-                }
-              }),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      updateElementFont: (id, fontStyle) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const defaultFontStyle = {
-            fontFamily: 'Helvetica' as const,
-            fontSize: 12,
-            fontWeight: 'normal' as const,
-            fontStyle: 'normal' as const,
-            lineHeight: 1.2,
-            letterSpacing: 0,
-            textAlign: 'left' as const,
-            textDecoration: 'none' as const,
-            textTransform: 'none' as const,
-            color: '#000000',
-          }
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id
-                  ? {
-                      ...el,
-                      fontStyle: { ...defaultFontStyle, ...el.fontStyle, ...fontStyle },
-                    }
-                  : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      updateElementBorder: (id, border) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const defaultBorder = {
-            width: 0,
-            color: '#000000',
-            style: 'solid' as const,
-            radius: 0,
-          }
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id
-                  ? {
-                      ...el,
-                      border: { ...defaultBorder, ...el.border, ...border },
-                    }
-                  : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      updateElementTableStyle: (id, tableStyle) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          const defaultTableStyle = {
-            headerBackgroundColor: '#1a1a2e',
-            headerTextColor: '#ffffff',
-            rowBackgroundColor: '#ffffff',
-            alternateRowBackgroundColor: '#f8fafc',
-            borderColor: '#e0e0e0',
-            showHeaderBorder: true,
-            showRowBorders: true,
-          }
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id
-                  ? {
-                      ...el,
-                      tableStyle: { ...defaultTableStyle, ...el.tableStyle, ...tableStyle },
-                    }
-                  : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      // Clipboard
-      copyElement: (id) => {
-        const state = get()
-        const element = state.currentTemplate?.elements.find((el) => el.id === id)
-        if (element) {
-          set({ clipboard: { ...element } })
-        }
-      },
-
-      pasteElement: () => {
-        const state = get()
-        if (!state.clipboard || !state.currentTemplate) return null
-
-        const newId = generateId()
-        state.pushHistory()
-
-        set((s) => {
-          if (!s.currentTemplate || !s.clipboard) return s
-          const newElement: TemplateElement = {
-            ...s.clipboard,
-            id: newId,
-            name: `${s.clipboard.name} (Pasted)`,
-            position: {
-              ...s.clipboard.position,
-              x: s.clipboard.position.x + 20,
-              y: s.clipboard.position.y + 20,
-            },
-            zIndex: s.currentTemplate.elements.length,
-          }
-          return {
-            currentTemplate: {
-              ...s.currentTemplate,
-              elements: [...s.currentTemplate.elements, newElement],
-              updatedAt: new Date().toISOString(),
-            },
-            selectedElementId: newId,
-          }
-        })
-
-        return newId
-      },
-
-      cutElement: (id) => {
-        const state = get()
-        state.copyElement(id)
-        state.removeElement(id)
-      },
-
-      // History
-      undo: () =>
-        set((state) => {
-          if (state.historyIndex < 0 || !state.currentTemplate) return state
-
-          const prevState = state.history[state.historyIndex]
-          if (!prevState) return state
-
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: prevState.elements,
-              updatedAt: new Date().toISOString(),
-            },
-            selectedElementId: prevState.selectedElementId,
-            historyIndex: state.historyIndex - 1,
-          }
-        }),
-
-      redo: () =>
-        set((state) => {
-          if (state.historyIndex >= state.history.length - 1 || !state.currentTemplate)
-            return state
-
-          const nextState = state.history[state.historyIndex + 1]
-          if (!nextState) return state
-
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: nextState.elements,
-              updatedAt: new Date().toISOString(),
-            },
-            selectedElementId: nextState.selectedElementId,
-            historyIndex: state.historyIndex + 1,
-          }
-        }),
-
-      canUndo: () => {
-        const state = get()
-        return state.historyIndex >= 0
-      },
-
-      canRedo: () => {
-        const state = get()
-        return state.historyIndex < state.history.length - 1
-      },
-
-      pushHistory: () =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-
-          const newHistoryState: EditorHistoryState = {
-            elements: state.currentTemplate.elements.map((el) => ({ ...el })),
-            selectedElementId: state.selectedElementId,
-          }
-
-          // Remove any redo states
-          const newHistory = state.history.slice(0, state.historyIndex + 1)
-          newHistory.push(newHistoryState)
-
-          // Limit history size
-          if (newHistory.length > MAX_HISTORY_SIZE) {
-            newHistory.shift()
-          }
-
-          return {
-            history: newHistory,
-            historyIndex: newHistory.length - 1,
-          }
-        }),
-
-      // Editor settings
-      updateEditorSettings: (settings) =>
-        set((state) => ({
-          editorSettings: { ...state.editorSettings, ...settings },
-        })),
-
-      toggleRulers: () =>
-        set((state) => ({
-          editorSettings: {
-            ...state.editorSettings,
-            showRulers: !state.editorSettings.showRulers,
-          },
-        })),
-
-      toggleGrid: () =>
-        set((state) => ({
-          editorSettings: {
-            ...state.editorSettings,
-            showGrid: !state.editorSettings.showGrid,
-          },
-        })),
-
-      toggleSnapToGrid: () =>
-        set((state) => ({
-          editorSettings: {
-            ...state.editorSettings,
-            snapToGrid: !state.editorSettings.snapToGrid,
-          },
-        })),
-
-      setZoomLevel: (zoom) =>
-        set((state) => ({
-          editorSettings: {
-            ...state.editorSettings,
-            zoomLevel: Math.max(25, Math.min(200, zoom)),
-          },
-        })),
-
-      zoomIn: () =>
-        set((state) => ({
-          editorSettings: {
-            ...state.editorSettings,
-            zoomLevel: Math.min(200, state.editorSettings.zoomLevel + 10),
-          },
-        })),
-
-      zoomOut: () =>
-        set((state) => ({
-          editorSettings: {
-            ...state.editorSettings,
-            zoomLevel: Math.max(25, state.editorSettings.zoomLevel - 10),
-          },
-        })),
-
-      // Bulk operations
-      selectAll: () =>
-        set((state) => {
-          if (!state.currentTemplate || state.currentTemplate.elements.length === 0)
-            return state
-          // Select the first element (multi-select would need more work)
-          return {
-            selectedElementId: state.currentTemplate.elements[0]?.id ?? null,
-          }
-        }),
-
-      deselectAll: () => set({ selectedElementId: null }),
-
-      deleteSelected: () => {
-        const state = get()
-        if (state.selectedElementId) {
-          state.removeElement(state.selectedElementId)
-        }
-      },
-
-      lockElement: (id, locked) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id ? { ...el, locked } : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
-
-      toggleElementVisibility: (id) =>
-        set((state) => {
-          if (!state.currentTemplate) return state
-          return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              elements: state.currentTemplate.elements.map((el) =>
-                el.id === id ? { ...el, visible: !el.visible } : el
-              ),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        }),
+    })
+    return template
+  },
+
+  setCurrentTemplate: (template) =>
+    set({
+      currentTemplate: template,
+      convexTemplateId: null,
+      selectedElementId: null,
+      history: [],
+      historyIndex: -1,
     }),
-    {
-      name: 'template-storage',
-      partialize: (state) => ({
-        savedTemplates: state.savedTemplates,
-        defaultTemplateId: state.defaultTemplateId,
-        editorSettings: state.editorSettings,
-      }),
-      onRehydrateStorage: () => (state) => {
-        // On first load (or if no default is set), set the default system template
-        if (state && !state.defaultTemplateId) {
-          state.defaultTemplateId = DEFAULT_SYSTEM_TEMPLATE_ID
-        }
-      },
+
+  updateCurrentTemplate: (updates) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  // Element actions
+  addElement: (element) => {
+    const id = generateId()
+    const state = get()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+      const newElement: TemplateElement = {
+        ...element,
+        id,
+        zIndex: s.currentTemplate.elements.length,
+      }
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: [...s.currentTemplate.elements, newElement],
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: id,
+      }
+    })
+
+    return id
+  },
+
+  updateElement: (id, updates) => {
+    const state = get()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: s.currentTemplate.elements.map((el) =>
+            el.id === id ? { ...el, ...updates } : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
+  },
+
+  removeElement: (id) => {
+    const state = get()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+
+      const elementToRemove = s.currentTemplate.elements.find((el) => el.id === id)
+      let updatedElements = s.currentTemplate.elements
+
+      // If removing a container, orphan its children (convert to absolute at calculated positions)
+      if (elementToRemove?.type === 'layout_container') {
+        const calculatedPositions = calculateElementPositions(
+          s.currentTemplate.elements,
+          s.currentTemplate.margins,
+          595.28, // A4 width
+          841.89  // A4 height
+        )
+        updatedElements = orphanChildren(id, updatedElements, calculatedPositions)
+      }
+
+      // Now remove the element
+      updatedElements = updatedElements.filter((el) => el.id !== id)
+
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: updatedElements,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: s.selectedElementId === id ? null : s.selectedElementId,
+      }
+    })
+  },
+
+  duplicateElement: (id) => {
+    const state = get()
+    const template = state.currentTemplate
+    if (!template) return null
+
+    const element = template.elements.find((el) => el.id === id)
+    if (!element) return null
+
+    const newId = generateId()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+      const newElement: TemplateElement = {
+        ...element,
+        id: newId,
+        name: `${element.name} (Copy)`,
+        position: {
+          ...element.position,
+          x: element.position.x + 10,
+          y: element.position.y + 10,
+        },
+        zIndex: s.currentTemplate.elements.length,
+      }
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: [...s.currentTemplate.elements, newElement],
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: newId,
+      }
+    })
+
+    return newId
+  },
+
+  selectElement: (id) => set({ selectedElementId: id }),
+
+  bringToFront: (id) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const maxZ = Math.max(...state.currentTemplate.elements.map((el) => el.zIndex))
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id ? { ...el, zIndex: maxZ + 1 } : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  sendToBack: (id) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const minZ = Math.min(...state.currentTemplate.elements.map((el) => el.zIndex))
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id ? { ...el, zIndex: minZ - 1 } : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  moveUp: (id) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const element = state.currentTemplate.elements.find((el) => el.id === id)
+      if (!element) return state
+
+      // Find the element with the next higher z-index
+      const sortedElements = [...state.currentTemplate.elements].sort(
+        (a, b) => a.zIndex - b.zIndex
+      )
+      const currentIndex = sortedElements.findIndex((el) => el.id === id)
+      const nextElement = sortedElements[currentIndex + 1]
+
+      if (!nextElement) return state // Already at top
+
+      // Swap z-indices
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) => {
+            if (el.id === id) return { ...el, zIndex: nextElement.zIndex }
+            if (el.id === nextElement.id) return { ...el, zIndex: element.zIndex }
+            return el
+          }),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  moveDown: (id) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const element = state.currentTemplate.elements.find((el) => el.id === id)
+      if (!element) return state
+
+      // Find the element with the next lower z-index
+      const sortedElements = [...state.currentTemplate.elements].sort(
+        (a, b) => a.zIndex - b.zIndex
+      )
+      const currentIndex = sortedElements.findIndex((el) => el.id === id)
+      const prevElement = sortedElements[currentIndex - 1]
+
+      if (!prevElement) return state // Already at bottom
+
+      // Swap z-indices
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) => {
+            if (el.id === id) return { ...el, zIndex: prevElement.zIndex }
+            if (el.id === prevElement.id) return { ...el, zIndex: element.zIndex }
+            return el
+          }),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  moveElement: (id, position) => {
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const { snapToGrid, gridSize } = state.editorSettings
+
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) => {
+            if (el.id !== id || el.locked) return el
+
+            let newX = position.x ?? el.position.x
+            let newY = position.y ?? el.position.y
+
+            // Snap to grid if enabled
+            if (snapToGrid) {
+              newX = Math.round(newX / gridSize) * gridSize
+              newY = Math.round(newY / gridSize) * gridSize
+            }
+
+            return {
+              ...el,
+              position: {
+                ...el.position,
+                x: Math.max(0, newX),
+                y: Math.max(0, newY),
+              },
+            }
+          }),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
+  },
+
+  resizeElement: (id, size) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const { snapToGrid, gridSize } = state.editorSettings
+
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) => {
+            if (el.id !== id || el.locked) return el
+
+            let newWidth = size.width
+            let newHeight = size.height
+
+            // Snap to grid if enabled
+            if (snapToGrid) {
+              newWidth = Math.round(newWidth / gridSize) * gridSize
+              newHeight = Math.round(newHeight / gridSize) * gridSize
+            }
+
+            return {
+              ...el,
+              position: {
+                ...el.position,
+                width: Math.max(10, newWidth),
+                height: Math.max(10, newHeight),
+              },
+            }
+          }),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  updateElementFont: (id, fontStyle) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const defaultFontStyle = {
+        fontFamily: 'Helvetica' as const,
+        fontSize: 12,
+        fontWeight: 'normal' as const,
+        fontStyle: 'normal' as const,
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        textAlign: 'left' as const,
+        textDecoration: 'none' as const,
+        textTransform: 'none' as const,
+        color: '#000000',
+      }
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id
+              ? {
+                  ...el,
+                  fontStyle: { ...defaultFontStyle, ...el.fontStyle, ...fontStyle },
+                }
+              : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  updateElementBorder: (id, border) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const defaultBorder = {
+        width: 0,
+        color: '#000000',
+        style: 'solid' as const,
+        radius: 0,
+      }
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id
+              ? {
+                  ...el,
+                  border: { ...defaultBorder, ...el.border, ...border },
+                }
+              : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  updateElementTableStyle: (id, tableStyle) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const defaultTableStyle = {
+        headerBackgroundColor: '#1a1a2e',
+        headerTextColor: '#ffffff',
+        rowBackgroundColor: '#ffffff',
+        alternateRowBackgroundColor: '#f8fafc',
+        borderColor: '#e0e0e0',
+        showHeaderBorder: true,
+        showRowBorders: true,
+      }
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id
+              ? {
+                  ...el,
+                  tableStyle: { ...defaultTableStyle, ...el.tableStyle, ...tableStyle },
+                }
+              : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  // Container operations
+  addElementToContainer: (elementId, containerId) => {
+    const state = get()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+
+      // Validate the container exists and is a layout_container
+      const container = s.currentTemplate.elements.find(
+        (el) => el.id === containerId && el.type === 'layout_container'
+      )
+      if (!container) return s
+
+      // Check for circular reference
+      const checkCircular = (id: string): boolean => {
+        if (id === elementId) return true
+        const el = s.currentTemplate!.elements.find((e) => e.id === id)
+        return el?.parentId ? checkCircular(el.parentId) : false
+      }
+      if (checkCircular(containerId)) return s
+
+      // Get the next order value
+      const siblings = s.currentTemplate.elements.filter(
+        (el) => el.parentId === containerId
+      )
+      const nextOrder = Math.max(...siblings.map((el) => el.order ?? 0), -1) + 1
+
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: s.currentTemplate.elements.map((el) =>
+            el.id === elementId
+              ? {
+                  ...el,
+                  positionMode: 'relative' as const,
+                  parentId: containerId,
+                  order: nextOrder,
+                }
+              : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
+  },
+
+  removeElementFromContainer: (elementId) => {
+    const state = get()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: s.currentTemplate.elements.map((el) =>
+            el.id === elementId
+              ? {
+                  ...el,
+                  positionMode: 'absolute' as const,
+                  parentId: undefined,
+                  order: 0,
+                }
+              : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
+  },
+
+  reorderElementInContainer: (elementId, newOrder) => {
+    const state = get()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate) return s
+
+      const element = s.currentTemplate.elements.find((el) => el.id === elementId)
+      if (!element?.parentId) return s
+
+      const oldOrder = element.order ?? 0
+      const parentId = element.parentId
+
+      // Get siblings and reorder
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: s.currentTemplate.elements.map((el) => {
+            if (el.id === elementId) {
+              return { ...el, order: newOrder }
+            }
+            if (el.parentId === parentId) {
+              const elOrder = el.order ?? 0
+              // Shift orders for affected siblings
+              if (oldOrder < newOrder) {
+                // Moving down: shift up elements between old and new
+                if (elOrder > oldOrder && elOrder <= newOrder) {
+                  return { ...el, order: elOrder - 1 }
+                }
+              } else {
+                // Moving up: shift down elements between new and old
+                if (elOrder >= newOrder && elOrder < oldOrder) {
+                  return { ...el, order: elOrder + 1 }
+                }
+              }
+            }
+            return el
+          }),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
+  },
+
+  updateLayoutConfig: (containerId, config) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      const defaultLayoutConfig = {
+        direction: 'column' as const,
+        gap: 8,
+        align: 'stretch' as const,
+        justify: 'start' as const,
+        wrap: false,
+      }
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === containerId && el.type === 'layout_container'
+              ? {
+                  ...el,
+                  layoutConfig: { ...defaultLayoutConfig, ...el.layoutConfig, ...config },
+                }
+              : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  // Clipboard
+  copyElement: (id) => {
+    const state = get()
+    const element = state.currentTemplate?.elements.find((el) => el.id === id)
+    if (element) {
+      set({ clipboard: { ...element } })
     }
-  )
-)
+  },
+
+  pasteElement: () => {
+    const state = get()
+    if (!state.clipboard || !state.currentTemplate) return null
+
+    const newId = generateId()
+    state.pushHistory()
+
+    set((s) => {
+      if (!s.currentTemplate || !s.clipboard) return s
+      const newElement: TemplateElement = {
+        ...s.clipboard,
+        id: newId,
+        name: `${s.clipboard.name} (Pasted)`,
+        position: {
+          ...s.clipboard.position,
+          x: s.clipboard.position.x + 20,
+          y: s.clipboard.position.y + 20,
+        },
+        zIndex: s.currentTemplate.elements.length,
+      }
+      return {
+        currentTemplate: {
+          ...s.currentTemplate,
+          elements: [...s.currentTemplate.elements, newElement],
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: newId,
+      }
+    })
+
+    return newId
+  },
+
+  cutElement: (id) => {
+    const state = get()
+    state.copyElement(id)
+    state.removeElement(id)
+  },
+
+  // History
+  undo: () =>
+    set((state) => {
+      if (state.historyIndex < 0 || !state.currentTemplate) return state
+
+      const prevState = state.history[state.historyIndex]
+      if (!prevState) return state
+
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: prevState.elements,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: prevState.selectedElementId,
+        historyIndex: state.historyIndex - 1,
+      }
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.historyIndex >= state.history.length - 1 || !state.currentTemplate)
+        return state
+
+      const nextState = state.history[state.historyIndex + 1]
+      if (!nextState) return state
+
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: nextState.elements,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: nextState.selectedElementId,
+        historyIndex: state.historyIndex + 1,
+      }
+    }),
+
+  canUndo: () => {
+    const state = get()
+    return state.historyIndex >= 0
+  },
+
+  canRedo: () => {
+    const state = get()
+    return state.historyIndex < state.history.length - 1
+  },
+
+  pushHistory: () =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+
+      const newHistoryState: EditorHistoryState = {
+        elements: state.currentTemplate.elements.map((el) => ({ ...el })),
+        selectedElementId: state.selectedElementId,
+      }
+
+      // Remove any redo states
+      const newHistory = state.history.slice(0, state.historyIndex + 1)
+      newHistory.push(newHistoryState)
+
+      // Limit history size
+      if (newHistory.length > MAX_HISTORY_SIZE) {
+        newHistory.shift()
+      }
+
+      return {
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      }
+    }),
+
+  // Editor settings
+  updateEditorSettings: (settings) =>
+    set((state) => ({
+      editorSettings: { ...state.editorSettings, ...settings },
+    })),
+
+  setEditorSettings: (settings) =>
+    set({
+      editorSettings: settings,
+    }),
+
+  toggleRulers: () =>
+    set((state) => ({
+      editorSettings: {
+        ...state.editorSettings,
+        showRulers: !state.editorSettings.showRulers,
+      },
+    })),
+
+  toggleGrid: () =>
+    set((state) => ({
+      editorSettings: {
+        ...state.editorSettings,
+        showGrid: !state.editorSettings.showGrid,
+      },
+    })),
+
+  toggleSnapToGrid: () =>
+    set((state) => ({
+      editorSettings: {
+        ...state.editorSettings,
+        snapToGrid: !state.editorSettings.snapToGrid,
+      },
+    })),
+
+  setZoomLevel: (zoom) =>
+    set((state) => ({
+      editorSettings: {
+        ...state.editorSettings,
+        zoomLevel: Math.max(25, Math.min(200, zoom)),
+      },
+    })),
+
+  zoomIn: () =>
+    set((state) => ({
+      editorSettings: {
+        ...state.editorSettings,
+        zoomLevel: Math.min(200, state.editorSettings.zoomLevel + 10),
+      },
+    })),
+
+  zoomOut: () =>
+    set((state) => ({
+      editorSettings: {
+        ...state.editorSettings,
+        zoomLevel: Math.max(25, state.editorSettings.zoomLevel - 10),
+      },
+    })),
+
+  // Bulk operations
+  selectAll: () =>
+    set((state) => {
+      if (!state.currentTemplate || state.currentTemplate.elements.length === 0)
+        return state
+      // Select the first element (multi-select would need more work)
+      return {
+        selectedElementId: state.currentTemplate.elements[0]?.id ?? null,
+      }
+    }),
+
+  deselectAll: () => set({ selectedElementId: null }),
+
+  deleteSelected: () => {
+    const state = get()
+    if (state.selectedElementId) {
+      state.removeElement(state.selectedElementId)
+    }
+  },
+
+  lockElement: (id, locked) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id ? { ...el, locked } : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  toggleElementVisibility: (id) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: state.currentTemplate.elements.map((el) =>
+            el.id === id ? { ...el, visible: !el.visible } : el
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  // Convex integration actions
+  setCurrentTemplateFromConvex: (convexTemplate) =>
+    set(() => {
+      // Helper to convert fontStyle with defaults
+      const convertFontStyle = (fs: ConvexTemplate['elements'][0]['fontStyle']): FontStyle | undefined => {
+        if (!fs) return undefined
+        return {
+          fontFamily: fs.fontFamily ?? 'Helvetica',
+          fontSize: fs.fontSize ?? 12,
+          fontWeight: fs.fontWeight ?? 'normal',
+          fontStyle: fs.fontStyle ?? 'normal',
+          textAlign: fs.textAlign ?? 'left',
+          textDecoration: fs.textDecoration ?? 'none',
+          textTransform: fs.textTransform ?? 'none',
+          letterSpacing: fs.letterSpacing ?? 0,
+          lineHeight: fs.lineHeight ?? 1.2,
+          color: fs.color ?? '#000000',
+        }
+      }
+
+      // Helper to convert border with defaults
+      const convertBorder = (b: ConvexTemplate['elements'][0]['border']): BorderStyle | undefined => {
+        if (!b) return undefined
+        return {
+          width: b.width ?? 0,
+          color: b.color ?? '#000000',
+          style: b.style ?? 'solid',
+          radius: b.radius ?? 0,
+        }
+      }
+
+      // Helper to convert tableStyle with defaults
+      const convertTableStyle = (ts: ConvexTemplate['elements'][0]['tableStyle']): TableStyle | undefined => {
+        if (!ts) return undefined
+        return {
+          headerBackgroundColor: ts.headerBackgroundColor ?? '#1a1a2e',
+          headerTextColor: ts.headerTextColor ?? '#ffffff',
+          rowBackgroundColor: ts.rowBackgroundColor ?? '#ffffff',
+          alternateRowBackgroundColor: ts.alternateRowBackgroundColor ?? '#f8fafc',
+          borderColor: ts.borderColor ?? '#e0e0e0',
+          showHeaderBorder: ts.showHeaderBorder ?? true,
+          showRowBorders: ts.showRowBorders ?? true,
+          columns: ts.columns?.map((col) => ({
+            id: col.id,
+            header: col.header,
+            field: col.field,
+            width: col.width,
+            align: col.align ?? 'left',
+          })),
+        }
+      }
+
+      // Convert theme with defaults for optional fields
+      const theme = convexTemplate.theme
+        ? {
+            primary: convexTemplate.theme.primary ?? '#1a1a2e',
+            secondary: convexTemplate.theme.secondary ?? '#16213e',
+            accent: convexTemplate.theme.accent ?? '#0f3460',
+            text: convexTemplate.theme.text ?? '#333333',
+            textLight: convexTemplate.theme.textLight ?? '#666666',
+            background: convexTemplate.theme.background ?? '#ffffff',
+          }
+        : undefined
+
+      // Convert Convex Doc<"templates"> to InvoiceTemplate format
+      const template: InvoiceTemplate = {
+        id: convexTemplate._id,
+        name: convexTemplate.name,
+        description: convexTemplate.description,
+        pageSize: convexTemplate.pageSize,
+        orientation: convexTemplate.orientation,
+        margins: convexTemplate.margins,
+        theme,
+        backgroundColor: convexTemplate.backgroundColor,
+        elements: convexTemplate.elements.map((el): TemplateElement => ({
+          id: el.id,
+          type: el.type,
+          name: el.name ?? 'Untitled Element',
+          position: el.position,
+          content: el.content ?? '',
+          fontStyle: convertFontStyle(el.fontStyle),
+          border: convertBorder(el.border),
+          backgroundColor: el.backgroundColor,
+          padding: el.padding ?? 0,
+          opacity: el.opacity ?? 1,
+          zIndex: el.zIndex ?? 0,
+          locked: el.locked ?? false,
+          visible: el.visible ?? true,
+          tableStyle: convertTableStyle(el.tableStyle),
+          logoUrl: el.logoUrl,
+          objectFit: el.objectFit,
+          // Relative positioning fields
+          positionMode: el.positionMode ?? 'absolute',
+          parentId: el.parentId,
+          order: el.order ?? 0,
+          spacing: el.spacing ? {
+            top: el.spacing.top ?? 0,
+            right: el.spacing.right ?? 0,
+            bottom: el.spacing.bottom ?? 0,
+            left: el.spacing.left ?? 0,
+          } : undefined,
+          flexGrow: el.flexGrow ?? 0,
+          flexShrink: el.flexShrink ?? 1,
+          alignSelf: el.alignSelf,
+          layoutConfig: el.layoutConfig ? {
+            direction: el.layoutConfig.direction ?? 'column',
+            gap: el.layoutConfig.gap ?? 8,
+            align: el.layoutConfig.align ?? 'stretch',
+            justify: el.layoutConfig.justify ?? 'start',
+            wrap: el.layoutConfig.wrap ?? false,
+          } : undefined,
+        })),
+        isDefault: convexTemplate.isDefault,
+        isSystem: false, // Convex templates are always user templates
+        createdAt: new Date(convexTemplate.createdAt).toISOString(),
+        updatedAt: new Date(convexTemplate.updatedAt).toISOString(),
+      }
+      return {
+        currentTemplate: template,
+        convexTemplateId: convexTemplate._id,
+        selectedElementId: null,
+        history: [],
+        historyIndex: -1,
+      }
+    }),
+
+  setConvexTemplateId: (id) => set({ convexTemplateId: id }),
+
+  getConvexTemplateId: () => get().convexTemplateId,
+
+  // System template helpers
+  loadSystemTemplate: (id) =>
+    set(() => {
+      const template = getSystemTemplate(id)
+      if (!template) return {}
+      return {
+        currentTemplate: { ...template },
+        convexTemplateId: null, // System templates don't have Convex IDs
+        selectedElementId: null,
+        history: [],
+        historyIndex: -1,
+      }
+    }),
+
+  // Helper functions
+  getContainerChildCount: (containerId) => {
+    const state = get()
+    if (!state.currentTemplate) return 0
+    return state.currentTemplate.elements.filter(
+      (el) => el.parentId === containerId
+    ).length
+  },
+}))

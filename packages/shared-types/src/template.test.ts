@@ -60,7 +60,11 @@ describe('template utilities', () => {
       issue_date: 'Jan 15, 2024',
       due_date: 'Feb 15, 2024',
       billing_period: 'Jan 1 - Jan 15, 2024',
-      from_name: 'My Company',
+      // From tokens
+      from_name: 'John Smith',
+      from_company: 'My Company Inc',
+      from_name_or_company: 'John Smith',
+      from_company_or_name: 'My Company Inc',
       from_address: '123 Main St',
       from_city: 'New York',
       from_state: 'NY',
@@ -69,7 +73,11 @@ describe('template utilities', () => {
       from_email: 'billing@company.com',
       from_phone: '+1 555 123 4567',
       from_tax_id: 'XX-1234567',
-      to_name: 'Client Corp',
+      // To tokens
+      to_name: 'Jane Doe',
+      to_company: 'Client Corp',
+      to_name_or_company: 'Jane Doe',
+      to_company_or_name: 'Client Corp',
       to_address: '456 Oak Ave',
       to_city: 'Boston',
       to_state: 'MA',
@@ -104,7 +112,19 @@ describe('template utilities', () => {
     it('replaces multiple tokens', () => {
       const content = 'From: {{from_name}} ({{from_email}})'
       const result = interpolateTokens(content, mockTokenValues)
-      expect(result).toBe('From: My Company (billing@company.com)')
+      expect(result).toBe('From: John Smith (billing@company.com)')
+    })
+
+    it('replaces company tokens correctly', () => {
+      const content = 'To: {{to_name}} at {{to_company}}'
+      const result = interpolateTokens(content, mockTokenValues)
+      expect(result).toBe('To: Jane Doe at Client Corp')
+    })
+
+    it('replaces compound name/company tokens correctly', () => {
+      const content = '{{to_company_or_name}} - {{from_name_or_company}}'
+      const result = interpolateTokens(content, mockTokenValues)
+      expect(result).toBe('Client Corp - John Smith')
     })
 
     it('removes invalid tokens', () => {
@@ -116,7 +136,7 @@ describe('template utilities', () => {
     it('handles mixed valid and invalid tokens', () => {
       const content = '{{from_name}} - {{invalid}} - {{to_name}}'
       const result = interpolateTokens(content, mockTokenValues)
-      expect(result).toBe('My Company -  - Client Corp')
+      expect(result).toBe('John Smith -  - Jane Doe')
     })
 
     it('sanitizes token values', () => {
@@ -381,8 +401,18 @@ describe('template utilities', () => {
 
     it('contains all expected to tokens', () => {
       expect(ALLOWED_TOKENS).toContain('to_name')
+      expect(ALLOWED_TOKENS).toContain('to_company')
+      expect(ALLOWED_TOKENS).toContain('to_name_or_company')
+      expect(ALLOWED_TOKENS).toContain('to_company_or_name')
       expect(ALLOWED_TOKENS).toContain('to_email')
       expect(ALLOWED_TOKENS).toContain('to_phone')
+    })
+
+    it('contains all expected from company tokens', () => {
+      expect(ALLOWED_TOKENS).toContain('from_name')
+      expect(ALLOWED_TOKENS).toContain('from_company')
+      expect(ALLOWED_TOKENS).toContain('from_name_or_company')
+      expect(ALLOWED_TOKENS).toContain('from_company_or_name')
     })
 
     it('contains all expected financial tokens', () => {

@@ -17,6 +17,18 @@ interface TokenInserterProps {
   onInsert: (token: string) => void
 }
 
+// Custom labels for tokens that need clearer descriptions
+const TOKEN_LABELS: Record<string, string> = {
+  from_name: 'From Name (contact only)',
+  from_company: 'From Company (company only)',
+  from_name_or_company: 'From Name or Company (name priority)',
+  from_company_or_name: 'From Company or Name (company priority)',
+  to_name: 'To Name (contact only)',
+  to_company: 'To Company (company only)',
+  to_name_or_company: 'To Name or Company (name priority)',
+  to_company_or_name: 'To Company or Name (company priority)',
+}
+
 const TOKEN_CATEGORIES: Record<string, { label: string; tokens: string[] }> = {
   invoice: {
     label: 'Invoice',
@@ -26,6 +38,9 @@ const TOKEN_CATEGORIES: Record<string, { label: string; tokens: string[] }> = {
     label: 'From (Sender)',
     tokens: [
       'from_name',
+      'from_company',
+      'from_name_or_company',
+      'from_company_or_name',
       'from_address',
       'from_city',
       'from_state',
@@ -40,6 +55,9 @@ const TOKEN_CATEGORIES: Record<string, { label: string; tokens: string[] }> = {
     label: 'To (Client)',
     tokens: [
       'to_name',
+      'to_company',
+      'to_name_or_company',
+      'to_company_or_name',
       'to_address',
       'to_city',
       'to_state',
@@ -73,6 +91,11 @@ const TOKEN_CATEGORIES: Record<string, { label: string; tokens: string[] }> = {
 }
 
 function formatTokenLabel(token: string): string {
+  // Use custom label if available
+  if (TOKEN_LABELS[token]) {
+    return TOKEN_LABELS[token]
+  }
+  // Default formatting for other tokens
   return token
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

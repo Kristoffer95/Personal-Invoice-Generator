@@ -38,8 +38,11 @@ export function useTemplateTokens(invoice: Invoice | Partial<Invoice>) {
           ? `${formatDate(invoice.periodStart)} - ${formatDate(invoice.periodEnd)}`
           : '',
 
-      // From
+      // From tokens
       from_name: invoice.from?.name ?? '',
+      from_company: invoice.from?.companyName ?? '',
+      from_name_or_company: invoice.from?.name || invoice.from?.companyName || '',
+      from_company_or_name: invoice.from?.companyName || invoice.from?.name || '',
       from_address: invoice.from?.address ?? '',
       from_city: invoice.from?.city ?? '',
       from_state: invoice.from?.state ?? '',
@@ -49,8 +52,11 @@ export function useTemplateTokens(invoice: Invoice | Partial<Invoice>) {
       from_phone: invoice.from?.phone ?? '',
       from_tax_id: invoice.from?.taxId ?? '',
 
-      // To
+      // To tokens
       to_name: invoice.to?.name ?? '',
+      to_company: invoice.to?.companyName ?? '',
+      to_name_or_company: invoice.to?.name || invoice.to?.companyName || '',
+      to_company_or_name: invoice.to?.companyName || invoice.to?.name || '',
       to_address: invoice.to?.address ?? '',
       to_city: invoice.to?.city ?? '',
       to_state: invoice.to?.state ?? '',

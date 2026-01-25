@@ -31,6 +31,49 @@ vi.mock('@/lib/template-store', () => ({
   useTemplateStore: () => mockTemplateState,
 }))
 
+// Mock use-current-user hook
+vi.mock('@/hooks/use-current-user', () => ({
+  useCurrentUser: () => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+  }),
+}))
+
+// Mock use-templates hook - use savedTemplates from mockTemplateState for backward compatibility
+vi.mock('@/hooks/use-templates', () => ({
+  useTemplates: () => ({
+    templates: mockTemplateState.savedTemplates.map((t: { id: string; name: string; isDefault: boolean }) => ({
+      _id: t.id,
+      name: t.name,
+      isDefault: t.isDefault,
+      elements: [],
+      pageSize: 'A4',
+      orientation: 'portrait',
+      margins: { top: 40, right: 40, bottom: 60, left: 40 },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })),
+    isLoading: false,
+  }),
+}))
+
+// Mock template-utils
+vi.mock('@/lib/template-utils', () => ({
+  convexToInvoiceTemplate: (t: { _id: string; name: string; isDefault: boolean }) => ({
+    id: t._id,
+    name: t.name,
+    isDefault: t.isDefault,
+    isSystem: false,
+    elements: [],
+    pageSize: 'A4',
+    orientation: 'portrait',
+    margins: { top: 40, right: 40, bottom: 60, left: 40 },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }),
+}))
+
 // Import after mocks
 import { InvoicePreviewPopover } from './InvoicePreviewPopover'
 import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'

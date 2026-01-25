@@ -1,12 +1,31 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useTemplateStore } from './template-store'
+import type { TemplateElement } from '@invoice-generator/shared-types'
+
+// Helper to create test elements with all required fields
+function createTestElement(overrides: Partial<Omit<TemplateElement, 'id'>> & { type: TemplateElement['type']; name: string }): Omit<TemplateElement, 'id'> {
+  return {
+    position: { x: 0, y: 0, width: 100, height: 50 },
+    content: '',
+    padding: 0,
+    opacity: 1,
+    zIndex: 0,
+    locked: false,
+    visible: true,
+    positionMode: 'absolute',
+    order: 0,
+    flexGrow: 0,
+    flexShrink: 1,
+    ...overrides,
+  }
+}
 
 describe('useTemplateStore', () => {
   beforeEach(() => {
     // Reset the store before each test
     useTemplateStore.setState({
       currentTemplate: null,
-      savedTemplates: [],
+      convexTemplateId: null,
       selectedElementId: null,
       editorSettings: {
         showRulers: true,
@@ -47,17 +66,11 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, selectElement } = useTemplateStore.getState()
 
       createNewTemplate('First')
-      addElement({
+      addElement(createTestElement({
         type: 'text',
         name: 'Test',
-        position: { x: 0, y: 0, width: 100, height: 50 },
         content: 'Test',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       const state1 = useTemplateStore.getState()
       selectElement(state1.currentTemplate?.elements[0].id ?? null)
@@ -75,17 +88,12 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Title',
         position: { x: 40, y: 40, width: 200, height: 40 },
         content: 'INVOICE',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       const state = useTemplateStore.getState()
       expect(state.currentTemplate?.elements).toHaveLength(1)
@@ -97,17 +105,12 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Title',
         position: { x: 40, y: 40, width: 200, height: 40 },
         content: 'INVOICE',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       const state = useTemplateStore.getState()
       expect(state.selectedElementId).toBe(elementId)
@@ -118,29 +121,9 @@ describe('useTemplateStore', () => {
 
       createNewTemplate('Test')
 
-      addElement({
-        type: 'text',
-        name: 'First',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      addElement(createTestElement({ type: 'text', name: 'First' }))
 
-      addElement({
-        type: 'text',
-        name: 'Second',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      addElement(createTestElement({ type: 'text', name: 'Second' }))
 
       const state = useTemplateStore.getState()
       expect(state.currentTemplate?.elements[0].zIndex).toBe(0)
@@ -153,17 +136,12 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, updateElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Title',
         position: { x: 40, y: 40, width: 200, height: 40 },
         content: 'Old Content',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       updateElement(elementId, { content: 'New Content' })
 
@@ -177,17 +155,10 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, removeElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'To Remove',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       removeElement(elementId)
 
@@ -200,17 +171,10 @@ describe('useTemplateStore', () => {
         useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Selected',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       selectElement(elementId)
       removeElement(elementId)
@@ -225,17 +189,12 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, duplicateElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const originalId = addElement({
+      const originalId = addElement(createTestElement({
         type: 'text',
         name: 'Original',
         position: { x: 40, y: 40, width: 200, height: 40 },
         content: 'Test',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       const newId = duplicateElement(originalId)
 
@@ -253,17 +212,10 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, duplicateElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const originalId = addElement({
+      const originalId = addElement(createTestElement({
         type: 'text',
         name: 'Original',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       const newId = duplicateElement(originalId)
 
@@ -277,17 +229,11 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, moveElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Movable',
         position: { x: 40, y: 40, width: 200, height: 40 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       moveElement(elementId, { x: 100, y: 100 })
 
@@ -303,17 +249,11 @@ describe('useTemplateStore', () => {
       createNewTemplate('Test')
       updateEditorSettings({ snapToGrid: true, gridSize: 10 })
 
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Movable',
         position: { x: 0, y: 0, width: 200, height: 40 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       moveElement(elementId, { x: 43, y: 47 })
 
@@ -327,17 +267,11 @@ describe('useTemplateStore', () => {
         useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Locked',
         position: { x: 40, y: 40, width: 200, height: 40 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       lockElement(elementId, true)
       moveElement(elementId, { x: 100, y: 100 })
@@ -353,17 +287,11 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, resizeElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Resizable',
         position: { x: 40, y: 40, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       resizeElement(elementId, { width: 200, height: 100 })
 
@@ -376,17 +304,11 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, resizeElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Resizable',
         position: { x: 40, y: 40, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       resizeElement(elementId, { width: 5, height: 5 })
 
@@ -401,28 +323,8 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, bringToFront } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const firstId = addElement({
-        type: 'text',
-        name: 'First',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
-      addElement({
-        type: 'text',
-        name: 'Second',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      const firstId = addElement(createTestElement({ type: 'text', name: 'First' }))
+      addElement(createTestElement({ type: 'text', name: 'Second' }))
 
       bringToFront(firstId)
 
@@ -435,28 +337,8 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, sendToBack } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      addElement({
-        type: 'text',
-        name: 'First',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
-      const secondId = addElement({
-        type: 'text',
-        name: 'Second',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      addElement(createTestElement({ type: 'text', name: 'First' }))
+      const secondId = addElement(createTestElement({ type: 'text', name: 'Second' }))
 
       sendToBack(secondId)
 
@@ -472,17 +354,12 @@ describe('useTemplateStore', () => {
         useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const originalId = addElement({
+      const originalId = addElement(createTestElement({
         type: 'text',
         name: 'To Copy',
         position: { x: 40, y: 40, width: 200, height: 40 },
         content: 'Content',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       copyElement(originalId)
       const pastedId = pasteElement()
@@ -501,17 +378,11 @@ describe('useTemplateStore', () => {
         useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const originalId = addElement({
+      const originalId = addElement(createTestElement({
         type: 'text',
         name: 'To Cut',
         position: { x: 40, y: 40, width: 200, height: 40 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       cutElement(originalId)
 
@@ -526,67 +397,8 @@ describe('useTemplateStore', () => {
     })
   })
 
-  describe('saveCurrentTemplate', () => {
-    it('saves the current template', () => {
-      const { createNewTemplate, saveCurrentTemplate } = useTemplateStore.getState()
-
-      createNewTemplate('Test Template')
-      const saved = saveCurrentTemplate()
-
-      expect(saved).not.toBeNull()
-      expect(saved?.name).toBe('Test Template')
-
-      const state = useTemplateStore.getState()
-      expect(state.savedTemplates).toHaveLength(1)
-    })
-
-    it('updates existing saved template', () => {
-      const { createNewTemplate, saveCurrentTemplate, updateCurrentTemplate } =
-        useTemplateStore.getState()
-
-      createNewTemplate('Test Template')
-      saveCurrentTemplate()
-
-      updateCurrentTemplate({ name: 'Updated Template' })
-      saveCurrentTemplate()
-
-      const state = useTemplateStore.getState()
-      expect(state.savedTemplates).toHaveLength(1)
-      expect(state.savedTemplates[0].name).toBe('Updated Template')
-    })
-  })
-
-  describe('loadTemplate', () => {
-    it('loads a saved template', () => {
-      const { createNewTemplate, saveCurrentTemplate, loadTemplate } =
-        useTemplateStore.getState()
-
-      createNewTemplate('Template 1')
-      const saved = saveCurrentTemplate()
-
-      createNewTemplate('Template 2')
-
-      loadTemplate(saved?.id ?? '')
-
-      const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.name).toBe('Template 1')
-    })
-  })
-
-  describe('deleteTemplate', () => {
-    it('deletes a saved template', () => {
-      const { createNewTemplate, saveCurrentTemplate, deleteTemplate } =
-        useTemplateStore.getState()
-
-      createNewTemplate('To Delete')
-      const saved = saveCurrentTemplate()
-
-      deleteTemplate(saved?.id ?? '')
-
-      const state = useTemplateStore.getState()
-      expect(state.savedTemplates).toHaveLength(0)
-    })
-  })
+  // NOTE: Template storage (saveCurrentTemplate, loadTemplate, deleteTemplate)
+  // has been moved to Convex. See use-templates.ts for the new API.
 
   describe('editor settings', () => {
     it('toggles rulers', () => {
@@ -645,17 +457,10 @@ describe('useTemplateStore', () => {
       const { createNewTemplate, addElement, lockElement } = useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Lockable',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       lockElement(elementId, true)
       expect(useTemplateStore.getState().currentTemplate?.elements[0].locked).toBe(true)
@@ -671,17 +476,10 @@ describe('useTemplateStore', () => {
         useTemplateStore.getState()
 
       createNewTemplate('Test')
-      const elementId = addElement({
+      const elementId = addElement(createTestElement({
         type: 'text',
         name: 'Toggleable',
-        position: { x: 0, y: 0, width: 100, height: 50 },
-        content: '',
-        padding: 0,
-        opacity: 1,
-        zIndex: 0,
-        locked: false,
-        visible: true,
-      })
+      }))
 
       toggleElementVisibility(elementId)
       expect(useTemplateStore.getState().currentTemplate?.elements[0].visible).toBe(false)
@@ -691,105 +489,7 @@ describe('useTemplateStore', () => {
     })
   })
 
-  describe('system templates', () => {
-    it('getAllTemplates returns system templates merged with user templates', () => {
-      const { createNewTemplate, saveCurrentTemplate, getAllTemplates } =
-        useTemplateStore.getState()
-
-      // Create and save a user template
-      createNewTemplate('User Template')
-      saveCurrentTemplate()
-
-      const allTemplates = getAllTemplates()
-
-      // Should include system templates (at least 2: Vercel Minimal, Vercel Professional)
-      const systemTemplates = allTemplates.filter((t) => t.isSystem)
-      expect(systemTemplates.length).toBeGreaterThanOrEqual(2)
-
-      // Should include user template
-      const userTemplates = allTemplates.filter((t) => !t.isSystem)
-      expect(userTemplates).toHaveLength(1)
-      expect(userTemplates[0].name).toBe('User Template')
-    })
-
-    it('deleteTemplate prevents deletion of system templates', () => {
-      const { getAllTemplates, deleteTemplate } = useTemplateStore.getState()
-
-      const allTemplates = getAllTemplates()
-      const systemTemplate = allTemplates.find((t) => t.isSystem)
-
-      expect(systemTemplate).toBeDefined()
-
-      const result = deleteTemplate(systemTemplate!.id)
-      expect(result).toBe(false)
-
-      // System template should still exist
-      const templatesAfter = getAllTemplates()
-      const stillExists = templatesAfter.some((t) => t.id === systemTemplate!.id)
-      expect(stillExists).toBe(true)
-    })
-
-    it('loadTemplate can load system templates', () => {
-      const { getAllTemplates, loadTemplate } = useTemplateStore.getState()
-
-      const allTemplates = getAllTemplates()
-      const systemTemplate = allTemplates.find((t) => t.isSystem)
-
-      expect(systemTemplate).toBeDefined()
-
-      loadTemplate(systemTemplate!.id)
-
-      const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.id).toBe(systemTemplate!.id)
-      expect(state.currentTemplate?.isSystem).toBe(true)
-    })
-
-    it('saveCurrentTemplate creates a user copy when saving a system template', () => {
-      const { getAllTemplates, loadTemplate, saveCurrentTemplate } =
-        useTemplateStore.getState()
-
-      const allTemplates = getAllTemplates()
-      const systemTemplate = allTemplates.find((t) => t.isSystem)
-
-      loadTemplate(systemTemplate!.id)
-      const savedTemplate = saveCurrentTemplate()
-
-      // Saved template should have a new ID (not the system template ID)
-      expect(savedTemplate?.id).not.toBe(systemTemplate!.id)
-      // Saved template should not be marked as system
-      expect(savedTemplate?.isSystem).toBe(false)
-
-      // Original system template should still exist
-      const state = useTemplateStore.getState()
-      const systemStillExists = getAllTemplates().some((t) => t.id === systemTemplate!.id)
-      expect(systemStillExists).toBe(true)
-    })
-
-    it('duplicateTemplate can duplicate system templates', () => {
-      const { getAllTemplates, duplicateTemplate } = useTemplateStore.getState()
-
-      const allTemplates = getAllTemplates()
-      const systemTemplate = allTemplates.find((t) => t.isSystem)
-
-      const duplicated = duplicateTemplate(systemTemplate!.id)
-
-      expect(duplicated).not.toBeNull()
-      expect(duplicated?.id).not.toBe(systemTemplate!.id)
-      expect(duplicated?.name).toBe(`${systemTemplate!.name} (Copy)`)
-      expect(duplicated?.isSystem).toBe(false)
-    })
-
-    it('setDefaultTemplate works with system template IDs', () => {
-      const { getAllTemplates, setDefaultTemplate, getDefaultTemplate } =
-        useTemplateStore.getState()
-
-      const allTemplates = getAllTemplates()
-      const systemTemplate = allTemplates.find((t) => t.isSystem)
-
-      setDefaultTemplate(systemTemplate!.id)
-
-      const defaultTemplate = getDefaultTemplate()
-      expect(defaultTemplate?.id).toBe(systemTemplate!.id)
-    })
-  })
+  // NOTE: System template tests have been moved to Convex integration tests.
+  // The getAllTemplates, loadTemplate, deleteTemplate, duplicateTemplate,
+  // setDefaultTemplate, and getDefaultTemplate functions are now handled by Convex.
 })

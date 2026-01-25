@@ -1,5 +1,6 @@
 export { InvoicePDF } from './InvoicePDF'
 export { TemplatePDF } from './TemplatePDF'
+export { ensureFontsRegistered } from './fonts'
 export {
   generatePDF,
   generatePDFBlob,

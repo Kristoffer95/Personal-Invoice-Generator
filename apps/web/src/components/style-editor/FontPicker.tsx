@@ -36,6 +36,8 @@ const FONT_FAMILIES = [
   { value: 'Times-Bold', label: 'Times Bold' },
   { value: 'Courier', label: 'Courier' },
   { value: 'Courier-Bold', label: 'Courier Bold' },
+  { value: 'Geist', label: 'Geist Sans' },
+  { value: 'Geist Mono', label: 'Geist Mono' },
 ]
 
 export function FontPicker({ fontStyle, onChange }: FontPickerProps) {
@@ -82,6 +84,18 @@ export function FontPicker({ fontStyle, onChange }: FontPickerProps) {
     const current = fontStyle?.textTransform ?? 'none'
     onChange({
       textTransform: current === transform ? 'none' : transform,
+    })
+  }
+
+  const toggleBold = () => {
+    onChange({
+      fontWeight: fontStyle?.fontWeight === 'bold' ? 'normal' : 'bold',
+    })
+  }
+
+  const toggleItalic = () => {
+    onChange({
+      fontStyle: fontStyle?.fontStyle === 'italic' ? 'normal' : 'italic',
     })
   }
 
@@ -162,12 +176,35 @@ export function FontPicker({ fontStyle, onChange }: FontPickerProps) {
         <Label className="text-xs">Style</Label>
         <div className="flex gap-1">
           <button
+            onClick={toggleBold}
+            className={`flex h-8 w-8 items-center justify-center rounded border transition-colors ${
+              fontStyle?.fontWeight === 'bold'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'hover:bg-accent'
+            }`}
+            title="Bold"
+          >
+            <Bold className="h-4 w-4" />
+          </button>
+          <button
+            onClick={toggleItalic}
+            className={`flex h-8 w-8 items-center justify-center rounded border transition-colors ${
+              fontStyle?.fontStyle === 'italic'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'hover:bg-accent'
+            }`}
+            title="Italic"
+          >
+            <Italic className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => toggleDecoration('underline')}
             className={`flex h-8 w-8 items-center justify-center rounded border transition-colors ${
               fontStyle?.textDecoration === 'underline'
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'hover:bg-accent'
             }`}
+            title="Underline"
           >
             <Underline className="h-4 w-4" />
           </button>
@@ -178,6 +215,7 @@ export function FontPicker({ fontStyle, onChange }: FontPickerProps) {
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'hover:bg-accent'
             }`}
+            title="Strikethrough"
           >
             <Strikethrough className="h-4 w-4" />
           </button>
@@ -188,6 +226,7 @@ export function FontPicker({ fontStyle, onChange }: FontPickerProps) {
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'hover:bg-accent'
             }`}
+            title="Uppercase"
           >
             AA
           </button>
@@ -198,6 +237,7 @@ export function FontPicker({ fontStyle, onChange }: FontPickerProps) {
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'hover:bg-accent'
             }`}
+            title="Capitalize"
           >
             Aa
           </button>

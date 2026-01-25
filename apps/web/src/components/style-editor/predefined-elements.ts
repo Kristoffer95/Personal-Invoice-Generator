@@ -14,6 +14,14 @@ const defaultFontStyle: TemplateElement['fontStyle'] = {
   color: '#333333',
 }
 
+// Default positioning fields for all elements
+const defaultPositioningFields = {
+  positionMode: 'absolute' as const,
+  order: 0,
+  flexGrow: 0,
+  flexShrink: 1,
+}
+
 // Default table style
 const defaultTableStyle: TemplateElement['tableStyle'] = {
   headerBackgroundColor: '#1a1a2e',
@@ -49,6 +57,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -72,6 +81,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -96,6 +106,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -128,6 +139,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -147,6 +159,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
 
@@ -174,6 +187,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -198,6 +212,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -221,6 +236,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
 
@@ -251,6 +267,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -278,6 +295,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -302,6 +320,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
 
@@ -323,6 +342,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -348,6 +368,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: -1,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
     },
   },
   {
@@ -368,6 +389,81 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       zIndex: 0,
       locked: false,
       visible: true,
+      ...defaultPositioningFields,
+    },
+  },
+
+  // Layout Containers
+  {
+    id: 'layout-container-column',
+    category: 'layout',
+    name: 'Column Container',
+    description: 'Stack elements vertically',
+    icon: 'Rows3',
+    defaultElement: {
+      type: 'layout_container',
+      name: 'Column Container',
+      position: { x: 40, y: 200, width: 200, height: 200 },
+      content: '',
+      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+      border: {
+        width: 1,
+        color: '#3b82f6',
+        style: 'dashed',
+        radius: 4,
+      },
+      padding: 10,
+      opacity: 1,
+      zIndex: 0,
+      locked: false,
+      visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
+      layoutConfig: {
+        direction: 'column',
+        gap: 8,
+        align: 'stretch',
+        justify: 'start',
+        wrap: false,
+      },
+    },
+  },
+  {
+    id: 'layout-container-row',
+    category: 'layout',
+    name: 'Row Container',
+    description: 'Stack elements horizontally',
+    icon: 'Columns3',
+    defaultElement: {
+      type: 'layout_container',
+      name: 'Row Container',
+      position: { x: 40, y: 200, width: 400, height: 100 },
+      content: '',
+      backgroundColor: 'rgba(16, 185, 129, 0.05)',
+      border: {
+        width: 1,
+        color: '#10b981',
+        style: 'dashed',
+        radius: 4,
+      },
+      padding: 10,
+      opacity: 1,
+      zIndex: 0,
+      locked: false,
+      visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
+      layoutConfig: {
+        direction: 'row',
+        gap: 8,
+        align: 'stretch',
+        justify: 'start',
+        wrap: false,
+      },
     },
   },
 ]
@@ -377,4 +473,5 @@ export const ELEMENT_CATEGORIES = [
   { id: 'contact', name: 'Contact Info', icon: 'Users' },
   { id: 'tables', name: 'Tables', icon: 'Table' },
   { id: 'decorative', name: 'Decorative', icon: 'Shapes' },
+  { id: 'layout', name: 'Layout', icon: 'Layout' },
 ] as const

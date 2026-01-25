@@ -16,6 +16,7 @@ import type * as invoiceFolders from "../invoiceFolders.js";
 import type * as invoices from "../invoices.js";
 import type * as statusLogs from "../statusLogs.js";
 import type * as tags from "../tags.js";
+import type * as templates from "../templates.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as users from "../users.js";
 
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   invoices: typeof invoices;
   statusLogs: typeof statusLogs;
   tags: typeof tags;
+  templates: typeof templates;
   userProfiles: typeof userProfiles;
   users: typeof users;
 }>;

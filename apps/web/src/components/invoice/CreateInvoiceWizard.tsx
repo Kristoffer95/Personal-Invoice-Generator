@@ -234,7 +234,8 @@ export function CreateInvoiceWizard({ open, onOpenChange, preSelectedFolderId }:
         status: "DRAFT",
         issueDate: issueDate,
         to: {
-          name: selectedClient.companyName || selectedClient.name,
+          name: selectedClient.name,
+          companyName: selectedClient.companyName || undefined,
           address: selectedClient.address || "",
           city: selectedClient.city || "",
           state: selectedClient.state || "",

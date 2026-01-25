@@ -99,6 +99,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number
     {
@@ -124,6 +128,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -149,6 +157,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Header Divider
     {
@@ -163,6 +175,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -188,6 +204,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -213,6 +233,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -238,6 +262,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -260,6 +288,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -282,6 +314,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -304,6 +340,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Label
     {
@@ -329,6 +369,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -354,6 +398,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer Divider
     {
@@ -368,6 +416,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -393,6 +445,10 @@ const classicLightTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -455,6 +511,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number
     {
@@ -480,6 +540,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -505,6 +569,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Header Divider
     {
@@ -519,6 +587,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -544,6 +616,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -569,6 +645,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -594,6 +674,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -616,6 +700,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -638,6 +726,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -660,6 +752,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Label
     {
@@ -685,6 +781,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -710,6 +810,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer Divider
     {
@@ -724,6 +828,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -749,6 +857,10 @@ const classicDarkTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -812,6 +924,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number
     {
@@ -837,6 +953,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -862,6 +982,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Divider Line - full width
     {
@@ -876,6 +1000,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -901,6 +1029,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -926,6 +1058,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -951,6 +1087,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table - full width
     {
@@ -973,6 +1113,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table - full width
     {
@@ -995,6 +1139,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -1017,6 +1165,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Section
     {
@@ -1042,6 +1194,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-minimal-notes',
@@ -1066,6 +1222,10 @@ const vercelMinimalTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -1117,6 +1277,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Company Name (in header)
     {
@@ -1142,6 +1306,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Badge (in header)
     {
@@ -1167,6 +1335,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number & Date Row
     {
@@ -1192,6 +1364,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Due Date (right)
     {
@@ -1217,6 +1393,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Divider - full width
     {
@@ -1231,6 +1411,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Section Box - width=210
     {
@@ -1251,6 +1435,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Label
     {
@@ -1276,6 +1464,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Details
     {
@@ -1301,6 +1493,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Section Box
     {
@@ -1321,6 +1517,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -1346,6 +1546,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Details
     {
@@ -1371,6 +1575,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table - full width
     {
@@ -1393,6 +1601,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table - full width
     {
@@ -1415,6 +1627,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Box
     {
@@ -1435,6 +1651,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -1457,6 +1677,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 15,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Section
     {
@@ -1482,6 +1706,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 16,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-pro-notes',
@@ -1506,6 +1734,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 17,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer - full width, centered
     {
@@ -1531,6 +1763,10 @@ const vercelProfessionalTemplate: InvoiceTemplate = {
       zIndex: 18,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -1582,6 +1818,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // INVOICE Title (elegant, spaced)
     {
@@ -1607,6 +1847,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number (subtle)
     {
@@ -1632,6 +1876,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Company Name (right aligned)
     {
@@ -1657,6 +1905,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Company Address (right aligned)
     {
@@ -1682,6 +1934,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Horizontal divider
     {
@@ -1696,6 +1952,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Billed To Section
     {
@@ -1721,6 +1981,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-exec-billed-to',
@@ -1745,6 +2009,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Details (right)
     {
@@ -1770,6 +2038,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-exec-details',
@@ -1794,6 +2066,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -1816,6 +2092,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -1838,6 +2118,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -1860,6 +2144,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -1885,6 +2173,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-exec-notes',
@@ -1909,6 +2201,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer accent line
     {
@@ -1923,6 +2219,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 15,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -1948,6 +2248,10 @@ const vercelExecutiveTemplate: InvoiceTemplate = {
       zIndex: 16,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -2005,6 +2309,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Large Invoice Number (hero element)
     {
@@ -2030,6 +2338,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice label (small)
     {
@@ -2055,6 +2367,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From name (right)
     {
@@ -2080,6 +2396,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From address
     {
@@ -2105,6 +2425,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates row (inline style)
     {
@@ -2130,6 +2454,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To card
     {
@@ -2150,6 +2478,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To label
     {
@@ -2175,6 +2507,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To details
     {
@@ -2200,6 +2536,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -2222,6 +2562,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -2244,6 +2588,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -2266,6 +2614,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -2291,6 +2643,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-mod-notes',
@@ -2315,6 +2671,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -2340,6 +2700,10 @@ const vercelModernTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -2402,6 +2766,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 0,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Company address
     {
@@ -2427,6 +2795,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // INVOICE badge (top right)
     {
@@ -2447,6 +2819,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-classic-badge-text',
@@ -2471,6 +2847,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice number
     {
@@ -2496,6 +2876,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates
     {
@@ -2521,6 +2905,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Divider
     {
@@ -2535,6 +2923,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To
     {
@@ -2560,6 +2952,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-classic-bill-to',
@@ -2584,6 +2980,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Period
     {
@@ -2609,6 +3009,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-classic-period',
@@ -2633,6 +3037,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -2655,6 +3063,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -2677,6 +3089,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary box
     {
@@ -2697,6 +3113,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -2719,6 +3139,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -2744,6 +3168,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 15,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-classic-notes',
@@ -2768,6 +3196,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 16,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer divider
     {
@@ -2782,6 +3214,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 17,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -2807,6 +3243,10 @@ const vercelClassicTemplate: InvoiceTemplate = {
       zIndex: 18,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -2859,6 +3299,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-noir-grid-2',
@@ -2872,6 +3316,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-noir-grid-3',
@@ -2885,6 +3333,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-noir-grid-4',
@@ -2898,6 +3350,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-noir-grid-5',
@@ -2911,6 +3367,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Title (large, 36pt)
     {
@@ -2936,6 +3396,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number (24pt, lighter gray)
     {
@@ -2961,6 +3425,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -2986,6 +3454,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Header Divider
     {
@@ -3000,6 +3472,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -3025,6 +3501,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -3050,6 +3530,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -3075,6 +3559,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -3097,6 +3585,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -3119,6 +3611,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -3141,6 +3637,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Label
     {
@@ -3166,6 +3666,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -3191,6 +3695,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer Divider
     {
@@ -3205,6 +3713,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -3230,6 +3742,10 @@ const darkNoirTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -3282,6 +3798,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-h2',
@@ -3295,6 +3815,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-h3',
@@ -3308,6 +3832,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-h4',
@@ -3321,6 +3849,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-h5',
@@ -3334,6 +3866,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Full grid pattern - Vertical lines
     {
@@ -3348,6 +3884,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-v2',
@@ -3361,6 +3901,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-v3',
@@ -3374,6 +3918,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-midnight-grid-v4',
@@ -3387,6 +3935,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Title (40pt, wide spacing)
     {
@@ -3412,6 +3964,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number (26pt, Courier for numbers)
     {
@@ -3437,6 +3993,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -3462,6 +4022,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Blue accent header divider
     {
@@ -3476,6 +4040,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -3501,6 +4069,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -3526,6 +4098,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -3551,6 +4127,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -3573,6 +4153,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -3595,6 +4179,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -3617,6 +4205,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Label
     {
@@ -3642,6 +4234,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -3667,6 +4263,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer Divider (blue accent)
     {
@@ -3681,6 +4281,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -3706,6 +4310,10 @@ const midnightBlueTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -3758,6 +4366,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-h2',
@@ -3771,6 +4383,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-h3',
@@ -3784,6 +4400,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-h4',
@@ -3797,6 +4417,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-h5',
@@ -3810,6 +4434,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-h6',
@@ -3823,6 +4451,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Vertical grid lines
     {
@@ -3837,6 +4469,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-v2',
@@ -3850,6 +4486,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-v3',
@@ -3863,6 +4503,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-v4',
@@ -3876,6 +4520,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-terminal-grid-v5',
@@ -3889,6 +4537,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Title (terminal green, Courier)
     {
@@ -3914,6 +4566,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number with > prefix
     {
@@ -3939,6 +4595,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -3964,6 +4624,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Terminal-style divider
     {
@@ -3989,6 +4653,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -4014,6 +4682,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -4039,6 +4711,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -4064,6 +4740,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -4086,6 +4766,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -4108,6 +4792,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -4130,6 +4818,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Label
     {
@@ -4155,6 +4847,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -4180,6 +4876,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer divider
     {
@@ -4205,6 +4905,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -4230,6 +4934,10 @@ const carbonTerminalTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }
@@ -4282,6 +4990,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: -5,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-obsidian-grid-h1',
@@ -4295,6 +5007,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     {
       id: 'sys-obsidian-grid-h2',
@@ -4308,6 +5024,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: -10,
       locked: true,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Title (38pt, very wide spacing)
     {
@@ -4333,6 +5053,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 1,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Invoice Number (22pt)
     {
@@ -4358,6 +5082,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 2,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // From Block (right side)
     {
@@ -4383,6 +5111,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 3,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Gold bullet marker for Bill To
     {
@@ -4397,6 +5129,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 4,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Label
     {
@@ -4422,6 +5158,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 5,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Bill To Block
     {
@@ -4447,6 +5187,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 6,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Dates Block (right side)
     {
@@ -4472,6 +5216,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 7,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Work Hours Table
     {
@@ -4494,6 +5242,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 8,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Line Items Table
     {
@@ -4516,6 +5268,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 9,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Summary Table
     {
@@ -4538,6 +5294,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 10,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Gold bullet marker for Notes
     {
@@ -4552,6 +5312,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 11,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes Label
     {
@@ -4577,6 +5341,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 12,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Notes
     {
@@ -4602,6 +5370,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 13,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
     // Footer
     {
@@ -4627,6 +5399,10 @@ const obsidianEleganceTemplate: InvoiceTemplate = {
       zIndex: 14,
       locked: false,
       visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
     },
   ],
 }

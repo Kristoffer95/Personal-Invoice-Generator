@@ -5,6 +5,7 @@ import { getOrCreateUserFromIdentity, getUserFromIdentityOrE2E } from "./users";
 // Shared validators
 const partyInfoValidator = v.object({
   name: v.string(),
+  companyName: v.optional(v.string()),
   address: v.optional(v.string()),
   city: v.optional(v.string()),
   state: v.optional(v.string()),
@@ -1612,7 +1613,8 @@ export const quickCreateInvoice = mutation({
 
     // Build to info from client profile
     const to = {
-      name: client.companyName || client.name,
+      name: client.name,
+      companyName: client.companyName,
       address: client.address || "",
       city: client.city || "",
       state: client.state || "",

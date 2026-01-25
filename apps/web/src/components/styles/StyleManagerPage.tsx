@@ -2,39 +2,54 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ArrowLeft, Palette, Trash2, X } from 'lucide-react'
+import { Plus, ArrowLeft, Palette, Trash2, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useTemplateStore } from '@/lib/template-store'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useTemplates, useTemplateMutations, useDefaultTemplate } from '@/hooks/use-templates'
 import { useToast } from '@/hooks/use-toast'
 import { StyleCard } from './StyleCard'
 import { DeleteStyleDialog } from './DeleteStyleDialog'
+import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
+import { convexToInvoiceTemplate } from '@/lib/template-utils'
 import type { InvoiceTemplate } from '@invoice-generator/shared-types'
 
 export default function StyleManagerPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const {
-    savedTemplates,
-    getAllTemplates,
-    defaultTemplateId,
-    setDefaultTemplate,
-    clearDefaultTemplate,
-    deleteTemplate,
-    duplicateTemplate,
-    createNewTemplate,
-    setCurrentTemplate,
-  } = useTemplateStore()
+  const { isAuthenticated, isLoading: isAuthLoading } = useCurrentUser()
 
-  // Get all templates (system + user)
-  const allTemplates = getAllTemplates()
-  const systemTemplates = useMemo(() => allTemplates.filter((t) => t.isSystem), [allTemplates])
-  const userTemplates = useMemo(() => allTemplates.filter((t) => !t.isSystem), [allTemplates])
+  // Local store for creating new templates
+  const { createNewTemplate, setCurrentTemplate, loadSystemTemplate } = useTemplateStore()
+
+  // Convex hooks for templates
+  const { templates: convexTemplates, isLoading: isTemplatesLoading } = useTemplates()
+  const { template: defaultTemplate } = useDefaultTemplate()
+  const {
+    duplicateTemplate,
+    duplicateFromSystemTemplate,
+    deleteTemplate: convexDeleteTemplate,
+    setDefaultTemplate: convexSetDefaultTemplate,
+    clearDefaultTemplate: convexClearDefaultTemplate,
+  } = useTemplateMutations()
+
+  // Convert Convex templates to InvoiceTemplate format
+  const userTemplates = useMemo(() => {
+    return convexTemplates.map(convexToInvoiceTemplate)
+  }, [convexTemplates])
+
+  // System templates (static, from code)
+  const systemTemplates = SYSTEM_TEMPLATES
+
+  // Default template ID (from Convex or system template)
+  const defaultTemplateId = defaultTemplate?._id ?? null
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [templateToDelete, setTemplateToDelete] = useState<InvoiceTemplate | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isBulkDelete, setIsBulkDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Memoized selection state (only user templates can be selected for bulk operations)
   const isAllSelected = useMemo(
@@ -51,28 +66,138 @@ export default function StyleManagerPage() {
     router.push(`/style-editor?templateId=${template.id}`)
   }
 
-  const handleDuplicate = (template: InvoiceTemplate) => {
-    const duplicated = duplicateTemplate(template.id)
-    if (duplicated) {
+  const handleDuplicate = async (template: InvoiceTemplate) => {
+    if (!isAuthenticated) {
+      toast({
+        title: 'Sign in required',
+        description: 'Please sign in to duplicate templates.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      if (template.isSystem) {
+        // Duplicate from system template
+        // Note: We must ensure all optional fields have explicit values (not undefined)
+        // because undefined values are stripped during JSON serialization to Convex,
+        // causing data loss (e.g., content: undefined becomes missing, not empty string)
+        await duplicateFromSystemTemplate({
+          name: `${template.name} (Copy)`,
+          description: template.description,
+          pageSize: template.pageSize,
+          orientation: template.orientation,
+          margins: template.margins,
+          theme: template.theme,
+          backgroundColor: template.backgroundColor,
+          elements: template.elements.map((el) => ({
+            id: el.id,
+            type: el.type,
+            name: el.name ?? 'Untitled Element',
+            position: el.position,
+            content: el.content ?? '',
+            // Ensure all fontStyle properties are explicitly set to prevent data loss
+            // during JSON serialization (undefined values are stripped)
+            fontStyle: el.fontStyle ? {
+              fontFamily: el.fontStyle.fontFamily ?? 'Helvetica',
+              fontSize: el.fontStyle.fontSize ?? 12,
+              fontWeight: el.fontStyle.fontWeight ?? 'normal',
+              fontStyle: el.fontStyle.fontStyle ?? 'normal',
+              textAlign: el.fontStyle.textAlign ?? 'left',
+              textDecoration: el.fontStyle.textDecoration ?? 'none',
+              textTransform: el.fontStyle.textTransform ?? 'none',
+              letterSpacing: el.fontStyle.letterSpacing ?? 0,
+              lineHeight: el.fontStyle.lineHeight ?? 1.2,
+              color: el.fontStyle.color ?? '#333333',
+            } : undefined,
+            // Ensure all border properties are explicitly set
+            border: el.border ? {
+              width: el.border.width ?? 0,
+              color: el.border.color ?? '#000000',
+              style: el.border.style ?? 'solid',
+              radius: el.border.radius ?? 0,
+            } : undefined,
+            backgroundColor: el.backgroundColor,
+            padding: el.padding ?? 0,
+            opacity: el.opacity ?? 1,
+            zIndex: el.zIndex ?? 0,
+            locked: el.locked ?? false,
+            visible: el.visible ?? true,
+            // Ensure all tableStyle properties are explicitly set
+            tableStyle: el.tableStyle ? {
+              headerBackgroundColor: el.tableStyle.headerBackgroundColor ?? '#1a1a2e',
+              headerTextColor: el.tableStyle.headerTextColor ?? '#ffffff',
+              rowBackgroundColor: el.tableStyle.rowBackgroundColor ?? '#ffffff',
+              alternateRowBackgroundColor: el.tableStyle.alternateRowBackgroundColor ?? '#f8fafc',
+              borderColor: el.tableStyle.borderColor ?? '#e0e0e0',
+              showHeaderBorder: el.tableStyle.showHeaderBorder ?? true,
+              showRowBorders: el.tableStyle.showRowBorders ?? true,
+              columns: el.tableStyle.columns,
+            } : undefined,
+            logoUrl: el.logoUrl,
+            objectFit: el.objectFit,
+          })),
+        })
+      } else {
+        // Duplicate Convex template
+        await duplicateTemplate({
+          templateId: template.id as any,
+        })
+      }
       toast({
         title: 'Style duplicated',
-        description: `"${duplicated.name}" has been created.`,
+        description: `A copy of "${template.name}" has been created.`,
+      })
+    } catch (error) {
+      console.error('Failed to duplicate template:', error)
+      toast({
+        title: 'Failed to duplicate',
+        description: 'An error occurred while duplicating the style.',
+        variant: 'destructive',
       })
     }
   }
 
-  const handleSetDefault = (template: InvoiceTemplate) => {
-    if (defaultTemplateId === template.id) {
-      clearDefaultTemplate()
+  const handleSetDefault = async (template: InvoiceTemplate) => {
+    if (!isAuthenticated) {
       toast({
-        title: 'Default cleared',
-        description: 'No default style is set.',
+        title: 'Sign in required',
+        description: 'Please sign in to set a default template.',
+        variant: 'destructive',
       })
-    } else {
-      setDefaultTemplate(template.id)
+      return
+    }
+
+    // Only Convex templates can be set as default (not system templates)
+    if (template.isSystem) {
       toast({
-        title: 'Default set',
-        description: `"${template.name}" is now the default export style.`,
+        title: 'Cannot set default',
+        description: 'System templates cannot be set as default. Duplicate it first to create your own version.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      if (defaultTemplateId === template.id) {
+        await convexClearDefaultTemplate({})
+        toast({
+          title: 'Default cleared',
+          description: 'No default style is set.',
+        })
+      } else {
+        await convexSetDefaultTemplate({ templateId: template.id as any })
+        toast({
+          title: 'Default set',
+          description: `"${template.name}" is now the default export style.`,
+        })
+      }
+    } catch (error) {
+      console.error('Failed to set default template:', error)
+      toast({
+        title: 'Failed to set default',
+        description: 'An error occurred while setting the default style.',
+        variant: 'destructive',
       })
     }
   }
@@ -83,27 +208,50 @@ export default function StyleManagerPage() {
     setDeleteDialogOpen(true)
   }
 
-  const handleDeleteConfirm = () => {
-    if (isBulkDelete) {
-      // Bulk delete
-      const count = selectedIds.size
-      selectedIds.forEach((id) => deleteTemplate(id))
+  const handleDeleteConfirm = async () => {
+    if (!isAuthenticated) {
       toast({
-        title: 'Styles deleted',
-        description: `${count} style${count > 1 ? 's have' : ' has'} been deleted.`,
+        title: 'Sign in required',
+        description: 'Please sign in to delete templates.',
+        variant: 'destructive',
       })
-      setSelectedIds(new Set())
-      setIsBulkDelete(false)
-    } else if (templateToDelete) {
-      // Single delete
-      deleteTemplate(templateToDelete.id)
-      toast({
-        title: 'Style deleted',
-        description: `"${templateToDelete.name}" has been deleted.`,
-      })
-      setTemplateToDelete(null)
+      return
     }
-    setDeleteDialogOpen(false)
+
+    setIsDeleting(true)
+    try {
+      if (isBulkDelete) {
+        // Bulk delete
+        const count = selectedIds.size
+        for (const id of selectedIds) {
+          await convexDeleteTemplate({ templateId: id as any })
+        }
+        toast({
+          title: 'Styles deleted',
+          description: `${count} style${count > 1 ? 's have' : ' has'} been deleted.`,
+        })
+        setSelectedIds(new Set())
+        setIsBulkDelete(false)
+      } else if (templateToDelete) {
+        // Single delete
+        await convexDeleteTemplate({ templateId: templateToDelete.id as any })
+        toast({
+          title: 'Style deleted',
+          description: `"${templateToDelete.name}" has been deleted.`,
+        })
+        setTemplateToDelete(null)
+      }
+    } catch (error) {
+      console.error('Failed to delete template:', error)
+      toast({
+        title: 'Failed to delete',
+        description: 'An error occurred while deleting the style.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+    }
   }
 
   // Selection handlers (only user templates can be selected)
@@ -150,6 +298,9 @@ export default function StyleManagerPage() {
       .map((t) => t.name)
   }, [userTemplates, selectedIds])
 
+  // Show loading state
+  const isLoading = isAuthLoading || (isAuthenticated && isTemplatesLoading)
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -187,7 +338,7 @@ export default function StyleManagerPage() {
               <StyleCard
                 key={template.id}
                 template={template}
-                isDefault={defaultTemplateId === template.id}
+                isDefault={false}
                 isSelected={false}
                 showCheckbox={false}
                 onEdit={() => handleEdit(template)}
@@ -203,7 +354,25 @@ export default function StyleManagerPage() {
         {/* Custom Templates Section */}
         <section>
           <h2 className="mb-4 text-lg font-semibold">Custom Styles</h2>
-          {userTemplates.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : !isAuthenticated ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/30 py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Palette className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mb-2 font-semibold">Sign in to save custom styles</h3>
+              <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+                Create and save your own invoice styles by signing in to your account.
+              </p>
+              <Button onClick={handleCreateNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Style
+              </Button>
+            </div>
+          ) : userTemplates.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/30 py-12 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Palette className="h-6 w-6 text-muted-foreground" />
@@ -332,6 +501,7 @@ export default function StyleManagerPage() {
         templateNames={isBulkDelete ? selectedTemplateNames : undefined}
         count={isBulkDelete ? selectedIds.size : undefined}
         onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
       />
     </div>
   )

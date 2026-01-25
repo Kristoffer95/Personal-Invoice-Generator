@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { FileDown, ChevronDown, Sun, Moon, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +11,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { StylePickerDialog } from './StylePickerDialog'
-import { useTemplateStore } from '@/lib/template-store'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useTemplates, useDefaultTemplate } from '@/hooks/use-templates'
+import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
+import { convexToInvoiceTemplate } from '@/lib/template-utils'
 import type { Invoice, InvoiceTemplate, BackgroundDesign } from '@invoice-generator/shared-types'
 
 type BuiltInStyle = 'light' | 'dark'
@@ -38,10 +41,21 @@ export function ExportButton({
   const [isExporting, setIsExporting] = useState(false)
   const [showStylePicker, setShowStylePicker] = useState(false)
 
-  const { savedTemplates, defaultTemplateId, getDefaultTemplate } = useTemplateStore()
+  const { isAuthenticated } = useCurrentUser()
+  const { templates: convexTemplates } = useTemplates()
+  const { template: defaultConvexTemplate } = useDefaultTemplate()
 
-  const hasCustomStyles = savedTemplates.length > 0
-  const defaultTemplate = getDefaultTemplate()
+  // Convert Convex templates to InvoiceTemplate format
+  const userTemplates = useMemo(() => {
+    return convexTemplates.map(convexToInvoiceTemplate)
+  }, [convexTemplates])
+
+  // Get default template
+  const defaultTemplate = useMemo(() => {
+    return defaultConvexTemplate ? convexToInvoiceTemplate(defaultConvexTemplate) : null
+  }, [defaultConvexTemplate])
+
+  const hasCustomStyles = isAuthenticated && userTemplates.length > 0
 
   const handleExport = useCallback(async (options?: { template?: InvoiceTemplate; theme?: BuiltInStyle }) => {
     if (isExporting || disabled) return
@@ -92,6 +106,8 @@ export function ExportButton({
     ? `Export (${defaultTemplate.name.length > 12 ? defaultTemplate.name.slice(0, 12) + '...' : defaultTemplate.name})`
     : 'Export PDF'
 
+  const defaultTemplateId = defaultConvexTemplate?._id ?? null
+
   return (
     <>
       <div className="flex">
@@ -127,10 +143,10 @@ export function ExportButton({
             </DropdownMenuItem>
 
             {/* Custom templates */}
-            {savedTemplates.length > 0 && (
+            {userTemplates.length > 0 && (
               <>
                 <DropdownMenuSeparator />
-                {savedTemplates.slice(0, 5).map((template) => (
+                {userTemplates.slice(0, 5).map((template: InvoiceTemplate) => (
                   <DropdownMenuItem
                     key={template.id}
                     onClick={() => handleSelectTemplate(template)}
@@ -148,7 +164,7 @@ export function ExportButton({
             )}
 
             {/* Show more option if there are many templates */}
-            {savedTemplates.length > 5 && (
+            {userTemplates.length > 5 && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowStylePicker(true)}>
@@ -158,7 +174,7 @@ export function ExportButton({
             )}
 
             {/* Always show the full picker option */}
-            {savedTemplates.length <= 5 && savedTemplates.length > 0 && (
+            {userTemplates.length <= 5 && userTemplates.length > 0 && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowStylePicker(true)}>

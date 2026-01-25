@@ -31,14 +31,21 @@ import {
   Square,
   Image,
   Table,
+  Rows3,
+  Columns3,
 } from 'lucide-react'
 import { useTemplateStore } from '@/lib/template-store'
+import { isSystemTemplate } from '@/lib/system-templates'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useTemplate } from '@/hooks/use-templates'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { StyleEditorHeader } from './StyleEditorHeader'
 import { ElementsPanel } from './ElementsPanel'
 import { StyleEditorCanvas } from './StyleEditorCanvas'
 import { PropertiesPanel } from './PropertiesPanel'
 import { PREDEFINED_ELEMENTS } from './predefined-elements'
 import type { TemplateElement } from '@invoice-generator/shared-types'
+import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
 
 // Icon map for drag overlay
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -57,6 +64,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Square,
   Image,
   Table,
+  Rows3,
+  Columns3,
 }
 
 // Drag preview component for panel elements
@@ -158,16 +167,32 @@ export default function StyleEditorContent() {
   const templateIdParam = searchParams.get('templateId')
   const hasLoadedTemplate = useRef(false)
 
+  // Authentication state
+  const { isAuthenticated, isLoading: isAuthLoading } = useCurrentUser()
+
+  // Sync editor settings from Convex (will update store when loaded)
+  useEditorSettings()
+
   const {
     currentTemplate,
-    savedTemplates,
     createNewTemplate,
-    loadTemplate,
+    loadSystemTemplate,
+    setCurrentTemplateFromConvex,
     addElement,
     moveElement,
     selectElement,
     selectedElementId,
+    addElementToContainer,
   } = useTemplateStore()
+
+  // Determine if templateIdParam looks like a Convex ID (not a system template and not a local timestamp ID)
+  // Convex IDs are 32 character alphanumeric strings, system templates start with "system-"
+  const isLikelyConvexId = templateIdParam && !isSystemTemplate(templateIdParam) && !/^\d+-/.test(templateIdParam)
+
+  // Query Convex for the template (only when authenticated and ID looks like Convex ID)
+  const { template: convexTemplate, isLoading: isConvexTemplateLoading } = useTemplate(
+    isAuthenticated && isLikelyConvexId ? templateIdParam as Id<"templates"> : undefined
+  )
 
   // Track the active drag item
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -176,18 +201,29 @@ export default function StyleEditorContent() {
   // Load template from URL param or create new one
   useEffect(() => {
     if (hasLoadedTemplate.current) return
+    if (isAuthLoading) return // Wait for auth state to be determined
+
+    // If authenticated and looks like a Convex ID, wait for Convex query to complete
+    if (isAuthenticated && isLikelyConvexId && isConvexTemplateLoading) return
 
     if (templateIdParam) {
-      // Load existing template for editing
-      const templateExists = savedTemplates.some((t) => t.id === templateIdParam)
-      if (templateExists) {
-        loadTemplate(templateIdParam)
+      // Priority 1: Convex template (for authenticated users)
+      if (isAuthenticated && convexTemplate) {
+        setCurrentTemplateFromConvex(convexTemplate)
         hasLoadedTemplate.current = true
-      } else {
-        // Template not found, create new one
-        createNewTemplate('My Invoice Template')
-        hasLoadedTemplate.current = true
+        return
       }
+
+      // Priority 2: System template
+      if (isSystemTemplate(templateIdParam)) {
+        loadSystemTemplate(templateIdParam)
+        hasLoadedTemplate.current = true
+        return
+      }
+
+      // Not found anywhere - create new template
+      createNewTemplate('My Invoice Template')
+      hasLoadedTemplate.current = true
     } else if (!currentTemplate) {
       // No param and no current template, create new one
       createNewTemplate('My Invoice Template')
@@ -195,7 +231,18 @@ export default function StyleEditorContent() {
     } else {
       hasLoadedTemplate.current = true
     }
-  }, [templateIdParam, savedTemplates, currentTemplate, loadTemplate, createNewTemplate])
+  }, [
+    isAuthLoading,
+    isAuthenticated,
+    isLikelyConvexId,
+    isConvexTemplateLoading,
+    convexTemplate,
+    templateIdParam,
+    currentTemplate,
+    loadSystemTemplate,
+    setCurrentTemplateFromConvex,
+    createNewTemplate,
+  ])
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -231,46 +278,83 @@ export default function StyleEditorContent() {
       setActiveId(null)
       setActiveType(null)
 
-      // Dragging from elements panel to canvas
-      if (active.data.current?.type === 'panel-element' && over?.id === 'canvas') {
+      // Check if dropping onto a container
+      const isContainerDrop = over?.data?.current?.type === 'container'
+      const targetContainerId = over?.data?.current?.containerId
+
+      // Dragging from elements panel to canvas or container
+      if (active.data.current?.type === 'panel-element') {
         const predefinedId = active.id as string
         const predefined = PREDEFINED_ELEMENTS.find((el) => el.id === predefinedId)
 
         if (predefined) {
-          // Get drop position relative to canvas
-          const canvasRect = over.rect
-          const dropX = Math.max(0, event.activatorEvent instanceof MouseEvent
-            ? event.activatorEvent.clientX - canvasRect.left + delta.x
-            : 50)
-          const dropY = Math.max(0, event.activatorEvent instanceof MouseEvent
-            ? event.activatorEvent.clientY - canvasRect.top + delta.y
-            : 50)
+          if (isContainerDrop && targetContainerId) {
+            // Drop into container - create as relative element
+            const newElementId = addElement({
+              ...predefined.defaultElement,
+              positionMode: 'relative',
+              parentId: targetContainerId,
+              position: {
+                ...predefined.defaultElement.position,
+                x: 0,
+                y: 0,
+              },
+            })
+          } else if (over?.id === 'canvas') {
+            // Drop on canvas - create as absolute element
+            const canvasRect = over.rect
+            const dropX = Math.max(0, event.activatorEvent instanceof MouseEvent
+              ? event.activatorEvent.clientX - canvasRect.left + delta.x
+              : 50)
+            const dropY = Math.max(0, event.activatorEvent instanceof MouseEvent
+              ? event.activatorEvent.clientY - canvasRect.top + delta.y
+              : 50)
 
-          addElement({
-            ...predefined.defaultElement,
-            position: {
-              ...predefined.defaultElement.position,
-              x: dropX,
-              y: dropY,
-            },
-          })
+            addElement({
+              ...predefined.defaultElement,
+              position: {
+                ...predefined.defaultElement.position,
+                x: dropX,
+                y: dropY,
+              },
+            })
+          }
         }
       }
 
-      // Moving an element on the canvas
+      // Moving an existing element on the canvas
       if (active.data.current?.type === 'canvas-element') {
         const element = currentTemplate?.elements.find(
           (el) => el.id === active.id
         )
         if (element && !element.locked) {
-          moveElement(active.id as string, {
-            x: element.position.x + delta.x,
-            y: element.position.y + delta.y,
-          })
+          // If dropping onto a container (and not already in it), add to container
+          if (isContainerDrop && targetContainerId && element.parentId !== targetContainerId) {
+            // Don't allow dropping a container into itself or its children
+            const isCircular = (() => {
+              if (element.id === targetContainerId) return true
+              let current = currentTemplate?.elements.find((el) => el.id === targetContainerId)
+              while (current?.parentId) {
+                if (current.parentId === element.id) return true
+                current = currentTemplate?.elements.find((el) => el.id === current?.parentId)
+              }
+              return false
+            })()
+
+            if (!isCircular) {
+              addElementToContainer(active.id as string, targetContainerId)
+            }
+          } else {
+            // Regular move on canvas
+            moveElement(active.id as string, {
+              x: element.position.x + delta.x,
+              y: element.position.y + delta.y,
+            })
+          }
         }
       }
     },
-    [addElement, currentTemplate?.elements, moveElement]
+    [addElement, currentTemplate?.elements, moveElement, addElementToContainer]
   )
 
   // Handle drag cancel
@@ -284,7 +368,7 @@ export default function StyleEditorContent() {
     ? currentTemplate?.elements.find((el) => el.id === activeId)
     : null
 
-  // Keyboard shortcuts
+  // Global keyboard shortcuts (Cmd/Ctrl only - arrow keys handled in canvas)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle shortcuts when typing in inputs
@@ -295,53 +379,45 @@ export default function StyleEditorContent() {
         return
       }
 
+      // Only handle Cmd/Ctrl shortcuts at window level
+      if (!(e.metaKey || e.ctrlKey)) return
+
       const state = useTemplateStore.getState()
 
-      // Delete selected element
-      if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedElementId) {
-        e.preventDefault()
-        state.removeElement(state.selectedElementId)
-      }
-
       // Undo
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+      if (e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
         state.undo()
       }
 
       // Redo
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) {
         e.preventDefault()
         state.redo()
       }
 
       // Copy
-      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && state.selectedElementId) {
+      if (e.key === 'c' && state.selectedElementId) {
         e.preventDefault()
         state.copyElement(state.selectedElementId)
       }
 
       // Paste
-      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+      if (e.key === 'v') {
         e.preventDefault()
         state.pasteElement()
       }
 
       // Cut
-      if ((e.metaKey || e.ctrlKey) && e.key === 'x' && state.selectedElementId) {
+      if (e.key === 'x' && state.selectedElementId) {
         e.preventDefault()
         state.cutElement(state.selectedElementId)
       }
 
       // Duplicate
-      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && state.selectedElementId) {
+      if (e.key === 'd' && state.selectedElementId) {
         e.preventDefault()
         state.duplicateElement(state.selectedElementId)
-      }
-
-      // Escape to deselect
-      if (e.key === 'Escape') {
-        state.selectElement(null)
       }
     }
 

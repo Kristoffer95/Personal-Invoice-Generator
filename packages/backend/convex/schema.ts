@@ -4,6 +4,7 @@ import { v } from "convex/values";
 // Shared validators for reuse
 const partyInfoValidator = v.object({
   name: v.string(),
+  companyName: v.optional(v.string()),
   address: v.optional(v.string()),
   city: v.optional(v.string()),
   state: v.optional(v.string()),
@@ -58,6 +59,205 @@ const statusChangeEventValidator = v.object({
   notes: v.optional(v.string()),
 });
 
+// Page sizes for templates
+const pageSizeValidator = v.union(
+  v.literal("A4"),
+  v.literal("LETTER"),
+  v.literal("LEGAL"),
+  v.literal("LONG"),
+  v.literal("SHORT"),
+  v.literal("A5"),
+  v.literal("B5")
+);
+
+// Template element types
+const templateElementTypeValidator = v.union(
+  v.literal("text"),
+  v.literal("table_work_hours"),
+  v.literal("table_line_items"),
+  v.literal("table_summary"),
+  v.literal("divider"),
+  v.literal("rectangle"),
+  v.literal("logo"),
+  v.literal("layout_container")
+);
+
+// Position mode for elements
+const positionModeValidator = v.union(
+  v.literal("absolute"),
+  v.literal("relative")
+);
+
+// Layout direction for containers
+const layoutDirectionValidator = v.union(
+  v.literal("column"),
+  v.literal("row")
+);
+
+// Alignment options
+const alignmentValidator = v.union(
+  v.literal("start"),
+  v.literal("center"),
+  v.literal("end"),
+  v.literal("stretch")
+);
+
+// Justify options
+const justifyValidator = v.union(
+  v.literal("start"),
+  v.literal("center"),
+  v.literal("end"),
+  v.literal("space-between"),
+  v.literal("space-around")
+);
+
+// Layout config for containers
+const layoutConfigValidator = v.object({
+  direction: v.optional(layoutDirectionValidator),
+  gap: v.optional(v.number()),
+  align: v.optional(alignmentValidator),
+  justify: v.optional(justifyValidator),
+  wrap: v.optional(v.boolean()),
+});
+
+// Spacing for relative elements
+const spacingValidator = v.object({
+  top: v.optional(v.number()),
+  right: v.optional(v.number()),
+  bottom: v.optional(v.number()),
+  left: v.optional(v.number()),
+});
+
+// Font style for template elements
+const fontStyleValidator = v.object({
+  fontFamily: v.optional(
+    v.union(
+      v.literal("Helvetica"),
+      v.literal("Helvetica-Bold"),
+      v.literal("Helvetica-Oblique"),
+      v.literal("Helvetica-BoldOblique"),
+      v.literal("Times-Roman"),
+      v.literal("Times-Bold"),
+      v.literal("Times-Italic"),
+      v.literal("Times-BoldItalic"),
+      v.literal("Courier"),
+      v.literal("Courier-Bold"),
+      v.literal("Courier-Oblique"),
+      v.literal("Courier-BoldOblique"),
+      v.literal("Geist"),
+      v.literal("Geist Mono")
+    )
+  ),
+  fontSize: v.optional(v.number()),
+  fontWeight: v.optional(v.union(v.literal("normal"), v.literal("bold"))),
+  fontStyle: v.optional(v.union(v.literal("normal"), v.literal("italic"))),
+  textAlign: v.optional(
+    v.union(v.literal("left"), v.literal("center"), v.literal("right"), v.literal("justify"))
+  ),
+  textDecoration: v.optional(
+    v.union(v.literal("none"), v.literal("underline"), v.literal("line-through"))
+  ),
+  textTransform: v.optional(
+    v.union(v.literal("none"), v.literal("uppercase"), v.literal("lowercase"), v.literal("capitalize"))
+  ),
+  letterSpacing: v.optional(v.number()),
+  lineHeight: v.optional(v.number()),
+  color: v.optional(v.string()),
+});
+
+// Border style for template elements
+const borderStyleValidator = v.object({
+  width: v.optional(v.number()),
+  color: v.optional(v.string()),
+  style: v.optional(v.union(v.literal("solid"), v.literal("dashed"), v.literal("dotted"))),
+  radius: v.optional(v.number()),
+});
+
+// Table column definition
+const tableColumnValidator = v.object({
+  id: v.string(),
+  header: v.string(),
+  field: v.string(),
+  width: v.number(),
+  align: v.optional(v.union(v.literal("left"), v.literal("center"), v.literal("right"))),
+});
+
+// Table style for table elements
+const tableStyleValidator = v.object({
+  headerBackgroundColor: v.optional(v.string()),
+  headerTextColor: v.optional(v.string()),
+  rowBackgroundColor: v.optional(v.string()),
+  alternateRowBackgroundColor: v.optional(v.string()),
+  borderColor: v.optional(v.string()),
+  showHeaderBorder: v.optional(v.boolean()),
+  showRowBorders: v.optional(v.boolean()),
+  columns: v.optional(v.array(tableColumnValidator)),
+});
+
+// Position for template elements
+const positionValidator = v.object({
+  x: v.number(),
+  y: v.number(),
+  width: v.number(),
+  height: v.number(),
+});
+
+// Template element
+const templateElementValidator = v.object({
+  id: v.string(),
+  type: templateElementTypeValidator,
+  name: v.optional(v.string()),
+  position: positionValidator,
+  content: v.optional(v.string()),
+  fontStyle: v.optional(fontStyleValidator),
+  border: v.optional(borderStyleValidator),
+  backgroundColor: v.optional(v.string()),
+  padding: v.optional(v.number()),
+  opacity: v.optional(v.number()),
+  zIndex: v.optional(v.number()),
+  locked: v.optional(v.boolean()),
+  visible: v.optional(v.boolean()),
+  tableStyle: v.optional(tableStyleValidator),
+  logoUrl: v.optional(v.string()),
+  objectFit: v.optional(v.union(v.literal("contain"), v.literal("cover"), v.literal("fill"))),
+  // Relative positioning fields
+  positionMode: v.optional(positionModeValidator),
+  parentId: v.optional(v.string()),
+  order: v.optional(v.number()),
+  spacing: v.optional(spacingValidator),
+  flexGrow: v.optional(v.number()),
+  flexShrink: v.optional(v.number()),
+  alignSelf: v.optional(alignmentValidator),
+  layoutConfig: v.optional(layoutConfigValidator),
+});
+
+// Template theme colors
+const templateThemeValidator = v.object({
+  primary: v.optional(v.string()),
+  secondary: v.optional(v.string()),
+  accent: v.optional(v.string()),
+  text: v.optional(v.string()),
+  textLight: v.optional(v.string()),
+  background: v.optional(v.string()),
+});
+
+// Margin definition for templates
+const marginValidator = v.object({
+  top: v.number(),
+  right: v.number(),
+  bottom: v.number(),
+  left: v.number(),
+});
+
+// Editor settings for user profiles
+const editorSettingsValidator = v.object({
+  showRulers: v.boolean(),
+  showGrid: v.boolean(),
+  snapToGrid: v.boolean(),
+  gridSize: v.number(),
+  zoomLevel: v.number(),
+});
+
 export default defineSchema({
   users: defineTable({
     // Core identity (synced from Clerk)
@@ -102,10 +302,37 @@ export default defineSchema({
     invoicePrefix: v.optional(v.string()), // e.g., "INV" for INV-001
     nextInvoiceNumber: v.number(), // Current counter for auto-increment
 
+    // Editor settings (for style editor preferences)
+    editorSettings: v.optional(editorSettingsValidator),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
+
+  // User-created invoice templates
+  templates: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    pageSize: pageSizeValidator,
+    orientation: v.union(v.literal("portrait"), v.literal("landscape")),
+    margins: marginValidator,
+    theme: v.optional(templateThemeValidator),
+    backgroundColor: v.string(),
+    elements: v.array(templateElementValidator),
+    isDefault: v.boolean(),
+
+    // Source system template ID (for templates duplicated from system templates)
+    sourceSystemTemplateId: v.optional(v.string()),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()), // Soft delete
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_and_default", ["userId", "isDefault"]),
 
   // Tags for organizing invoices and folders
   tags: defineTable({
