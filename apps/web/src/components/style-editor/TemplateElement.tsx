@@ -52,6 +52,8 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
   // Use calculated position if available (for relative elements), otherwise use element position
   const pos = calculatedPosition ?? element.position
 
+  // For layout containers, border is applied to inner element to avoid double borders
+  const hasBorder = element.border && element.border.width > 0
   const style: React.CSSProperties = {
     position: 'absolute',
     left: pos.x + margins.left,
@@ -62,11 +64,11 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
     opacity: isDragging ? 0.3 : element.opacity,
     backgroundColor: element.backgroundColor,
     padding: element.padding,
-    ...(element.border && element.border.width > 0 && {
-      borderWidth: element.border.width,
-      borderColor: element.border.color,
-      borderStyle: element.border.style,
-      borderRadius: element.border.radius,
+    ...(hasBorder && element.type !== 'layout_container' && {
+      borderWidth: element.border!.width,
+      borderColor: element.border!.color,
+      borderStyle: element.border!.style,
+      borderRadius: element.border!.radius,
     }),
   }
 
@@ -173,11 +175,23 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
               marginLeft: element.spacing.left,
             }
           : {}
+        // Check if user has configured a border - use it instead of default indicator
+        const containerHasBorder = element.border && element.border.width > 0
+        const containerBorderStyle: React.CSSProperties = containerHasBorder
+          ? {
+              borderWidth: element.border!.width,
+              borderColor: element.border!.color,
+              borderStyle: element.border!.style,
+              borderRadius: element.border!.radius,
+            }
+          : {}
         return (
           <div
             className={cn(
-              'w-full h-full min-h-[40px] min-w-[40px] flex border-2 border-dashed rounded transition-colors',
-              isOver ? 'border-blue-500 bg-blue-50/50' : 'border-blue-400/50'
+              'w-full h-full min-h-[40px] min-w-[40px] flex rounded transition-colors',
+              // Only show dashed indicator border when no custom border is set
+              !containerHasBorder && 'border-2 border-dashed',
+              !containerHasBorder && (isOver ? 'border-blue-500 bg-blue-50/50' : 'border-blue-400/50')
             )}
             style={{
               flexDirection: element.layoutConfig?.direction || 'column',
@@ -188,6 +202,7 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
                 ? 'rgba(59, 130, 246, 0.1)'
                 : 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(59, 130, 246, 0.03) 5px, rgba(59, 130, 246, 0.03) 10px)',
               ...containerMargin,
+              ...containerBorderStyle,
             }}
           >
             <div className="absolute top-1 left-1 flex items-center gap-1 text-xs text-blue-500/70 pointer-events-none">

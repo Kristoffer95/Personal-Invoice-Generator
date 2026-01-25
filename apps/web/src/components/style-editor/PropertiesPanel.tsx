@@ -660,6 +660,89 @@ export function PropertiesPanel() {
                 className="h-8"
               />
             </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Border Width</Label>
+              <Input
+                type="number"
+                value={element.border?.width ?? 0}
+                onChange={(e) =>
+                  updateElement(element.id, {
+                    border: {
+                      width: Number(e.target.value),
+                      color: element.border?.color ?? '#000000',
+                      style: element.border?.style ?? 'solid',
+                      radius: element.border?.radius ?? 0,
+                    },
+                  })
+                }
+                min={0}
+                max={20}
+                className="h-8"
+              />
+            </div>
+
+            {(element.border?.width ?? 0) > 0 && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs">Border Color</Label>
+                  <ColorPicker
+                    color={element.border?.color ?? '#000000'}
+                    onChange={(color) =>
+                      updateElement(element.id, {
+                        border: {
+                          ...element.border!,
+                          color: color,
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Border Style</Label>
+                  <Select
+                    value={element.border?.style ?? 'solid'}
+                    onValueChange={(value) =>
+                      updateElement(element.id, {
+                        border: {
+                          ...element.border!,
+                          style: value as 'solid' | 'dashed' | 'dotted',
+                        },
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">Solid</SelectItem>
+                      <SelectItem value="dashed">Dashed</SelectItem>
+                      <SelectItem value="dotted">Dotted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Border Radius</Label>
+                  <Input
+                    type="number"
+                    value={element.border?.radius ?? 0}
+                    onChange={(e) =>
+                      updateElement(element.id, {
+                        border: {
+                          ...element.border!,
+                          radius: Number(e.target.value),
+                        },
+                      })
+                    }
+                    min={0}
+                    max={50}
+                    className="h-8"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <Separator />

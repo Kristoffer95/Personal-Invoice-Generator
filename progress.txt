@@ -47,3 +47,26 @@ Add margin controls exclusive to Row elements to enable per-row gap spacing
 ### Notes
 - TypeScript compiles successfully (npm run build passes)
 - Pre-existing test/lint infrastructure issues unchanged
+
+## PRD Item 3: Style Editor Bug - Overlapping Borders
+
+### Task completed
+Fix row and grid borders that appear to overlap each other in the style editor
+
+### Key decisions and reasoning
+- Root cause: layout_container elements had two border sources:
+  1. `element.border` property applied to outer wrapper (lines 65-70)
+  2. Hardcoded `border-2 border-dashed` class on inner container div (line 179)
+- This caused visual overlap when user configured borders on containers
+- Solution: Apply border to inner container only, choosing between:
+  - User-configured border (if `element.border.width > 0`)
+  - Default blue dashed indicator (if no user border configured)
+- Added border controls to PropertiesPanel (width, color, style, radius) for all elements including layout containers
+
+### Files changed
+- apps/web/src/components/style-editor/TemplateElement.tsx (conditional border rendering, exclude layout_container from outer border)
+- apps/web/src/components/style-editor/PropertiesPanel.tsx (added Border Width/Color/Style/Radius controls in Appearance section)
+
+### Notes
+- TypeScript compiles successfully (npm run build passes)
+- Pre-existing test/lint infrastructure issues unchanged
