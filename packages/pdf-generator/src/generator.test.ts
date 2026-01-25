@@ -180,3 +180,294 @@ describe('TemplatePDF', () => {
     expect(element.props.children).toBeDefined()
   })
 })
+
+describe('TemplatePDF Layout Containers', () => {
+  const createMockInvoice = (overrides: Partial<Invoice> = {}): Invoice => ({
+    id: 'test-1',
+    invoiceNumber: 'INV-001',
+    status: 'DRAFT',
+    issueDate: '2024-01-01',
+    from: { name: 'Test Company' },
+    to: { name: 'Client Company' },
+    hourlyRate: 100,
+    defaultHoursPerDay: 8,
+    dailyWorkHours: [],
+    totalDays: 0,
+    totalHours: 0,
+    subtotal: 0,
+    lineItems: [],
+    discountPercent: 0,
+    discountAmount: 0,
+    taxPercent: 0,
+    taxAmount: 0,
+    totalAmount: 0,
+    currency: 'USD',
+    paymentTerms: 'NET_30',
+    pageSize: 'A4',
+    showDetailedHours: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    statusHistory: [],
+    tags: [],
+    isArchived: false,
+    pdfTheme: 'light',
+    ...overrides,
+  })
+
+  it('renders layout container with child elements', async () => {
+    const { TemplatePDF } = await import('./index')
+
+    const template: InvoiceTemplate = {
+      id: 'template-layout',
+      name: 'Layout Container Test',
+      description: 'Template with layout container',
+      pageSize: 'A4',
+      orientation: 'portrait',
+      margins: { top: 40, right: 40, bottom: 60, left: 40 },
+      backgroundColor: '#ffffff',
+      isDefault: false,
+      isSystem: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+      elements: [
+        {
+          id: 'container-1',
+          type: 'layout_container',
+          name: 'Row Container',
+          position: { x: 0, y: 0, width: 515, height: 100 },
+          content: '',
+          padding: 10,
+          opacity: 1,
+          zIndex: 0,
+          locked: false,
+          visible: true,
+          positionMode: 'absolute',
+          layoutConfig: {
+            direction: 'row',
+            gap: 10,
+            align: 'stretch',
+            justify: 'start',
+            wrap: false,
+          },
+          backgroundColor: '#f0f0f0',
+        },
+        {
+          id: 'child-text-1',
+          type: 'text',
+          name: 'Child Text 1',
+          position: { x: 0, y: 0, width: 100, height: 30 },
+          content: 'Left Text',
+          padding: 0,
+          opacity: 1,
+          zIndex: 1,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'container-1',
+          order: 0,
+        },
+        {
+          id: 'child-text-2',
+          type: 'text',
+          name: 'Child Text 2',
+          position: { x: 0, y: 0, width: 100, height: 30 },
+          content: 'Right Text',
+          padding: 0,
+          opacity: 1,
+          zIndex: 1,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'container-1',
+          order: 1,
+        },
+      ],
+    }
+
+    const invoice = createMockInvoice()
+    const element = TemplatePDF({ template, invoice })
+
+    expect(element).toBeDefined()
+    expect(element.type).toBeDefined()
+    expect(element.props.children).toBeDefined()
+  })
+
+  it('renders nested containers correctly', async () => {
+    const { TemplatePDF } = await import('./index')
+
+    const template: InvoiceTemplate = {
+      id: 'template-nested',
+      name: 'Nested Container Test',
+      description: 'Template with nested containers',
+      pageSize: 'A4',
+      orientation: 'portrait',
+      margins: { top: 40, right: 40, bottom: 60, left: 40 },
+      backgroundColor: '#ffffff',
+      isDefault: false,
+      isSystem: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+      elements: [
+        {
+          id: 'outer-container',
+          type: 'layout_container',
+          name: 'Outer Container',
+          position: { x: 0, y: 0, width: 515, height: 200 },
+          content: '',
+          padding: 10,
+          opacity: 1,
+          zIndex: 0,
+          locked: false,
+          visible: true,
+          positionMode: 'absolute',
+          layoutConfig: {
+            direction: 'column',
+            gap: 10,
+            align: 'stretch',
+            justify: 'start',
+            wrap: false,
+          },
+        },
+        {
+          id: 'inner-container',
+          type: 'layout_container',
+          name: 'Inner Container',
+          position: { x: 0, y: 0, width: 495, height: 80 },
+          content: '',
+          padding: 5,
+          opacity: 1,
+          zIndex: 1,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'outer-container',
+          order: 0,
+          layoutConfig: {
+            direction: 'row',
+            gap: 5,
+            align: 'center',
+            justify: 'space-between',
+            wrap: false,
+          },
+          backgroundColor: '#e0e0e0',
+        },
+        {
+          id: 'nested-text-1',
+          type: 'text',
+          name: 'Nested Text 1',
+          position: { x: 0, y: 0, width: 100, height: 30 },
+          content: 'Nested Left',
+          padding: 0,
+          opacity: 1,
+          zIndex: 2,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'inner-container',
+          order: 0,
+        },
+        {
+          id: 'nested-text-2',
+          type: 'text',
+          name: 'Nested Text 2',
+          position: { x: 0, y: 0, width: 100, height: 30 },
+          content: 'Nested Right',
+          padding: 0,
+          opacity: 1,
+          zIndex: 2,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'inner-container',
+          order: 1,
+        },
+      ],
+    }
+
+    const invoice = createMockInvoice()
+    const element = TemplatePDF({ template, invoice })
+
+    expect(element).toBeDefined()
+    expect(element.type).toBeDefined()
+    expect(element.props.children).toBeDefined()
+  })
+
+  it('applies stretch alignment to child elements', async () => {
+    const { TemplatePDF } = await import('./index')
+
+    const template: InvoiceTemplate = {
+      id: 'template-stretch',
+      name: 'Stretch Alignment Test',
+      description: 'Template with stretch alignment',
+      pageSize: 'A4',
+      orientation: 'portrait',
+      margins: { top: 40, right: 40, bottom: 60, left: 40 },
+      backgroundColor: '#ffffff',
+      isDefault: false,
+      isSystem: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+      elements: [
+        {
+          id: 'stretch-container',
+          type: 'layout_container',
+          name: 'Stretch Container',
+          position: { x: 0, y: 0, width: 515, height: 150 },
+          content: '',
+          padding: 10,
+          opacity: 1,
+          zIndex: 0,
+          locked: false,
+          visible: true,
+          positionMode: 'absolute',
+          layoutConfig: {
+            direction: 'row',
+            gap: 10,
+            align: 'stretch',
+            justify: 'start',
+            wrap: false,
+          },
+        },
+        {
+          id: 'stretch-child-1',
+          type: 'text',
+          name: 'Stretch Child 1',
+          position: { x: 0, y: 0, width: 200, height: 30 },
+          content: 'Stretched Element 1',
+          padding: 0,
+          opacity: 1,
+          zIndex: 1,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'stretch-container',
+          order: 0,
+          flexGrow: 1,
+        },
+        {
+          id: 'stretch-child-2',
+          type: 'text',
+          name: 'Stretch Child 2',
+          position: { x: 0, y: 0, width: 200, height: 30 },
+          content: 'Stretched Element 2',
+          padding: 0,
+          opacity: 1,
+          zIndex: 1,
+          locked: false,
+          visible: true,
+          positionMode: 'relative',
+          parentId: 'stretch-container',
+          order: 1,
+          flexGrow: 1,
+        },
+      ],
+    }
+
+    const invoice = createMockInvoice()
+    const element = TemplatePDF({ template, invoice })
+
+    expect(element).toBeDefined()
+    expect(element.type).toBeDefined()
+    expect(element.props.children).toBeDefined()
+  })
+})
