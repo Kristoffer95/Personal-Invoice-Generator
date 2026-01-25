@@ -105,24 +105,29 @@ function calculateContainerChildPositions(
   const result = new Map<string, CalculatedPosition>()
   const config = container.layoutConfig ?? defaultLayoutConfig
   const isColumn = config.direction === 'column'
-
-  // Calculate total size and gaps
-  let currentMainPos = 0
   const padding = container.padding ?? 0
 
   // Available space after padding
   const availableWidth = containerPosition.width - padding * 2
   const availableHeight = containerPosition.height - padding * 2
+  const availableMainSize = isColumn ? availableHeight : availableWidth
 
-  // Calculate positions based on direction
+  // First pass: calculate child sizes and total content size
+  const childSizes: Array<{
+    child: TemplateElement
+    width: number
+    height: number
+    spacing: Spacing
+    mainSize: number // Size along main axis including spacing
+  }> = []
+
+  let totalContentSize = 0
+
   for (const child of children) {
     const spacing = child.spacing ?? defaultSpacing
-
-    // Base size from position
     const baseWidth = child.position.width
     const baseHeight = child.position.height
 
-    // Calculate sizes based on alignment
     let childWidth: number
     let childHeight: number
 
@@ -144,7 +149,68 @@ function calculateContainerChildPositions(
       )
     }
 
-    // Calculate main-axis position
+    const mainSize = isColumn
+      ? childHeight + spacing.top + spacing.bottom
+      : childWidth + spacing.left + spacing.right
+
+    childSizes.push({ child, width: childWidth, height: childHeight, spacing, mainSize })
+    totalContentSize += mainSize
+  }
+
+  // Add gaps between children (n-1 gaps for n children)
+  const totalGapSize = children.length > 1 ? (children.length - 1) * config.gap : 0
+  const contentWithGaps = totalContentSize + totalGapSize
+  const freeSpace = Math.max(0, availableMainSize - contentWithGaps)
+
+  // Calculate justify-content distribution
+  let startOffset = 0
+  let gapBetween = config.gap
+
+  switch (config.justify) {
+    case 'start':
+      // Default: items start at the beginning
+      startOffset = 0
+      break
+    case 'center':
+      // Items are centered
+      startOffset = freeSpace / 2
+      break
+    case 'end':
+      // Items are at the end
+      startOffset = freeSpace
+      break
+    case 'space-between':
+      // Items are evenly distributed; first item at start, last at end
+      if (children.length > 1) {
+        gapBetween = config.gap + freeSpace / (children.length - 1)
+      }
+      startOffset = 0
+      break
+    case 'space-around':
+      // Items have equal space around them
+      if (children.length > 0) {
+        const spacePerItem = freeSpace / children.length
+        startOffset = spacePerItem / 2
+        gapBetween = config.gap + spacePerItem
+      }
+      break
+    case 'space-evenly':
+      // Items have equal space between them and at edges
+      if (children.length > 0) {
+        const totalSpaces = children.length + 1
+        const spacePerSlot = freeSpace / totalSpaces
+        startOffset = spacePerSlot
+        gapBetween = config.gap + spacePerSlot
+      }
+      break
+  }
+
+  // Second pass: position children
+  let currentMainPos = startOffset
+
+  for (let i = 0; i < childSizes.length; i++) {
+    const { child, width: childWidth, height: childHeight, spacing } = childSizes[i]
+
     let x: number
     let y: number
 
@@ -157,7 +223,7 @@ function calculateContainerChildPositions(
       )
       x = containerPosition.x + padding + alignOffset + spacing.left
       y = containerPosition.y + padding + currentMainPos + spacing.top
-      currentMainPos += childHeight + spacing.top + spacing.bottom + config.gap
+      currentMainPos += childHeight + spacing.top + spacing.bottom
     } else {
       // Row layout: children stack horizontally
       const alignOffset = calculateAlignOffset(
@@ -167,7 +233,12 @@ function calculateContainerChildPositions(
       )
       x = containerPosition.x + padding + currentMainPos + spacing.left
       y = containerPosition.y + padding + alignOffset + spacing.top
-      currentMainPos += childWidth + spacing.left + spacing.right + config.gap
+      currentMainPos += childWidth + spacing.left + spacing.right
+    }
+
+    // Add gap after this child (except for the last one)
+    if (i < childSizes.length - 1) {
+      currentMainPos += gapBetween
     }
 
     result.set(child.id, {

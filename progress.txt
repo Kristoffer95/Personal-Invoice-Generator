@@ -1,29 +1,25 @@
-## 2026-01-25: Integrate Layout Engine in PDF Generator
+## PRD Item 4: Style Editor Bug - Justify Content in Row
 
-**PRD Reference:** Steps 1-5 (all)
+### Task completed
+Fix justify-content property not working correctly in Row elements
 
-**Task:** Fix PDF rendering for custom invoice styles with layout containers
+### Key decisions and reasoning
+- Root cause: Layout engine (`layout-engine.ts`) wasn't implementing justify-content at all - just sequentially stacking children
+- Added 'space-evenly' to justify schema (was missing per PRD requirements)
+- Rewrote `calculateContainerChildPositions()` with two-pass algorithm:
+  1. First pass: Calculate total content size and child dimensions
+  2. Second pass: Apply justify-content distribution (start offset + gap calculation)
+- Updated `TemplateElement.tsx` preview to include justifyContent and alignItems CSS for visual feedback
+- Updated `PropertiesPanel.tsx` to include 'Space Evenly' option in dropdown
 
-**Problem:** PDF generator imported `calculateElementPositions` but never used it. Caused:
-- Child element sizes not calculated (stretch alignment broken)
-- Gap/padding positioning differences
-- Cross-axis alignment inconsistencies
-- Nested container layouts failing
+### Files changed
+- packages/shared-types/src/template.ts (added 'space-evenly' to justifySchema)
+- packages/shared-types/src/layout-engine.ts (complete rewrite of calculateContainerChildPositions)
+- apps/web/src/components/style-editor/TemplateElement.tsx (added justifyContent/alignItems to container preview)
+- apps/web/src/components/style-editor/PropertiesPanel.tsx (added Space Evenly option)
 
-**Solution:** Use layout engine in PDF generator for visual consistency with editor.
-
-**Changes:**
-- `packages/pdf-generator/src/TemplatePDF.tsx`:
-  - Added `CalculatedPosition` type import
-  - Call `calculateElementPositions()` to get positions for all elements
-  - Updated all render functions (renderTextElement, renderWorkHoursTable, renderLineItemsTable, renderSummaryTable, renderDivider, renderRectangle, renderLogo) to accept `calculatedPosition` parameter and use calculated x/y/width/height instead of raw position
-  - Replaced `renderLayoutContainer` (flexbox approach) with `renderLayoutContainerBackground` (background/border only)
-  - Updated main render loop to get position from `calculatedPositions` Map
-  - Removed `renderSingleElement` helper (no longer needed)
-
-**Key Decision:** Render all elements at calculated positions, including container children. Container just renders its background/border; children rendered at their layout-engine-calculated positions separately. This matches editor behavior exactly.
-
-**Verification:**
-- Build: PASS
-- Tests: PASS (830+ tests)
-- Lint: Pre-existing failure (missing eslint config in packages) - not related to changes
+### Notes
+- TypeScript compiles successfully for changed files
+- Pre-existing test infrastructure issues (rollup module missing for linux-arm64-gnu) prevent running tests
+- Pre-existing lint configuration issues prevent linting
+- Pre-existing type errors in StatusLogList.test.tsx (unrelated to this change)

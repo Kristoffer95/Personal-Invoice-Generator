@@ -82,7 +82,7 @@ export const alignmentSchema = z.enum(['start', 'center', 'end', 'stretch'])
 export type Alignment = z.infer<typeof alignmentSchema>
 
 // Justify options (main-axis)
-export const justifySchema = z.enum(['start', 'center', 'end', 'space-between', 'space-around'])
+export const justifySchema = z.enum(['start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'])
 export type Justify = z.infer<typeof justifySchema>
 
 // Layout container configuration

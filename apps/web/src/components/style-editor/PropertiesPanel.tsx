@@ -466,7 +466,7 @@ export function PropertiesPanel() {
                     value={element.layoutConfig?.justify ?? 'start'}
                     onValueChange={(value) =>
                       updateLayoutConfig(element.id, {
-                        justify: value as 'start' | 'center' | 'end' | 'space-between' | 'space-around',
+                        justify: value as 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'space-evenly',
                       })
                     }
                   >
@@ -479,6 +479,7 @@ export function PropertiesPanel() {
                       <SelectItem value="end">End</SelectItem>
                       <SelectItem value="space-between">Space Between</SelectItem>
                       <SelectItem value="space-around">Space Around</SelectItem>
+                      <SelectItem value="space-evenly">Space Evenly</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

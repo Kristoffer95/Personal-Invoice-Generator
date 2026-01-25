@@ -148,15 +148,33 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
           </div>
         )
       case 'layout_container':
+        // Map justify values to CSS justify-content
+        const justifyMap: Record<string, string> = {
+          'start': 'flex-start',
+          'center': 'center',
+          'end': 'flex-end',
+          'space-between': 'space-between',
+          'space-around': 'space-around',
+          'space-evenly': 'space-evenly',
+        }
+        // Map align values to CSS align-items
+        const alignMap: Record<string, string> = {
+          'start': 'flex-start',
+          'center': 'center',
+          'end': 'flex-end',
+          'stretch': 'stretch',
+        }
         return (
           <div
             className={cn(
-              'w-full h-full min-h-[40px] min-w-[40px] flex items-center justify-center border-2 border-dashed rounded transition-colors',
+              'w-full h-full min-h-[40px] min-w-[40px] flex border-2 border-dashed rounded transition-colors',
               isOver ? 'border-blue-500 bg-blue-50/50' : 'border-blue-400/50'
             )}
             style={{
               flexDirection: element.layoutConfig?.direction || 'column',
               gap: element.layoutConfig?.gap || 8,
+              justifyContent: justifyMap[element.layoutConfig?.justify || 'start'] || 'flex-start',
+              alignItems: alignMap[element.layoutConfig?.align || 'stretch'] || 'stretch',
               background: isOver
                 ? 'rgba(59, 130, 246, 0.1)'
                 : 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(59, 130, 246, 0.03) 5px, rgba(59, 130, 246, 0.03) 10px)',
