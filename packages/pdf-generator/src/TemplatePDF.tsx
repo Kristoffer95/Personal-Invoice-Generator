@@ -21,7 +21,7 @@ import type {
   AllowedToken,
   Currency,
   PageSizeKey,
-  LayoutConfig,
+  CalculatedPosition,
 } from '@invoice-generator/shared-types'
 import {
   PAGE_SIZES,
@@ -179,9 +179,10 @@ function mapFontFamily(
 function renderTextElement(
   element: TemplateElement,
   tokenValues: Record<AllowedToken, string>,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { fontStyle, position, padding, backgroundColor, border, opacity } = element
+  const { fontStyle, padding, backgroundColor, border, opacity } = element
 
   // Ensure content is always a string (handle undefined, null, or non-string values)
   const rawContent = typeof element.content === 'string' ? element.content : ''
@@ -199,7 +200,7 @@ function renderTextElement(
       isEmpty: !interpolatedContent || interpolatedContent.trim() === '',
       visible: element.visible,
       zIndex: element.zIndex,
-      position,
+      calculatedPosition,
       fontStyle: {
         color: fontStyle?.color,
         fontSize: fontStyle?.fontSize,
@@ -209,12 +210,12 @@ function renderTextElement(
     })
   }
 
-  // Validate position dimensions - ensure minimum valid values
+  // Use calculated position from layout engine
   const safePosition = {
-    x: position?.x ?? 0,
-    y: position?.y ?? 0,
-    width: Math.max(position?.width ?? 100, 1),
-    height: Math.max(position?.height ?? 20, 1),
+    x: calculatedPosition.x,
+    y: calculatedPosition.y,
+    width: Math.max(calculatedPosition.width, 1),
+    height: Math.max(calculatedPosition.height, 1),
   }
 
   // Container style (View)
@@ -292,10 +293,10 @@ function renderTextElement(
 function renderWorkHoursTable(
   element: TemplateElement,
   invoice: Invoice,
-  tokenValues: Record<AllowedToken, string>,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, tableStyle } = element
+  const { tableStyle } = element
   const workDays = invoice.dailyWorkHours.filter((d) => d.isWorkday && d.hours > 0)
 
   if (workDays.length === 0) {
@@ -311,9 +312,9 @@ function renderWorkHoursTable(
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      left: position.x + margins.left,
-      top: position.y + margins.top,
-      width: position.width,
+      left: calculatedPosition.x + margins.left,
+      top: calculatedPosition.y + margins.top,
+      width: calculatedPosition.width,
     },
     header: {
       flexDirection: 'row',
@@ -377,10 +378,10 @@ function renderWorkHoursTable(
 function renderLineItemsTable(
   element: TemplateElement,
   invoice: Invoice,
-  tokenValues: Record<AllowedToken, string>,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, tableStyle } = element
+  const { tableStyle } = element
 
   if (!invoice.lineItems || invoice.lineItems.length === 0) {
     return null
@@ -395,9 +396,9 @@ function renderLineItemsTable(
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      left: position.x + margins.left,
-      top: position.y + margins.top,
-      width: position.width,
+      left: calculatedPosition.x + margins.left,
+      top: calculatedPosition.y + margins.top,
+      width: calculatedPosition.width,
     },
     header: {
       flexDirection: 'row',
@@ -458,10 +459,10 @@ function renderLineItemsTable(
 function renderSummaryTable(
   element: TemplateElement,
   invoice: Invoice,
-  tokenValues: Record<AllowedToken, string>,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, tableStyle } = element
+  const { tableStyle } = element
   const headerBg = tableStyle?.headerBackgroundColor ?? '#1a1a2e'
   const headerText = tableStyle?.headerTextColor ?? '#ffffff'
   const borderColor = tableStyle?.borderColor ?? '#e0e0e0'
@@ -470,9 +471,9 @@ function renderSummaryTable(
   const styles = StyleSheet.create({
     container: {
       position: 'absolute',
-      left: position.x + margins.left,
-      top: position.y + margins.top,
-      width: position.width,
+      left: calculatedPosition.x + margins.left,
+      top: calculatedPosition.y + margins.top,
+      width: calculatedPosition.width,
     },
     row: {
       flexDirection: 'row',
@@ -547,19 +548,20 @@ function renderSummaryTable(
 // Render divider
 function renderDivider(
   element: TemplateElement,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, backgroundColor } = element
+  const { backgroundColor } = element
 
   return (
     <View
       key={element.id}
       style={{
         position: 'absolute',
-        left: position.x + margins.left,
-        top: position.y + margins.top,
-        width: position.width,
-        height: position.height,
+        left: calculatedPosition.x + margins.left,
+        top: calculatedPosition.y + margins.top,
+        width: calculatedPosition.width,
+        height: calculatedPosition.height,
         backgroundColor: backgroundColor ?? '#e0e0e0',
       }}
     />
@@ -569,16 +571,17 @@ function renderDivider(
 // Render rectangle
 function renderRectangle(
   element: TemplateElement,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, backgroundColor, border, opacity } = element
+  const { backgroundColor, border, opacity } = element
 
   const style: PdfStyle = {
     position: 'absolute',
-    left: position.x + margins.left,
-    top: position.y + margins.top,
-    width: position.width,
-    height: position.height,
+    left: calculatedPosition.x + margins.left,
+    top: calculatedPosition.y + margins.top,
+    width: calculatedPosition.width,
+    height: calculatedPosition.height,
     opacity: opacity ?? 1,
   }
 
@@ -600,9 +603,10 @@ function renderRectangle(
 function renderLogo(
   element: TemplateElement,
   invoice: Invoice,
-  margins: { top: number; left: number }
+  margins: { top: number; left: number },
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, objectFit } = element
+  const { objectFit } = element
   const logoUrl = element.logoUrl || invoice.from?.logo
 
   if (!logoUrl) {
@@ -615,64 +619,33 @@ function renderLogo(
       src={logoUrl}
       style={{
         position: 'absolute',
-        left: position.x + margins.left,
-        top: position.y + margins.top,
-        width: position.width,
-        height: position.height,
+        left: calculatedPosition.x + margins.left,
+        top: calculatedPosition.y + margins.top,
+        width: calculatedPosition.width,
+        height: calculatedPosition.height,
         objectFit: objectFit ?? 'contain',
       }}
     />
   )
 }
 
-// Render layout container with flexbox
-function renderLayoutContainer(
+// Render layout container background only
+// Children are rendered separately at their calculated positions
+function renderLayoutContainerBackground(
   element: TemplateElement,
-  children: TemplateElement[],
-  tokenValues: Record<AllowedToken, string>,
-  invoice: Invoice,
   margins: { top: number; left: number },
-  renderElementFn: (el: TemplateElement) => React.ReactNode
+  calculatedPosition: CalculatedPosition
 ) {
-  const { position, backgroundColor, border, opacity, padding, layoutConfig } = element
-
-  const config = layoutConfig ?? {
-    direction: 'column' as const,
-    gap: 8,
-    align: 'stretch' as const,
-    justify: 'start' as const,
-    wrap: false,
-  }
-
-  // Map align/justify to flexbox values
-  const alignMap = {
-    start: 'flex-start',
-    center: 'center',
-    end: 'flex-end',
-    stretch: 'stretch',
-  } as const
-
-  const justifyMap = {
-    start: 'flex-start',
-    center: 'center',
-    end: 'flex-end',
-    'space-between': 'space-between',
-    'space-around': 'space-around',
-  } as const
+  const { backgroundColor, border, opacity, padding } = element
 
   const containerStyle: PdfStyle = {
     position: 'absolute',
-    left: position.x + margins.left,
-    top: position.y + margins.top,
-    width: position.width,
-    height: position.height,
+    left: calculatedPosition.x + margins.left,
+    top: calculatedPosition.y + margins.top,
+    width: calculatedPosition.width,
+    height: calculatedPosition.height,
     padding: padding ?? 0,
     opacity: opacity ?? 1,
-    flexDirection: config.direction,
-    gap: config.gap,
-    alignItems: alignMap[config.align as keyof typeof alignMap] ?? 'stretch',
-    justifyContent: justifyMap[config.justify as keyof typeof justifyMap] ?? 'flex-start',
-    flexWrap: config.wrap ? 'wrap' : 'nowrap',
   }
 
   if (backgroundColor) {
@@ -686,33 +659,7 @@ function renderLayoutContainer(
     containerStyle.borderRadius = border.radius
   }
 
-  // Get children sorted by order
-  const sortedChildren = children
-    .filter((el) => el.parentId === element.id && el.visible !== false)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-
-  return (
-    <View key={element.id} style={containerStyle}>
-      {sortedChildren.map((child) => {
-        const spacing = child.spacing ?? { top: 0, right: 0, bottom: 0, left: 0 }
-        return (
-          <View
-            key={child.id}
-            style={{
-              marginTop: spacing.top,
-              marginRight: spacing.right,
-              marginBottom: spacing.bottom,
-              marginLeft: spacing.left,
-              flexGrow: child.flexGrow ?? 0,
-              flexShrink: child.flexShrink ?? 1,
-            }}
-          >
-            {renderElementFn(child)}
-          </View>
-        )
-      })}
-    </View>
-  )
+  return <View key={element.id} style={containerStyle} />
 }
 
 // Main component
@@ -720,6 +667,18 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   const pageSize = PAGE_SIZES[template.pageSize as PageSizeKey] || PAGE_SIZES.A4
   const tokenValues = buildTokenValues(invoice)
   const margins = { top: template.margins.top, left: template.margins.left }
+
+  // Calculate page dimensions in points
+  const pageWidthPts = pageSize.width * 2.83465
+  const pageHeightPts = pageSize.height * 2.83465
+
+  // Calculate positions using layout engine for consistency with editor
+  const calculatedPositions = calculateElementPositions(
+    template.elements,
+    template.margins,
+    pageWidthPts,
+    pageHeightPts
+  )
 
   // DEBUG: Log invoice data and token values
   if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
@@ -734,6 +693,7 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         to_name: tokenValues.to_name,
       },
       totalElements: template.elements.length,
+      calculatedPositionsCount: calculatedPositions.size,
     })
   }
 
@@ -753,65 +713,37 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         zIndex: el.zIndex,
         fontSize: el.fontStyle?.fontSize,
         color: el.fontStyle?.color,
+        calculatedPosition: calculatedPositions.get(el.id),
       })))
   }
 
-  // Helper to render a single element (used by containers for children)
-  const renderSingleElement = (element: TemplateElement): React.ReactNode => {
-    switch (element.type) {
-      case 'text':
-        // For relative elements inside containers, render without position offset
-        const textMargins = element.positionMode === 'relative' && element.parentId
-          ? { top: 0, left: 0 }
-          : margins
-        return renderTextElement({ ...element, position: { ...element.position, x: 0, y: 0 } }, tokenValues, textMargins)
-      case 'table_work_hours':
-        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, tokenValues, margins) : null
-      case 'table_line_items':
-        return renderLineItemsTable(element, invoice, tokenValues, margins)
-      case 'table_summary':
-        return renderSummaryTable(element, invoice, tokenValues, margins)
-      case 'divider':
-        return renderDivider({ ...element, position: { ...element.position, x: 0, y: 0 } }, { top: 0, left: 0 })
-      case 'rectangle':
-        return renderRectangle({ ...element, position: { ...element.position, x: 0, y: 0 } }, { top: 0, left: 0 })
-      case 'logo':
-        return renderLogo(element, invoice, margins)
-      default:
-        return null
-    }
-  }
-
   const renderElement = (element: TemplateElement) => {
-    // Skip relative elements at top level - they're rendered by their parent containers
-    if (element.positionMode === 'relative' && element.parentId) {
+    // Get calculated position for this element
+    const calcPos = calculatedPositions.get(element.id)
+    if (!calcPos) {
+      if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+        console.warn(`[PDF] No calculated position for element: ${element.id} (${element.name})`)
+      }
       return null
     }
 
     switch (element.type) {
       case 'text':
-        return renderTextElement(element, tokenValues, margins)
+        return renderTextElement(element, tokenValues, margins, calcPos)
       case 'table_work_hours':
-        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, tokenValues, margins) : null
+        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, margins, calcPos) : null
       case 'table_line_items':
-        return renderLineItemsTable(element, invoice, tokenValues, margins)
+        return renderLineItemsTable(element, invoice, margins, calcPos)
       case 'table_summary':
-        return renderSummaryTable(element, invoice, tokenValues, margins)
+        return renderSummaryTable(element, invoice, margins, calcPos)
       case 'divider':
-        return renderDivider(element, margins)
+        return renderDivider(element, margins, calcPos)
       case 'rectangle':
-        return renderRectangle(element, margins)
+        return renderRectangle(element, margins, calcPos)
       case 'logo':
-        return renderLogo(element, invoice, margins)
+        return renderLogo(element, invoice, margins, calcPos)
       case 'layout_container':
-        return renderLayoutContainer(
-          element,
-          template.elements,
-          tokenValues,
-          invoice,
-          margins,
-          renderSingleElement
-        )
+        return renderLayoutContainerBackground(element, margins, calcPos)
       default:
         return null
     }
@@ -824,8 +756,8 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
     <Document>
       <Page
         size={{
-          width: pageSize.width * 2.83465,
-          height: pageSize.height * 2.83465,
+          width: pageWidthPts,
+          height: pageHeightPts,
         }}
         style={{
           position: 'relative',

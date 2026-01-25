@@ -1,0 +1,29 @@
+## 2026-01-25: Integrate Layout Engine in PDF Generator
+
+**PRD Reference:** Steps 1-5 (all)
+
+**Task:** Fix PDF rendering for custom invoice styles with layout containers
+
+**Problem:** PDF generator imported `calculateElementPositions` but never used it. Caused:
+- Child element sizes not calculated (stretch alignment broken)
+- Gap/padding positioning differences
+- Cross-axis alignment inconsistencies
+- Nested container layouts failing
+
+**Solution:** Use layout engine in PDF generator for visual consistency with editor.
+
+**Changes:**
+- `packages/pdf-generator/src/TemplatePDF.tsx`:
+  - Added `CalculatedPosition` type import
+  - Call `calculateElementPositions()` to get positions for all elements
+  - Updated all render functions (renderTextElement, renderWorkHoursTable, renderLineItemsTable, renderSummaryTable, renderDivider, renderRectangle, renderLogo) to accept `calculatedPosition` parameter and use calculated x/y/width/height instead of raw position
+  - Replaced `renderLayoutContainer` (flexbox approach) with `renderLayoutContainerBackground` (background/border only)
+  - Updated main render loop to get position from `calculatedPositions` Map
+  - Removed `renderSingleElement` helper (no longer needed)
+
+**Key Decision:** Render all elements at calculated positions, including container children. Container just renders its background/border; children rendered at their layout-engine-calculated positions separately. This matches editor behavior exactly.
+
+**Verification:**
+- Build: PASS
+- Tests: PASS (830+ tests)
+- Lint: Pre-existing failure (missing eslint config in packages) - not related to changes
