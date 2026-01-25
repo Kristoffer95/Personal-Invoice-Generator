@@ -23,3 +23,27 @@ Fix justify-content property not working correctly in Row elements
 - Pre-existing test infrastructure issues (rollup module missing for linux-arm64-gnu) prevent running tests
 - Pre-existing lint configuration issues prevent linting
 - Pre-existing type errors in StatusLogList.test.tsx (unrelated to this change)
+
+## PRD Item 2: Style Editor - Row Margins for Gaps
+
+### Task completed
+Add margin controls exclusive to Row elements to enable per-row gap spacing
+
+### Key decisions and reasoning
+- Used existing `spacing` schema property which was already defined in templateElementSchema
+- Margin controls only visible when layout_container direction='row' (per PRD requirement)
+- Updated PropertiesPanel with margin input fields (top/right/bottom/left) for Row containers
+- Updated TemplateElement preview to apply CSS margin for visual feedback in editor
+- Updated PDF renderer to offset container position and adjust dimensions by margin values
+- Also fixed pre-existing bug: Convex schema missing 'space-evenly' in justifyValidator (causing type mismatch)
+
+### Files changed
+- apps/web/src/components/style-editor/PropertiesPanel.tsx (added Row Margin section)
+- apps/web/src/components/style-editor/TemplateElement.tsx (added margin CSS for Row containers)
+- packages/pdf-generator/src/TemplatePDF.tsx (apply spacing to layout container rendering)
+- packages/backend/convex/schema.ts (added 'space-evenly' to justifyValidator)
+- packages/backend/convex/templates.ts (added 'space-evenly' to justifyValidator)
+
+### Notes
+- TypeScript compiles successfully (npm run build passes)
+- Pre-existing test/lint infrastructure issues unchanged

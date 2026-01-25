@@ -483,6 +483,84 @@ export function PropertiesPanel() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Margin controls for Row layout containers */}
+                {element.layoutConfig?.direction === 'row' && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Row Margin</Label>
+                    <div className="grid grid-cols-4 gap-1">
+                      <Input
+                        type="number"
+                        value={element.spacing?.top ?? 0}
+                        onChange={(e) =>
+                          updateElement(element.id, {
+                            spacing: {
+                              ...element.spacing,
+                              top: Number(e.target.value),
+                              right: element.spacing?.right ?? 0,
+                              bottom: element.spacing?.bottom ?? 0,
+                              left: element.spacing?.left ?? 0,
+                            },
+                          })
+                        }
+                        className="h-8"
+                        placeholder="T"
+                      />
+                      <Input
+                        type="number"
+                        value={element.spacing?.right ?? 0}
+                        onChange={(e) =>
+                          updateElement(element.id, {
+                            spacing: {
+                              ...element.spacing,
+                              top: element.spacing?.top ?? 0,
+                              right: Number(e.target.value),
+                              bottom: element.spacing?.bottom ?? 0,
+                              left: element.spacing?.left ?? 0,
+                            },
+                          })
+                        }
+                        className="h-8"
+                        placeholder="R"
+                      />
+                      <Input
+                        type="number"
+                        value={element.spacing?.bottom ?? 0}
+                        onChange={(e) =>
+                          updateElement(element.id, {
+                            spacing: {
+                              ...element.spacing,
+                              top: element.spacing?.top ?? 0,
+                              right: element.spacing?.right ?? 0,
+                              bottom: Number(e.target.value),
+                              left: element.spacing?.left ?? 0,
+                            },
+                          })
+                        }
+                        className="h-8"
+                        placeholder="B"
+                      />
+                      <Input
+                        type="number"
+                        value={element.spacing?.left ?? 0}
+                        onChange={(e) =>
+                          updateElement(element.id, {
+                            spacing: {
+                              ...element.spacing,
+                              top: element.spacing?.top ?? 0,
+                              right: element.spacing?.right ?? 0,
+                              bottom: element.spacing?.bottom ?? 0,
+                              left: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="h-8"
+                        placeholder="L"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Top, Right, Bottom, Left</p>
+                  </div>
+                )}
               </div>
               <Separator />
             </>

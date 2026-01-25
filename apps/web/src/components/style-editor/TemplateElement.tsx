@@ -164,6 +164,15 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
           'end': 'flex-end',
           'stretch': 'stretch',
         }
+        // Margin for Row containers
+        const containerMargin = element.layoutConfig?.direction === 'row' && element.spacing
+          ? {
+              marginTop: element.spacing.top,
+              marginRight: element.spacing.right,
+              marginBottom: element.spacing.bottom,
+              marginLeft: element.spacing.left,
+            }
+          : {}
         return (
           <div
             className={cn(
@@ -178,6 +187,7 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
               background: isOver
                 ? 'rgba(59, 130, 246, 0.1)'
                 : 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(59, 130, 246, 0.03) 5px, rgba(59, 130, 246, 0.03) 10px)',
+              ...containerMargin,
             }}
           >
             <div className="absolute top-1 left-1 flex items-center gap-1 text-xs text-blue-500/70 pointer-events-none">

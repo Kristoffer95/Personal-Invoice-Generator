@@ -108,7 +108,8 @@ const justifyValidator = v.union(
   v.literal("center"),
   v.literal("end"),
   v.literal("space-between"),
-  v.literal("space-around")
+  v.literal("space-around"),
+  v.literal("space-evenly")
 );
 
 // Layout config for containers

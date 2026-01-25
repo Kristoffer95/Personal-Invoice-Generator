@@ -636,14 +636,19 @@ function renderLayoutContainerBackground(
   margins: { top: number; left: number },
   calculatedPosition: CalculatedPosition
 ) {
-  const { backgroundColor, border, opacity, padding } = element
+  const { backgroundColor, border, opacity, padding, spacing, layoutConfig } = element
+
+  // Apply margin (spacing) for Row containers
+  // This creates visual gaps between Row containers when stacked
+  const isRow = layoutConfig?.direction === 'row'
+  const containerMargin = isRow && spacing ? spacing : { top: 0, right: 0, bottom: 0, left: 0 }
 
   const containerStyle: PdfStyle = {
     position: 'absolute',
-    left: calculatedPosition.x + margins.left,
-    top: calculatedPosition.y + margins.top,
-    width: calculatedPosition.width,
-    height: calculatedPosition.height,
+    left: calculatedPosition.x + margins.left + containerMargin.left,
+    top: calculatedPosition.y + margins.top + containerMargin.top,
+    width: calculatedPosition.width - containerMargin.left - containerMargin.right,
+    height: calculatedPosition.height - containerMargin.top - containerMargin.bottom,
     padding: padding ?? 0,
     opacity: opacity ?? 1,
   }
