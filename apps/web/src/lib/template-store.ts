@@ -1082,6 +1082,18 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
             justify: el.layoutConfig.justify ?? 'start',
             wrap: el.layoutConfig.wrap ?? false,
           } : undefined,
+          // Flex/grid item properties
+          flexBasis: el.flexBasis,
+          gridColumn: el.gridColumn,
+          gridRow: el.gridRow,
+          // Layout container height mode
+          heightMode: el.heightMode,
+          heightPercent: el.heightPercent,
+          // Width/height sizing modes for non-container elements
+          widthMode: el.widthMode,
+          widthPercent: el.widthPercent,
+          heightSizingMode: el.heightSizingMode,
+          heightSizingPercent: el.heightSizingPercent,
         })),
         isDefault: convexTemplate.isDefault,
         isSystem: false, // Convex templates are always user templates
