@@ -1,14 +1,22 @@
-## invoice-preview-using-stale-template-data (Bug Fix) - COMPLETED
+## auto-height-table-propagation (Bug Fix) - COMPLETED
 
-Root cause: InvoicePreviewPopover used cached Convex templates (via useTemplates hook) but Style Editor uses Zustand store for instant updates. When editing a template in Style Editor, then opening Invoice Preview, stale data appeared.
+### Task completed
+PRD: auto-height-table-propagation
+Tables (Work Hours, Line Items, Summary) now cause parent Row/Column containers to expand when heightMode='auto'.
 
-Solution: Added check in selectedPreviewTemplate useMemo - if viewing template currently being edited (comparing storeTemplateConvexId === previewStyleId), use storeTemplate from Zustand instead of cached Convex version.
+### Key decisions
+- Added TableContentData interface to pass row counts to layout engine
+- Created estimateTableHeight() using constants: HEADER=24pt, ROW=22pt, MIN=40pt
+- Modified calculateAutoHeight() to include table height estimates via isTableElement() check
+- Propagated tableContent through all layout functions: calculateEffectiveHeight, getFlexBasis, calculateContainerChildPositions, calculateGridChildPositions, processContainer, calculateElementPositions
+- PDF generator builds TableContentData from invoice (workDays, lineItems, discount/tax rows)
+- Style Editor uses sample data (3 work rows, 2 line items, 4 summary rows)
 
-Files changed:
-- apps/web/src/components/invoice/InvoicePreviewPopover.tsx
-  - Added import for useTemplateStore
-  - Added hook calls to get currentTemplate and getConvexTemplateId from store
-  - Updated selectedPreviewTemplate useMemo to check for active Style Editor template
+### Files changed
+- packages/shared-types/src/layout-engine.ts: Added TableContentData interface, estimateTableHeight(), isTableElement(), updated all height calculation functions
+- packages/pdf-generator/src/TemplatePDF.tsx: Build and pass TableContentData from invoice
+- apps/web/src/components/style-editor/StyleEditorCanvas.tsx: Pass sample TableContentData for preview
 
-Build: PASSED (TypeScript compilation successful via turbo)
-Note: Test/lint infra issues (missing rollup native module, eslint config) - pre-existing, not related to changes
+### Notes
+- Build passes. Tests fail due to pre-existing rollup arm64 module issue, lint fails due to missing eslint config in shared-types - both unrelated to this change.
+- Table height estimation is approximate (header + rows * rowHeight). Actual PDF rendering may vary slightly but should be close enough for layout purposes.

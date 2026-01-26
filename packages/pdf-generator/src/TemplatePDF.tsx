@@ -22,6 +22,7 @@ import type {
   Currency,
   PageSizeKey,
   CalculatedPosition,
+  TableContentData,
 } from '@invoice-generator/shared-types'
 import {
   PAGE_SIZES,
@@ -677,12 +678,22 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   const pageWidthPts = pageSize.width * 2.83465
   const pageHeightPts = pageSize.height * 2.83465
 
+  // Build table content data for height estimation
+  const workDays = invoice.dailyWorkHours.filter((d) => d.isWorkday && d.hours > 0)
+  const tableContent: TableContentData = {
+    workHoursRowCount: invoice.showDetailedHours ? workDays.length : 0,
+    lineItemsRowCount: invoice.lineItems?.length ?? 0,
+    // Summary table: subtotal, discount (if any), tax (if any), total
+    summaryRowCount: 2 + (invoice.discountPercent > 0 ? 1 : 0) + (invoice.taxPercent > 0 ? 1 : 0),
+  }
+
   // Calculate positions using layout engine for consistency with editor
   const calculatedPositions = calculateElementPositions(
     template.elements,
     template.margins,
     pageWidthPts,
-    pageHeightPts
+    pageHeightPts,
+    tableContent
   )
 
   // DEBUG: Log invoice data and token values

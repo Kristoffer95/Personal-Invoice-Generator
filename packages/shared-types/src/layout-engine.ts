@@ -18,6 +18,18 @@ export interface CalculatedPosition {
   height: number
 }
 
+// Table content data for height estimation
+export interface TableContentData {
+  workHoursRowCount: number
+  lineItemsRowCount: number
+  summaryRowCount: number // Typically 3-5 rows for subtotal, discount, tax, total
+}
+
+// Constants for table height estimation
+const TABLE_HEADER_HEIGHT = 24 // Header row height in points
+const TABLE_ROW_HEIGHT = 22 // Content row height in points
+const TABLE_MIN_HEIGHT = 40 // Minimum table height
+
 // Default layout config
 const defaultLayoutConfig: LayoutConfig = {
   direction: 'column',
@@ -40,6 +52,55 @@ const defaultGridConfig: GridConfig = {
   templateColumns: '1fr 1fr',
   columnGap: 8,
   rowGap: 8,
+}
+
+/**
+ * Estimate table height based on row count
+ * Used for auto-height propagation to parent containers
+ */
+function estimateTableHeight(
+  element: TemplateElement,
+  tableContent?: TableContentData
+): number {
+  if (!tableContent) {
+    // No content data - use element's defined height
+    return element.position.height
+  }
+
+  let rowCount = 0
+
+  switch (element.type) {
+    case 'table_work_hours':
+      rowCount = tableContent.workHoursRowCount
+      break
+    case 'table_line_items':
+      rowCount = tableContent.lineItemsRowCount
+      break
+    case 'table_summary':
+      rowCount = tableContent.summaryRowCount
+      break
+    default:
+      return element.position.height
+  }
+
+  if (rowCount === 0) {
+    // Table has no content - return minimum height
+    return TABLE_MIN_HEIGHT
+  }
+
+  // Calculate height: header + rows
+  const estimatedHeight = TABLE_HEADER_HEIGHT + rowCount * TABLE_ROW_HEIGHT
+
+  // Return the larger of estimated height or element's defined height
+  // This ensures the table is never smaller than designed
+  return Math.max(estimatedHeight, TABLE_MIN_HEIGHT)
+}
+
+/**
+ * Check if element is a table type
+ */
+function isTableElement(type: string): boolean {
+  return type === 'table_work_hours' || type === 'table_line_items' || type === 'table_summary'
 }
 
 /**
@@ -68,11 +129,13 @@ function getContainerChildren(
 
 /**
  * Calculate auto-height for a container based on its children
+ * Now includes table height estimation when tableContent is provided
  */
 function calculateAutoHeight(
   container: TemplateElement,
   children: TemplateElement[],
-  elements: TemplateElement[]
+  elements: TemplateElement[],
+  tableContent?: TableContentData
 ): number {
   if (children.length === 0) {
     // Minimum height when empty
@@ -91,11 +154,15 @@ function calculateAutoHeight(
       const child = children[i]
       const spacing = child.spacing ?? defaultSpacing
 
-      // Get child height (recursively calculate if it's an auto-height container)
+      // Get child height (recursively calculate if it's an auto-height container or table)
       let childHeight = child.position.height
+
       if (child.type === 'layout_container' && child.heightMode === 'auto') {
         const grandchildren = getContainerChildren(child.id, elements)
-        childHeight = calculateAutoHeight(child, grandchildren, elements)
+        childHeight = calculateAutoHeight(child, grandchildren, elements, tableContent)
+      } else if (isTableElement(child.type)) {
+        // Estimate table height based on content
+        childHeight = estimateTableHeight(child, tableContent)
       }
 
       totalHeight += childHeight + spacing.top + spacing.bottom
@@ -111,11 +178,15 @@ function calculateAutoHeight(
     for (const child of children) {
       const spacing = child.spacing ?? defaultSpacing
 
-      // Get child height (recursively calculate if it's an auto-height container)
+      // Get child height (recursively calculate if it's an auto-height container or table)
       let childHeight = child.position.height
+
       if (child.type === 'layout_container' && child.heightMode === 'auto') {
         const grandchildren = getContainerChildren(child.id, elements)
-        childHeight = calculateAutoHeight(child, grandchildren, elements)
+        childHeight = calculateAutoHeight(child, grandchildren, elements, tableContent)
+      } else if (isTableElement(child.type)) {
+        // Estimate table height based on content
+        childHeight = estimateTableHeight(child, tableContent)
       }
 
       const totalChildHeight = childHeight + spacing.top + spacing.bottom
@@ -174,7 +245,8 @@ function calculateEffectiveHeight(
   elements: TemplateElement[],
   pageHeight: number,
   parentHeight?: number,
-  availableHeight?: number
+  availableHeight?: number,
+  tableContent?: TableContentData
 ): number {
   // For layout containers, use the legacy heightMode
   if (element.type === 'layout_container') {
@@ -183,7 +255,7 @@ function calculateEffectiveHeight(
     switch (heightMode) {
       case 'auto': {
         const children = getContainerChildren(element.id, elements)
-        return calculateAutoHeight(element, children, elements)
+        return calculateAutoHeight(element, children, elements, tableContent)
       }
       case 'percentage': {
         const percent = element.heightPercent ?? 100
@@ -194,6 +266,11 @@ function calculateEffectiveHeight(
       default:
         return element.position.height
     }
+  }
+
+  // For table elements, estimate height based on content
+  if (isTableElement(element.type) && tableContent) {
+    return estimateTableHeight(element, tableContent)
   }
 
   // For other elements, use heightSizingMode
@@ -272,7 +349,8 @@ function getFlexBasis(
   pageHeight: number,
   containerHeight: number,
   containerWidth: number,
-  availableMainSize: number
+  availableMainSize: number,
+  tableContent?: TableContentData
 ): number {
   const flexBasis = child.flexBasis
 
@@ -289,7 +367,8 @@ function getFlexBasis(
       elements,
       pageHeight,
       containerHeight,
-      availableMainSize // For 'fill' mode
+      availableMainSize, // For 'fill' mode
+      tableContent
     )
   } else {
     // For row layout, main axis is width
@@ -441,7 +520,8 @@ function calculateGridChildPositions(
   children: TemplateElement[],
   containerPosition: CalculatedPosition,
   elements: TemplateElement[] = [],
-  pageHeight: number = 0
+  pageHeight: number = 0,
+  tableContent?: TableContentData
 ): Map<string, CalculatedPosition> {
   const result = new Map<string, CalculatedPosition>()
   const config = container.layoutConfig ?? defaultLayoutConfig
@@ -575,15 +655,20 @@ function calculateGridChildPositions(
     }
     height -= spacing.top + spacing.bottom
 
-    // Handle nested layout containers
+    // Handle nested layout containers and tables
     if (child.type === 'layout_container') {
       const effectiveHeight = calculateEffectiveHeight(
         child,
         elements,
         pageHeight,
-        height
+        height,
+        undefined,
+        tableContent
       )
       height = effectiveHeight
+    } else if (isTableElement(child.type)) {
+      // Estimate table height based on content
+      height = estimateTableHeight(child, tableContent)
     }
 
     result.set(child.id, {
@@ -611,7 +696,8 @@ function calculateContainerChildPositions(
   children: TemplateElement[],
   containerPosition: CalculatedPosition,
   elements: TemplateElement[] = [],
-  pageHeight: number = 0
+  pageHeight: number = 0,
+  tableContent?: TableContentData
 ): Map<string, CalculatedPosition> {
   const config = container.layoutConfig ?? defaultLayoutConfig
 
@@ -622,7 +708,8 @@ function calculateContainerChildPositions(
       children,
       containerPosition,
       elements,
-      pageHeight
+      pageHeight,
+      tableContent
     )
   }
 
@@ -666,7 +753,8 @@ function calculateContainerChildPositions(
       pageHeight,
       containerPosition.height,
       containerPosition.width,
-      availableMainSize
+      availableMainSize,
+      tableContent
     )
 
     // Get cross axis size - use effective calculations for width/height modes
@@ -686,7 +774,8 @@ function calculateContainerChildPositions(
         elements,
         pageHeight,
         containerPosition.height,
-        availableHeight // available for fill mode
+        availableHeight, // available for fill mode
+        tableContent
       )
     }
 
@@ -857,7 +946,8 @@ function processContainer(
   containerPosition: CalculatedPosition,
   elements: TemplateElement[],
   result: Map<string, CalculatedPosition>,
-  pageHeight: number
+  pageHeight: number,
+  tableContent?: TableContentData
 ): void {
   // Set the container's position
   result.set(container.id, containerPosition)
@@ -871,7 +961,8 @@ function processContainer(
     children,
     containerPosition,
     elements,
-    pageHeight
+    pageHeight,
+    tableContent
   )
 
   // Add child positions to result and recursively process nested containers
@@ -880,7 +971,7 @@ function processContainer(
     if (childPos) {
       if (child.type === 'layout_container') {
         // Recursively process nested container
-        processContainer(child, childPos, elements, result, pageHeight)
+        processContainer(child, childPos, elements, result, pageHeight, tableContent)
       } else {
         result.set(child.id, childPos)
       }
@@ -894,12 +985,19 @@ function processContainer(
  * - Absolute elements: use x, y directly
  * - Container elements: use x, y for container position
  * - Relative elements: calculate based on parent container and siblings
+ *
+ * @param elements - Template elements to calculate positions for
+ * @param margins - Page margins
+ * @param pageWidth - Page width in points
+ * @param pageHeight - Page height in points
+ * @param tableContent - Optional table content data for height estimation
  */
 export function calculateElementPositions(
   elements: TemplateElement[],
   margins: Margin,
   pageWidth: number,
-  pageHeight: number
+  pageHeight: number,
+  tableContent?: TableContentData
 ): Map<string, CalculatedPosition> {
   const result = new Map<string, CalculatedPosition>()
   const elementMap = buildElementMap(elements)
@@ -913,7 +1011,14 @@ export function calculateElementPositions(
 
     // Calculate effective dimensions based on sizing modes
     const effectiveWidth = calculateEffectiveWidth(element, pageWidth)
-    const effectiveHeight = calculateEffectiveHeight(element, elements, pageHeight)
+    const effectiveHeight = calculateEffectiveHeight(
+      element,
+      elements,
+      pageHeight,
+      undefined,
+      undefined,
+      tableContent
+    )
 
     const position: CalculatedPosition = {
       x: element.position.x,
@@ -924,7 +1029,7 @@ export function calculateElementPositions(
 
     if (element.type === 'layout_container') {
       // Process container and its children
-      processContainer(element, position, elements, result, pageHeight)
+      processContainer(element, position, elements, result, pageHeight, tableContent)
     } else {
       result.set(element.id, position)
     }

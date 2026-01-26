@@ -5,7 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useTemplateStore } from '@/lib/template-store'
 import { TemplateElement } from './TemplateElement'
 import { Ruler } from './Ruler'
-import { A4_POINTS, calculateElementPositions, type CalculatedPosition } from '@invoice-generator/shared-types'
+import { A4_POINTS, calculateElementPositions, type CalculatedPosition, type TableContentData } from '@invoice-generator/shared-types'
 import { cn } from '@/lib/utils'
 
 export function StyleEditorCanvas() {
@@ -52,6 +52,13 @@ export function StyleEditorCanvas() {
   const canvasWidth = A4_POINTS.width
   const canvasHeight = A4_POINTS.height
 
+  // Sample table content for preview (Style Editor shows sample data)
+  const sampleTableContent: TableContentData = useMemo(() => ({
+    workHoursRowCount: 3, // Sample preview shows ~3 work days
+    lineItemsRowCount: 2, // Sample preview shows ~2 line items
+    summaryRowCount: 4,   // Subtotal, discount, tax, total
+  }), [])
+
   // Calculate positions using layout engine (for relative elements)
   const calculatedPositions = useMemo(() => {
     if (!currentTemplate) return new Map<string, CalculatedPosition>()
@@ -59,9 +66,10 @@ export function StyleEditorCanvas() {
       currentTemplate.elements,
       currentTemplate.margins,
       canvasWidth,
-      canvasHeight
+      canvasHeight,
+      sampleTableContent
     )
-  }, [currentTemplate, canvasWidth, canvasHeight])
+  }, [currentTemplate, canvasWidth, canvasHeight, sampleTableContent])
 
   // Keyboard handler for arrow keys, delete, escape
   const handleKeyDown = useCallback(
