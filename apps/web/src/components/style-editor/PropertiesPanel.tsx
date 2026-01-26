@@ -196,7 +196,7 @@ export function PropertiesPanel() {
 
         {/* Properties Tab */}
         <TabsContent value="properties" className="mt-0 flex-1 min-h-0">
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full" viewportClassName="max-h-[calc(100vh-215px)]">
         <div className="space-y-4 p-4">
           {/* Element Name */}
           <div className="space-y-2">
