@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
   FileText,
   Star,
   Loader2,
+  Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,23 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { InvoicePreview } from '@/components/invoice/InvoicePreview'
 import { useTemplateStore } from '@/lib/template-store'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplateMutations, useDefaultTemplate } from '@/hooks/use-templates'
@@ -57,6 +75,8 @@ export function StyleEditorHeader() {
     redo,
     canUndo,
     canRedo,
+    hasUnsavedChanges,
+    markAsSaved,
   } = useTemplateStore()
 
   const router = useRouter()
@@ -81,6 +101,103 @@ export function StyleEditorHeader() {
   const [isEditing, setIsEditing] = useState(false)
   const [tempName, setTempName] = useState(currentTemplate?.name ?? '')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Unsaved changes warning state
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null)
+
+  // Preview dialog state
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
+
+  // Sample invoice data for preview and PDF export
+  const sampleInvoice: Invoice = useMemo(() => ({
+    id: 'preview',
+    invoiceNumber: 'INV-2024-001',
+    status: 'DRAFT',
+    statusHistory: [],
+    issueDate: new Date().toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    from: {
+      name: 'Your Company',
+      companyName: 'Your Company Inc.',
+      address: '123 Business St',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94102',
+      country: 'United States',
+      email: 'billing@company.com',
+      phone: '+1 (555) 123-4567',
+    },
+    to: {
+      name: 'Client Name',
+      companyName: 'Client Company',
+      address: '456 Client Ave',
+      city: 'New York',
+      state: 'NY',
+      postalCode: '10001',
+      country: 'United States',
+      email: 'accounts@client.com',
+      phone: '+1 (555) 987-6543',
+    },
+    hourlyRate: 75,
+    defaultHoursPerDay: 8,
+    dailyWorkHours: [],
+    totalDays: 20,
+    totalHours: 160,
+    subtotal: 12000,
+    lineItems: [],
+    discountPercent: 10,
+    discountAmount: 1200,
+    taxPercent: 8,
+    taxAmount: 864,
+    totalAmount: 11664,
+    currency: 'USD',
+    paymentTerms: 'NET_30',
+    showDetailedHours: false,
+    pdfTheme: 'light',
+    pageSize: currentTemplate?.pageSize || 'A4',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: [],
+    isArchived: false,
+  }), [currentTemplate?.pageSize])
+
+  // Browser beforeunload warning for page refresh/close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault()
+        // Modern browsers require returnValue to be set
+        e.returnValue = ''
+        return ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  // Handle back navigation with unsaved changes check
+  const handleBack = useCallback(() => {
+    if (hasUnsavedChanges()) {
+      setPendingNavigation(() => () => router.back())
+      setShowUnsavedDialog(true)
+    } else {
+      router.back()
+    }
+  }, [hasUnsavedChanges, router])
+
+  // Handle dialog actions
+  const handleDiscardChanges = useCallback(() => {
+    setShowUnsavedDialog(false)
+    pendingNavigation?.()
+    setPendingNavigation(null)
+  }, [pendingNavigation])
+
+  const handleCancelNavigation = useCallback(() => {
+    setShowUnsavedDialog(false)
+    setPendingNavigation(null)
+  }, [])
 
   // Check if current template is a Convex template (saved to DB)
   const isConvexTemplate = !!convexTemplateId
@@ -174,6 +291,7 @@ export function StyleEditorHeader() {
           elements,
           isDefault: currentTemplate.isDefault,
         })
+        markAsSaved()
         toast({
           title: 'Template saved',
           description: `"${currentTemplate.name}" has been updated.`,
@@ -200,6 +318,7 @@ export function StyleEditorHeader() {
         // Update local state with the new Convex ID
         setConvexTemplateId(newTemplateId)
         updateCurrentTemplate({ name })
+        markAsSaved()
 
         toast({
           title: 'Template created',
@@ -218,6 +337,14 @@ export function StyleEditorHeader() {
     }
   }
 
+  // Save and then navigate (used in unsaved changes dialog)
+  const handleSaveAndLeave = async () => {
+    await handleSave()
+    setShowUnsavedDialog(false)
+    pendingNavigation?.()
+    setPendingNavigation(null)
+  }
+
   const handleNameChange = () => {
     if (tempName.trim()) {
       updateCurrentTemplate({ name: tempName.trim() })
@@ -229,59 +356,6 @@ export function StyleEditorHeader() {
     if (!currentTemplate) return
 
     const { downloadTemplatePDF } = await import('@invoice-generator/pdf-generator')
-
-    // Sample invoice data matching TOKEN_PREVIEWS for consistent preview
-    const sampleInvoice: Invoice = {
-      id: 'preview',
-      invoiceNumber: 'INV-2024-001',
-      status: 'DRAFT',
-      statusHistory: [],
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      from: {
-        name: 'Your Company',
-        companyName: 'Your Company Inc.',
-        address: '123 Business St',
-        city: 'San Francisco',
-        state: 'CA',
-        postalCode: '94102',
-        country: 'United States',
-        email: 'billing@company.com',
-        phone: '+1 (555) 123-4567',
-      },
-      to: {
-        name: 'Client Name',
-        companyName: 'Client Company',
-        address: '456 Client Ave',
-        city: 'New York',
-        state: 'NY',
-        postalCode: '10001',
-        country: 'United States',
-        email: 'accounts@client.com',
-        phone: '+1 (555) 987-6543',
-      },
-      hourlyRate: 75,
-      defaultHoursPerDay: 8,
-      dailyWorkHours: [],
-      totalDays: 20,
-      totalHours: 160,
-      subtotal: 12000,
-      lineItems: [],
-      discountPercent: 10,
-      discountAmount: 1200,
-      taxPercent: 8,
-      taxAmount: 864,
-      totalAmount: 11664,
-      currency: 'USD',
-      paymentTerms: 'NET_30',
-      showDetailedHours: false,
-      pdfTheme: 'light',
-      pageSize: currentTemplate.pageSize || 'A4',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: [],
-      isArchived: false,
-    }
 
     await downloadTemplatePDF({
       template: currentTemplate,
@@ -380,7 +454,7 @@ export function StyleEditorHeader() {
         <div className="flex items-center gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => router.back()}>
+              <Button variant="ghost" size="icon" onClick={handleBack}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -585,6 +659,16 @@ export function StyleEditorHeader() {
             </Tooltip>
           )}
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreviewDialog(true)}
+            disabled={!currentTemplate}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Preview
+          </Button>
+
           <Button size="sm" onClick={handleExportPDF}>
             <Download className="mr-2 h-4 w-4" />
             Export PDF
@@ -621,6 +705,53 @@ export function StyleEditorHeader() {
           />
         </div>
       </header>
+
+      {/* Unsaved changes warning dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. What would you like to do?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={handleCancelNavigation}>
+              Cancel
+            </AlertDialogCancel>
+            <Button variant="outline" onClick={handleDiscardChanges}>
+              Discard
+            </Button>
+            <AlertDialogAction onClick={handleSaveAndLeave} disabled={isSaving || !isAuthenticated}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Preview dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Template Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {currentTemplate && (
+              <InvoicePreview
+                invoice={sampleInvoice}
+                template={currentTemplate}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   )
 }

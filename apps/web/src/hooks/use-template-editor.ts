@@ -29,16 +29,8 @@ export function useTemplateEditor() {
     return sortedElements.filter((el) => el.visible)
   }, [sortedElements])
 
-  // Check if there are unsaved changes
-  // A template has unsaved changes if:
-  // 1. It exists but has no Convex ID (never saved to DB)
-  // 2. The template has been modified (we can't easily track this without a deep comparison)
-  // For simplicity, we consider any template without a Convex ID as "unsaved"
-  const hasUnsavedChanges = useMemo(() => {
-    if (!currentTemplate) return false
-    // If no Convex ID, it's a new template that hasn't been saved
-    return !convexTemplateId
-  }, [currentTemplate, convexTemplateId])
+  // Check if there are unsaved changes using the store's tracking
+  const hasUnsavedChanges = store.hasUnsavedChanges()
 
   // Element selection helpers
   const selectNextElement = useCallback(() => {

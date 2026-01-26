@@ -88,7 +88,15 @@
   - apps/web/src/components/style-editor/PropertiesPanel.tsx
   - apps/web/src/lib/template-store.ts
 
+### Style Editor - Preview Button (PRD Item 4)
+- Added Preview button in header between Save and Export PDF
+- Opens modal dialog with PDF preview of template
+- Reuses InvoicePreview component with template prop
+- Memoized sampleInvoice data shared between Preview and Export PDF
+- Modal: 85vh height, max-w-4xl, zoom controls included
+- Files changed:
+  - apps/web/src/components/style-editor/StyleEditorHeader.tsx
+
 ## Remaining PRD Items
 - Width/Height Modes for All Elements (not started)
-- Preview Button (not started)
 - Invoice Preview - Edit Style Button (not started)
