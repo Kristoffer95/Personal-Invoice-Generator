@@ -5,7 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useTemplateStore } from '@/lib/template-store'
 import { TemplateElement } from './TemplateElement'
 import { Ruler } from './Ruler'
-import { A4_POINTS, calculateElementPositions, type CalculatedPosition, type TableContentData } from '@invoice-generator/shared-types'
+import { A4_POINTS, calculateElementPositions, buildPreviewContext, type CalculatedPosition, type TableContentData, type PreviewRenderContext } from '@invoice-generator/shared-types'
 import { cn } from '@/lib/utils'
 
 export function StyleEditorCanvas() {
@@ -59,7 +59,14 @@ export function StyleEditorCanvas() {
     summaryRowCount: 4,   // Subtotal, discount, tax, total
   }), [])
 
+  // Build preview context for Style Editor (shows all elements for design purposes)
+  const previewContext: PreviewRenderContext = useMemo(() => {
+    if (!currentTemplate) return { type: 'preview', elements: [] }
+    return buildPreviewContext(currentTemplate.elements)
+  }, [currentTemplate])
+
   // Calculate positions using layout engine (for relative elements)
+  // In preview mode, all elements are shown for design purposes
   const calculatedPositions = useMemo(() => {
     if (!currentTemplate) return new Map<string, CalculatedPosition>()
     return calculateElementPositions(
@@ -67,9 +74,10 @@ export function StyleEditorCanvas() {
       currentTemplate.margins,
       canvasWidth,
       canvasHeight,
-      sampleTableContent
+      sampleTableContent,
+      previewContext
     )
-  }, [currentTemplate, canvasWidth, canvasHeight, sampleTableContent])
+  }, [currentTemplate, canvasWidth, canvasHeight, sampleTableContent, previewContext])
 
   // Keyboard handler for arrow keys, delete, escape
   const handleKeyDown = useCallback(

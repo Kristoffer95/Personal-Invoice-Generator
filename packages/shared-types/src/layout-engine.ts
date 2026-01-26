@@ -8,6 +8,8 @@ import type {
   SizingMode,
   MinHeightMode,
 } from './template'
+import type { VisibilityContext } from './element-visibility/types'
+import { shouldRenderElement } from './element-visibility/registry'
 
 // Calculated position for rendering
 export interface CalculatedPosition {
@@ -62,7 +64,8 @@ function calculateMinHeight(
   elements: TemplateElement[],
   pageHeight: number,
   parentHeight?: number,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): number {
   const minHeightMode: MinHeightMode = element.minHeightMode ?? 'none'
 
@@ -75,8 +78,8 @@ function calculateMinHeight(
       // Auto minimum: use content-based height
       // For layout containers, calculate auto height
       if (element.type === 'layout_container') {
-        const children = getContainerChildren(element.id, elements)
-        return calculateAutoHeight(element, children, elements, tableContent)
+        const children = getContainerChildren(element.id, elements, visibilityContext)
+        return calculateAutoHeight(element, children, elements, tableContent, visibilityContext)
       }
       // For tables, estimate based on content
       if (isTableElement(element.type)) {
@@ -104,14 +107,16 @@ function applyMinHeight(
   elements: TemplateElement[],
   pageHeight: number,
   parentHeight?: number,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): number {
   const minHeight = calculateMinHeight(
     element,
     elements,
     pageHeight,
     parentHeight,
-    tableContent
+    tableContent,
+    visibilityContext
   )
   return Math.max(calculatedHeight, minHeight)
 }
@@ -175,18 +180,33 @@ function buildElementMap(elements: TemplateElement[]): Map<string, TemplateEleme
 /**
  * Get children of a container, sorted by order
  * Exported for use by visibility handlers
+ *
+ * @param containerId - The container element ID
+ * @param elements - All template elements
+ * @param visibilityContext - Optional visibility context for filtering hidden elements
+ *                            If provided, children that fail visibility check are excluded
+ *                            If omitted, only checks element.visible flag (editor mode)
  */
 export function getContainerChildren(
   containerId: string,
-  elements: TemplateElement[]
+  elements: TemplateElement[],
+  visibilityContext?: VisibilityContext
 ): TemplateElement[] {
   return elements
-    .filter(
-      (el) =>
-        el.parentId === containerId &&
-        el.positionMode === 'relative' &&
-        el.visible !== false
-    )
+    .filter((el) => {
+      // Basic filters: must be a child of this container
+      if (el.parentId !== containerId) return false
+      if (el.positionMode !== 'relative') return false
+      if (el.visible === false) return false
+
+      // If visibility context provided, check element visibility
+      // This filters out elements that resolve to empty (e.g., empty text, no data tables)
+      if (visibilityContext) {
+        return shouldRenderElement(el, visibilityContext)
+      }
+
+      return true
+    })
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }
 
@@ -194,12 +214,19 @@ export function getContainerChildren(
  * Calculate auto-height for a container based on its children
  * Now includes table height estimation when tableContent is provided
  * Returns 0 for empty containers when showWhenEmpty is false (auto-collapse)
+ *
+ * @param container - The container element
+ * @param children - Pre-filtered children (already filtered by visibility if context provided)
+ * @param elements - All template elements
+ * @param tableContent - Optional table content data for height estimation
+ * @param visibilityContext - Optional visibility context for recursive child filtering
  */
 function calculateAutoHeight(
   container: TemplateElement,
   children: TemplateElement[],
   elements: TemplateElement[],
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): number {
   if (children.length === 0) {
     // Empty container: return 0 if showWhenEmpty is false (collapse), otherwise minimum height
@@ -225,8 +252,8 @@ function calculateAutoHeight(
       let childHeight = child.position.height
 
       if (child.type === 'layout_container' && child.heightMode === 'auto') {
-        const grandchildren = getContainerChildren(child.id, elements)
-        childHeight = calculateAutoHeight(child, grandchildren, elements, tableContent)
+        const grandchildren = getContainerChildren(child.id, elements, visibilityContext)
+        childHeight = calculateAutoHeight(child, grandchildren, elements, tableContent, visibilityContext)
       } else if (isTableElement(child.type)) {
         // Estimate table height based on content
         childHeight = estimateTableHeight(child, tableContent)
@@ -249,8 +276,8 @@ function calculateAutoHeight(
       let childHeight = child.position.height
 
       if (child.type === 'layout_container' && child.heightMode === 'auto') {
-        const grandchildren = getContainerChildren(child.id, elements)
-        childHeight = calculateAutoHeight(child, grandchildren, elements, tableContent)
+        const grandchildren = getContainerChildren(child.id, elements, visibilityContext)
+        childHeight = calculateAutoHeight(child, grandchildren, elements, tableContent, visibilityContext)
       } else if (isTableElement(child.type)) {
         // Estimate table height based on content
         childHeight = estimateTableHeight(child, tableContent)
@@ -313,7 +340,8 @@ function calculateEffectiveHeight(
   pageHeight: number,
   parentHeight?: number,
   availableHeight?: number,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): number {
   let height: number
 
@@ -323,8 +351,8 @@ function calculateEffectiveHeight(
 
     switch (heightMode) {
       case 'auto': {
-        const children = getContainerChildren(element.id, elements)
-        height = calculateAutoHeight(element, children, elements, tableContent)
+        const children = getContainerChildren(element.id, elements, visibilityContext)
+        height = calculateAutoHeight(element, children, elements, tableContent, visibilityContext)
         break
       }
       case 'percentage': {
@@ -372,7 +400,7 @@ function calculateEffectiveHeight(
   }
 
   // Apply minHeight constraint
-  return applyMinHeight(height, element, elements, pageHeight, parentHeight, tableContent)
+  return applyMinHeight(height, element, elements, pageHeight, parentHeight, tableContent, visibilityContext)
 }
 
 /**
@@ -426,7 +454,8 @@ function getFlexBasis(
   containerHeight: number,
   containerWidth: number,
   availableMainSize: number,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): number {
   const flexBasis = child.flexBasis
 
@@ -444,7 +473,8 @@ function getFlexBasis(
       pageHeight,
       containerHeight,
       availableMainSize, // For 'fill' mode
-      tableContent
+      tableContent,
+      visibilityContext
     )
   } else {
     // For row layout, main axis is width
@@ -597,7 +627,8 @@ function calculateGridChildPositions(
   containerPosition: CalculatedPosition,
   elements: TemplateElement[] = [],
   pageHeight: number = 0,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): Map<string, CalculatedPosition> {
   const result = new Map<string, CalculatedPosition>()
   const config = container.layoutConfig ?? defaultLayoutConfig
@@ -739,7 +770,8 @@ function calculateGridChildPositions(
         pageHeight,
         height,
         undefined,
-        tableContent
+        tableContent,
+        visibilityContext
       )
       height = effectiveHeight
     } else if (isTableElement(child.type)) {
@@ -773,7 +805,8 @@ function calculateContainerChildPositions(
   containerPosition: CalculatedPosition,
   elements: TemplateElement[] = [],
   pageHeight: number = 0,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): Map<string, CalculatedPosition> {
   const config = container.layoutConfig ?? defaultLayoutConfig
 
@@ -785,7 +818,8 @@ function calculateContainerChildPositions(
       containerPosition,
       elements,
       pageHeight,
-      tableContent
+      tableContent,
+      visibilityContext
     )
   }
 
@@ -830,7 +864,8 @@ function calculateContainerChildPositions(
       containerPosition.height,
       containerPosition.width,
       availableMainSize,
-      tableContent
+      tableContent,
+      visibilityContext
     )
 
     // Get cross axis size - use effective calculations for width/height modes
@@ -851,7 +886,8 @@ function calculateContainerChildPositions(
         pageHeight,
         containerPosition.height,
         availableHeight, // available for fill mode
-        tableContent
+        tableContent,
+        visibilityContext
       )
     }
 
@@ -1023,13 +1059,14 @@ function processContainer(
   elements: TemplateElement[],
   result: Map<string, CalculatedPosition>,
   pageHeight: number,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): void {
   // Set the container's position
   result.set(container.id, containerPosition)
 
-  // Get and process children
-  const children = getContainerChildren(container.id, elements)
+  // Get and process children (filtered by visibility if context provided)
+  const children = getContainerChildren(container.id, elements, visibilityContext)
   if (children.length === 0) return
 
   const childPositions = calculateContainerChildPositions(
@@ -1038,7 +1075,8 @@ function processContainer(
     containerPosition,
     elements,
     pageHeight,
-    tableContent
+    tableContent,
+    visibilityContext
   )
 
   // Add child positions to result and recursively process nested containers
@@ -1047,7 +1085,7 @@ function processContainer(
     if (childPos) {
       if (child.type === 'layout_container') {
         // Recursively process nested container
-        processContainer(child, childPos, elements, result, pageHeight, tableContent)
+        processContainer(child, childPos, elements, result, pageHeight, tableContent, visibilityContext)
       } else {
         result.set(child.id, childPos)
       }
@@ -1067,13 +1105,20 @@ function processContainer(
  * @param pageWidth - Page width in points
  * @param pageHeight - Page height in points
  * @param tableContent - Optional table content data for height estimation
+ * @param visibilityContext - Optional visibility context for filtering hidden elements in layout calculation
+ *                            When provided, elements that fail visibility check are excluded from layout
+ *                            (e.g., empty text elements, tables with no data). This ensures no gaps
+ *                            in the output when elements are hidden.
+ *                            - For PDF rendering: pass RenderContext to filter based on actual invoice data
+ *                            - For Style Editor: pass PreviewRenderContext or omit (shows all elements)
  */
 export function calculateElementPositions(
   elements: TemplateElement[],
   margins: Margin,
   pageWidth: number,
   pageHeight: number,
-  tableContent?: TableContentData
+  tableContent?: TableContentData,
+  visibilityContext?: VisibilityContext
 ): Map<string, CalculatedPosition> {
   const result = new Map<string, CalculatedPosition>()
   const _elementMap = buildElementMap(elements)
@@ -1081,6 +1126,12 @@ export function calculateElementPositions(
   // First pass: position absolute elements and root containers
   for (const element of elements) {
     if (element.visible === false) continue
+
+    // If visibility context provided, check element visibility
+    // This filters out elements that resolve to empty (e.g., empty text, no data tables)
+    if (visibilityContext && !shouldRenderElement(element, visibilityContext)) {
+      continue
+    }
 
     // Skip relative elements (they'll be positioned by their containers)
     if (element.positionMode === 'relative' && element.parentId) continue
@@ -1093,7 +1144,8 @@ export function calculateElementPositions(
       pageHeight,
       undefined,
       undefined,
-      tableContent
+      tableContent,
+      visibilityContext
     )
 
     const position: CalculatedPosition = {
@@ -1105,7 +1157,7 @@ export function calculateElementPositions(
 
     if (element.type === 'layout_container') {
       // Process container and its children
-      processContainer(element, position, elements, result, pageHeight, tableContent)
+      processContainer(element, position, elements, result, pageHeight, tableContent, visibilityContext)
     } else {
       result.set(element.id, position)
     }

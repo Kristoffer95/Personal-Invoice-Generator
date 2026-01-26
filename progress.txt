@@ -238,3 +238,26 @@ Documentation embedded in visibility system code files via JSDoc comments and mo
 - No separate markdown file needed - documentation lives with code
 - registerVisibilityHandler() API documented for runtime registration
 - Decision flowchart embedded in registry.ts comments
+
+## unified-element-visibility-system-layout-integration (Feature) - COMPLETED
+
+### Task completed
+PRD: unified-element-visibility-system
+Integrated Element Visibility System into the Layout Engine so hidden elements don't allocate space.
+
+### Key decisions
+- Added optional `visibilityContext` parameter to `calculateElementPositions()` - when provided, elements failing visibility check are excluded from layout
+- Updated `getContainerChildren()` to accept visibility context and filter using `shouldRenderElement()`
+- Propagated visibilityContext through all internal layout functions: calculateAutoHeight, calculateEffectiveHeight, calculateMinHeight, applyMinHeight, getFlexBasis, calculateGridChildPositions, calculateContainerChildPositions, processContainer
+- PDF renderer (TemplatePDF.tsx) now passes RenderContext to calculateElementPositions() - hidden elements don't get positions, no gaps in output
+- Style Editor (StyleEditorCanvas.tsx) passes PreviewRenderContext - all elements show for design purposes
+
+### Files changed
+- packages/shared-types/src/layout-engine.ts: Added visibilityContext parameter, integrated shouldRenderElement() checks throughout layout calculation
+- packages/pdf-generator/src/TemplatePDF.tsx: Pass visibilityContext to calculateElementPositions()
+- apps/web/src/components/style-editor/StyleEditorCanvas.tsx: Build and pass PreviewRenderContext to calculateElementPositions()
+
+### Notes
+- Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)
+- Backward compatible: visibilityContext is optional, omitting it uses old behavior (no visibility filtering in layout)
+- Preview mode shows all elements; render mode applies visibility rules and excludes hidden elements from layout

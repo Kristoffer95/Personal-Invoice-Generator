@@ -697,13 +697,15 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
     template.elements
   )
 
-  // Calculate positions using layout engine for consistency with editor
+  // Calculate positions using layout engine with visibility context
+  // This ensures hidden elements (empty text, no-data tables) don't allocate space
   const calculatedPositions = calculateElementPositions(
     template.elements,
     template.margins,
     pageWidthPts,
     pageHeightPts,
-    tableContent
+    tableContent,
+    visibilityContext
   )
 
   // DEBUG: Log invoice data and token values

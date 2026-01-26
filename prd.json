@@ -119,26 +119,24 @@
   },
   "unified-element-visibility-system": {
     "category": "Feature",
-    "description": "Create a future-proof Element Visibility System using a registry pattern. Problem: Layout engine calculates positions for all elements BEFORE the PDF renderer decides to hide them, causing gaps. Solution: Create a shared shouldRender() utility that both layout engine and PDF renderer use, with element-type-specific handlers. Architecture: (1) VisibilityHandler registry with default 'always render' fallback, (2) Custom handlers for: text (token interpolation + showWhenEmpty), tables (invoice data checks), logo (URL/invoice logo), containers (child visibility). (3) RenderContext for real invoices, PreviewRenderContext for editor. (4) registerHandler() API for runtime registration of new element types. New elements automatically work with default handler.",
+    "description": "Integrate the Element Visibility System into the Layout Engine. CURRENT STATE: The visibility system (element-visibility/) exists with handlers for all element types, BUT the layout engine doesn't use it. ROOT CAUSE: calculateElementPositions() only checks element.visible===false and does NOT call shouldRenderElement(), so positions are calculated for ALL elements. Then PDF renderer hides some elements, but space was already allocated, causing gaps. FIX NEEDED: (1) Add visibilityContext parameter to calculateElementPositions(), (2) Call shouldRenderElement() in main loop to skip hidden elements, (3) Update getContainerChildren() to accept and filter by visibility context, (4) Propagate visibilityContext through all internal functions (calculateAutoHeight, calculateEffectiveHeight, processContainer, calculateContainerChildPositions, calculateGridChildPositions), (5) Update TemplatePDF.tsx to pass RenderContext to calculateElementPositions(), (6) Update StyleEditorCanvas.tsx to pass PreviewRenderContext (type:'preview' shows all elements for design).",
     "stepsToVerify": [
-      "Verify new files exist: packages/shared-types/src/element-visibility/{index.ts, types.ts, registry.ts, utils.ts, handlers/*.ts}",
+      "Verify calculateElementPositions() signature includes visibilityContext?: VisibilityContext parameter",
+      "Verify getContainerChildren() accepts and uses visibilityContext parameter",
+      "Verify calculateAutoHeight, processContainer, etc. all propagate visibilityContext",
       "Run 'npm run build' - all packages compile without errors",
-      "Run 'npm run test' - all visibility handler unit tests pass",
+      "Test work hours table: Set showDetailedHours=false, verify table hidden AND no gap in PDF preview",
+      "Test line items table: Remove all line items, verify table hidden AND no gap in PDF preview",
       "Test text element: Create invoice with empty from_phone, add {{from_phone}} element - verify NO gap in PDF",
-      "Test text showWhenEmpty: Enable 'Show when empty' on text element - verify it renders even when empty",
-      "Test work hours table: Toggle showDetailedHours OFF - verify table gone AND no gap remains",
-      "Test line items table: Remove all line items - verify table gone AND no gap remains",
-      "Test logo: Remove all logo sources - verify logo element hidden AND no gap",
       "Test container: Add container with single text child that resolves empty - verify container collapses",
-      "Test nested containers: Inner container empty causes outer to collapse if all children hidden",
-      "Test editor preview: Verify Style Editor preview matches PDF output behavior",
-      "Verify backwards compatibility: Existing templates load and render correctly without changes"
+      "Test Style Editor: Verify ALL elements still show in canvas (PreviewRenderContext shows everything for design)",
+      "Verify PDF preview and actual PDF both show same layout with no gaps for hidden elements"
     ],
     "passes": true
   },
   "element-visibility-future-proof-guide": {
     "category": "Documentation",
-    "description": "Document the Element Visibility System for future element development. When adding a new element type: (1) Add type to templateElementTypeSchema in template.ts, (2) Decide if custom handler needed - NO handler needed if element always renders when visible, has no empty content, no invoice-data dependencies (default handler applies automatically), (3) If custom handler needed: create handler file in element-visibility/handlers/, export from handlers/index.ts, register in registry.ts VISIBILITY_HANDLERS object, (4) Add unit tests for the handler. Include code examples and decision flowchart.",
+    "description": "Document the Element Visibility System for future element development. When adding a new element type: (1) Add type to templateElementTypeSchema in template.ts, (2) Decide if custom handler needed - NO handler needed if element always renders when visible, has no empty content, no invoice-data dependencies (default handler applies automatically), (3) If custom handler needed: create handler file in element-visibility/handlers/, export from handlers/index.ts, register in registry.ts VISIBILITY_HANDLERS object, (4) Add unit tests for the handler. Include code examples and decision flowchart. NOTE: Depends on unified-element-visibility-system being fully implemented first.",
     "stepsToVerify": [
       "Verify registry.ts contains comment block explaining when custom handlers are needed",
       "Verify each handler file has JSDoc explaining the handler's rules",
