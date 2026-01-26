@@ -86,5 +86,35 @@
       "Test across all 8 element types to ensure consistent behavior"
     ],
     "passes": true
+  },
+  "container-border-editor-only": {
+    "category": "Bug Fix",
+    "description": "Column Container and Row Container dashed borders (meant as editor-only visual indicators) incorrectly render in PDF output. The PDF renderer should not render dashed borders on layout containers since these are editor indicators, not intended for final output. Solid and dotted borders configured by users should still render normally.",
+    "stepsToVerify": [
+      "Open Style Editor and add a Column Container to a template",
+      "Verify the container shows a dashed blue border in the editor (visual indicator)",
+      "Generate PDF or open Invoice Preview",
+      "Verify the dashed border does NOT appear in the PDF output",
+      "In Style Editor, change the container's border style to 'solid'",
+      "Generate PDF again - verify the solid border now appears in PDF",
+      "Test with Row Container - same behavior expected (dashed hidden, solid visible)"
+    ],
+    "passes": false
+  },
+  "empty-container-collapse": {
+    "category": "Bug Fix",
+    "description": "Empty layout containers (Row/Column) with showWhenEmpty=false and heightMode=auto still render with visible height (minimum 40 points) instead of collapsing to 0. Root cause: calculateAutoHeight() in layout-engine.ts returns minimum 40 for empty containers regardless of showWhenEmpty setting, and the PDF renderer doesn't check showWhenEmpty for layout containers (only for text elements).",
+    "stepsToVerify": [
+      "Open Style Editor and add a Row Container to a template",
+      "Ensure the container has NO child elements inside it",
+      "Set the container's height mode to 'auto'",
+      "Verify 'Show when empty' is OFF (default for new containers)",
+      "Generate PDF or open Invoice Preview",
+      "Verify the empty container does NOT render at all (no visible height or space)",
+      "Toggle 'Show when empty' to ON for the container",
+      "Generate PDF again - verify the container now renders with minimum height",
+      "Add an element inside the container, generate PDF - verify container renders normally"
+    ],
+    "passes": false
   }
 }
