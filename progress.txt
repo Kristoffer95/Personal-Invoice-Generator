@@ -20,3 +20,22 @@ Tables (Work Hours, Line Items, Summary) now cause parent Row/Column containers 
 ### Notes
 - Build passes. Tests fail due to pre-existing rollup arm64 module issue, lint fails due to missing eslint config in shared-types - both unrelated to this change.
 - Table height estimation is approximate (header + rows * rowHeight). Actual PDF rendering may vary slightly but should be close enough for layout purposes.
+
+## flex-items-presets (Refactor) - COMPLETED
+
+### Task completed
+PRD: flex-items-presets
+Replaced complex Flex Items inputs (Grow/Shrink/Basis) with simple dropdown presets.
+
+### Key decisions
+- Presets map to flex properties: Fixed Size (grow:0, shrink:0), Flexible (grow:1, shrink:1), Fill Available (grow:1, shrink:0)
+- Derive current preset from existing element values for backward compatibility
+- Clear flexBasis to undefined on preset selection (let layout engine determine)
+- Keep alignSelf dropdown separate and unchanged
+
+### Files changed
+- apps/web/src/components/style-editor/PropertiesPanel.tsx: Replaced 3-input grid (Grow/Shrink/Basis) with single Flex Sizing dropdown
+
+### Notes
+- Build passes. Tests/lint fail due to same pre-existing issues (rollup arm64, missing eslint config)
+- No schema/type changes needed - underlying flexGrow/flexShrink/flexBasis properties unchanged

@@ -653,64 +653,56 @@ export function PropertiesPanel() {
                             <Label className="text-xs font-medium text-muted-foreground uppercase">
                               Flex Item
                             </Label>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="space-y-1">
-                                <Label htmlFor="flex-grow" className="text-xs">Grow</Label>
-                                <Input
-                                  id="flex-grow"
-                                  type="number"
-                                  value={element.flexGrow ?? 0}
-                                  onChange={(e) =>
-                                    updateElement(element.id, {
-                                      flexGrow: Math.max(0, Number(e.target.value)),
-                                    })
+                            <div className="space-y-2">
+                              <Label className="text-xs">Flex Sizing</Label>
+                              <Select
+                                value={(() => {
+                                  const grow = element.flexGrow ?? 0
+                                  const shrink = element.flexShrink ?? 1
+                                  if (grow === 0 && shrink === 0) return 'fixed'
+                                  if (grow === 1 && shrink === 0) return 'fill'
+                                  if (grow >= 1 && shrink >= 1) return 'flexible'
+                                  return 'flexible'
+                                })()}
+                                onValueChange={(value) => {
+                                  switch (value) {
+                                    case 'fixed':
+                                      updateElement(element.id, {
+                                        flexGrow: 0,
+                                        flexShrink: 0,
+                                        flexBasis: undefined,
+                                      })
+                                      break
+                                    case 'flexible':
+                                      updateElement(element.id, {
+                                        flexGrow: 1,
+                                        flexShrink: 1,
+                                        flexBasis: undefined,
+                                      })
+                                      break
+                                    case 'fill':
+                                      updateElement(element.id, {
+                                        flexGrow: 1,
+                                        flexShrink: 0,
+                                        flexBasis: undefined,
+                                      })
+                                      break
                                   }
-                                  min={0}
-                                  step={1}
-                                  className="h-8"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label htmlFor="flex-shrink" className="text-xs">Shrink</Label>
-                                <Input
-                                  id="flex-shrink"
-                                  type="number"
-                                  value={element.flexShrink ?? 1}
-                                  onChange={(e) =>
-                                    updateElement(element.id, {
-                                      flexShrink: Math.max(0, Number(e.target.value)),
-                                    })
-                                  }
-                                  min={0}
-                                  step={1}
-                                  className="h-8"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label htmlFor="flex-basis" className="text-xs">Basis</Label>
-                                <Input
-                                  id="flex-basis"
-                                  type="text"
-                                  value={element.flexBasis === 'auto' ? 'auto' : (element.flexBasis ?? '')}
-                                  onChange={(e) => {
-                                    const val = e.target.value.trim()
-                                    if (val === '' || val === 'auto') {
-                                      updateElement(element.id, { flexBasis: val === '' ? undefined : 'auto' })
-                                    } else {
-                                      const num = parseFloat(val)
-                                      if (!isNaN(num) && num >= 0) {
-                                        updateElement(element.id, { flexBasis: num })
-                                      }
-                                    }
-                                  }}
-                                  placeholder="auto"
-                                  className="h-8"
-                                />
-                              </div>
+                                }}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="fixed">Fixed Size</SelectItem>
+                                  <SelectItem value="flexible">Flexible</SelectItem>
+                                  <SelectItem value="fill">Fill Available</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">
+                                How this element sizes within the flex container
+                              </p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              Grow/shrink factors and basis size (auto or px)
-                            </p>
                           </div>
 
                           <div className="space-y-2">
