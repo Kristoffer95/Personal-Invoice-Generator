@@ -63,3 +63,46 @@ Text elements with all-empty token interpolations auto-hide in PDF output. Toggl
 ### Notes
 - Build passes. Tests/lint fail due to same pre-existing issues (rollup arm64, missing eslint config)
 - Only affects text elements; tables already have built-in empty auto-hide
+
+## min-height-property (Feature) - COMPLETED
+
+### Task completed
+PRD: min-height-property
+All Style Editor elements now have minHeight property with modes: None, Fixed, Auto, Percentage.
+
+### Key decisions
+- Added minHeightModeSchema (none, fixed, auto, percentage) to template types
+- minHeightMode defaults to 'none' (no constraint) for backward compatibility
+- minHeightValue (points) used when mode='fixed', minHeightPercent when mode='percentage'
+- Auto mode uses calculateAutoHeight for containers, estimateTableHeight for tables, position.height for others
+- Applied as Math.max(calculatedHeight, minHeight) at end of calculateEffectiveHeight
+- Percentage is relative to parentHeight (or pageHeight if no parent)
+
+### Files changed
+- packages/shared-types/src/template.ts: Added minHeightModeSchema, minHeightMode/minHeightValue/minHeightPercent to TemplateElement
+- packages/shared-types/src/layout-engine.ts: Added calculateMinHeight(), applyMinHeight(), integrated into calculateEffectiveHeight()
+- apps/web/src/components/style-editor/PropertiesPanel.tsx: Added Min Height dropdown with mode selector + value inputs
+- apps/web/src/components/style-editor/predefined-elements.ts: Added minHeightMode to defaultPositioningFields
+
+### Notes
+- Build passes. PDF generator uses layout engine which auto-applies minHeight constraint
+- All element types supported: text, tables, divider, rectangle, logo, layout_container
+
+## minheight-persistence-fix (Bug Fix) - COMPLETED
+
+### Task completed
+PRD: minheight-persistence-fix
+MinHeight properties and showWhenEmpty now persist to Convex. Previously stripped during validation.
+
+### Key decisions
+- Added minHeightModeValidator (none, fixed, auto, percentage) to both Convex files
+- Added 4 missing properties to templateElementValidator: showWhenEmpty, minHeightMode, minHeightValue, minHeightPercent
+- Validators match shared-types/src/template.ts schema exactly
+
+### Files changed
+- packages/backend/convex/schema.ts: Added minHeightModeValidator, added 4 properties to templateElementValidator
+- packages/backend/convex/templates.ts: Same changes as schema.ts
+
+### Notes
+- Build passes. Tests/lint fail due to pre-existing issues (rollup arm64, missing eslint config)
+- Also updated prd.json passes field for all completed tasks

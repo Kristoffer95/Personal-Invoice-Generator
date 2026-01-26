@@ -127,6 +127,14 @@ const sizingModeValidator = v.union(
   v.literal("fill")
 );
 
+// Min height mode for all elements
+const minHeightModeValidator = v.union(
+  v.literal("none"),
+  v.literal("fixed"),
+  v.literal("auto"),
+  v.literal("percentage")
+);
+
 // Display mode for layout containers (flexbox or grid)
 const displayModeValidator = v.union(v.literal("flex"), v.literal("grid"));
 
@@ -275,6 +283,14 @@ const templateElementValidator = v.object({
   heightSizingMode: v.optional(sizingModeValidator),
   // Height as percentage (0-100) when heightSizingMode is 'percentage'
   heightSizingPercent: v.optional(v.number()),
+  // Text-specific: when false (default), text elements with all-empty tokens are hidden in PDF
+  showWhenEmpty: v.optional(v.boolean()),
+  // Min height mode for all elements (none, fixed, auto, percentage)
+  minHeightMode: v.optional(minHeightModeValidator),
+  // Min height value in points when minHeightMode is 'fixed'
+  minHeightValue: v.optional(v.number()),
+  // Min height as percentage (0-100) when minHeightMode is 'percentage'
+  minHeightPercent: v.optional(v.number()),
 });
 
 // Template theme colors

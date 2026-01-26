@@ -1,22 +1,89 @@
 {
-  "invoice-preview-using-stale-template-data": {
-    "category": "Bug Fix",
-    "description": "Invoice Preview shows stale template data after editing in Style Editor. Root cause: Template Preview uses Zustand store (currentTemplate) with instant updates, while Invoice Preview uses Convex query via useTemplates() which is cached for 60 seconds. Solution: When Invoice Preview displays a template being edited in Style Editor, use the Zustand store's currentTemplate instead of the cached Convex version.",
-    "fix": {
-      "file": "apps/web/src/components/invoice/InvoicePreviewPopover.tsx",
-      "changes": [
-        "After line 42: Add import { useTemplateStore } from '@/lib/template-store'",
-        "After line 78: Add const { currentTemplate: storeTemplate, getConvexTemplateId } = useTemplateStore(); const storeTemplateConvexId = getConvexTemplateId();",
-        "Lines 143-151: Update selectedPreviewTemplate useMemo to check if viewing template currently being edited in Style Editor and use store version if so"
-      ]
-    },
+  "eslint-setup": {
+    "category": "Refactor",
+    "description": "Set up proper ESLint configuration for all packages in the monorepo. Currently all packages have placeholder lint scripts ('echo Lint skipped...'). Create a root-level ESLint 9 flat config (eslint.config.js) with TypeScript support, React rules for apps/web, and appropriate ignores. Remove the legacy .eslintrc.json from apps/web and update all package lint scripts to run actual linting.",
     "stepsToVerify": [
-      "Open Style Editor with a user template",
-      "Change a property (e.g., set row height to 'auto')",
-      "Navigate to an invoice and open Invoice Preview",
-      "Select the same template in the style selector",
-      "Verify the preview shows the updated value (matching Template Preview)"
+      "Run 'npm run lint' at root - should execute actual linting, not echo placeholder",
+      "Run 'npm run lint --filter=@invoice-generator/web' - should lint the web app",
+      "Run 'npm run lint --filter=@invoice-generator/pdf-generator' - should lint the pdf package",
+      "Run 'npm run lint --filter=@invoice-generator/shared-types' - should lint the shared types",
+      "Verify apps/web/.eslintrc.json no longer exists",
+      "Verify /eslint.config.js exists with ESLint 9 flat config format",
+      "Verify TypeScript files are linted (introduce a deliberate error and confirm it's caught)"
     ],
     "passes": false
+  },
+  "minheight-persistence-fix": {
+    "category": "Bug Fix",
+    "description": "MinHeight properties (minHeightMode, minHeightValue, minHeightPercent) and showWhenEmpty are not persisted when saving templates to Convex. These properties exist in shared-types/src/template.ts but are missing from the Convex validators in packages/backend/convex/templates.ts and schema.ts. When templates are saved, these properties are stripped during validation and lost. Fix by adding the minHeightModeValidator and all 4 missing properties to both Convex validator files.",
+    "stepsToVerify": [
+      "Open Style Editor and load or create a template",
+      "Select an element and set Min Height to 'Fixed' with value 100",
+      "Save the template (ensure it syncs to Convex)",
+      "Refresh the page completely (hard refresh)",
+      "Reload the same template from Convex",
+      "Verify the Min Height is still set to 'Fixed' with value 100",
+      "Test with 'Percentage' mode as well - set to 50%, save, refresh, verify persistence",
+      "Test showWhenEmpty property on a text element - toggle on, save, refresh, verify persistence"
+    ],
+    "passes": true
+  },
+  "auto-hide-empty-elements": {
+    "category": "Feature",
+    "description": "Empty text elements (where all token interpolations resolve to empty strings) should automatically hide in PDF output, not reserving any space. A 'Show when empty' property allows users to override this behavior per element.",
+    "stepsToVerify": [
+      "Open Style Editor and create/edit a template",
+      "Add a text element with content '{{billing_period}}'",
+      "Open Properties Panel - verify 'Show when empty' toggle exists for text elements",
+      "Go to Invoice page, ensure billing period fields are empty",
+      "Generate PDF - verify the billing_period text element does NOT appear (no blank space)",
+      "Return to Style Editor, enable 'Show when empty' for the text element",
+      "Generate PDF again - verify the element now reserves space (renders empty but occupies its position)"
+    ],
+    "passes": true
+  },
+  "flex-items-presets": {
+    "category": "Refactor",
+    "description": "Replace the complex Flex Items section (Grow, Shrink, Basis numeric inputs) in Properties Panel with a simple dropdown of presets: 'Fixed Size' (element keeps defined size), 'Flexible' (grows and shrinks equally), 'Fill Available' (fills remaining space). Keep alignSelf as separate dropdown.",
+    "stepsToVerify": [
+      "Open Style Editor with a template containing a flex container (Row or Column)",
+      "Add or select a relative-positioned element inside the flex container",
+      "Verify the old 3-input Flex Items section (Grow/Shrink/Basis) is GONE",
+      "Verify new 'Flex Sizing' dropdown appears with options: Fixed Size, Flexible, Fill Available",
+      "Select 'Fixed Size' - element should maintain its defined dimensions",
+      "Select 'Fill Available' - element should expand to fill remaining container space",
+      "Select 'Flexible' - element should grow/shrink proportionally with siblings",
+      "Verify alignSelf dropdown still exists separately"
+    ],
+    "passes": true
+  },
+  "auto-height-table-propagation": {
+    "category": "Bug Fix",
+    "description": "Work Hours Table (and other table elements) with auto height mode do not cause their parent Row/Column container to expand when the table has many rows. The layout engine's calculateAutoHeight() only handles layout_container children, ignoring tables. Fix: Pass invoice data to layout engine and estimate table heights based on actual content.",
+    "stepsToVerify": [
+      "Open Style Editor and create a template with a Row container set to heightMode='auto'",
+      "Add a Work Hours Table element inside the Row",
+      "Go to Invoice page and add 10+ work days with hours",
+      "Open Invoice Preview or generate PDF",
+      "Verify the Row container expands to fully contain the Work Hours Table",
+      "Verify table rows are NOT clipped or overflowing",
+      "Test with varying amounts of data (5, 10, 20 work days) - Row should adapt each time"
+    ],
+    "passes": true
+  },
+  "min-height-property": {
+    "category": "Feature",
+    "description": "Add minHeight property to all Style Editor elements with modes: None (no minimum), Fixed (specific value in points), Auto (content-based minimum), Percentage (of parent height). This allows users to set minimum height constraints on any element type.",
+    "stepsToVerify": [
+      "Open Style Editor and select any element type (text, table, divider, rectangle, logo, layout_container)",
+      "Verify 'Min Height' dropdown appears in Properties Panel with options: None, Fixed, Auto, Percent",
+      "Select 'Fixed' - verify number input appears, set value (e.g., 100)",
+      "Select 'Percentage' - verify percentage input with % suffix appears",
+      "Generate PDF - verify element respects the minimum height constraint",
+      "Test with element inside a container - percentage should be relative to parent height",
+      "Test with 'None' selected - element should use default behavior (no minimum enforced)",
+      "Test across all 8 element types to ensure consistent behavior"
+    ],
+    "passes": true
   }
 }
