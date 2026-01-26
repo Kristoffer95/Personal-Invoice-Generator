@@ -45,3 +45,15 @@ Files changed:
 - apps/web/src/lib/template-store.ts (line 1084)
 
 Build passes. Tests/lint env issues persist (unrelated).
+
+## properties-panel-scroll-not-working (completed)
+Fixed Properties Panel vertical scroll not working in Style Editor.
+
+Root cause: TabsContent had "overflow-hidden" which clipped ScrollArea's scrollbar. Flex children need min-h-0 to allow shrinking below content height.
+
+Fix: Replaced "overflow-hidden" with "min-h-0" on both TabsContent elements (Properties and History tabs).
+
+Files changed:
+- apps/web/src/components/style-editor/PropertiesPanel.tsx (lines 198, 1295)
+
+Build passes. Tests/lint env issues persist (unrelated).

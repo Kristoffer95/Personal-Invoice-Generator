@@ -61,7 +61,7 @@
       "Verify the History tab also scrolls when content overflows",
       "Confirm scrolling works with mouse wheel, trackpad, and dragging the scrollbar"
     ],
-    "passes": false
+    "passes": true
   },
   "invoice-preview-not-reflecting-style-editor-changes": {
     "category": "Bug Fix",

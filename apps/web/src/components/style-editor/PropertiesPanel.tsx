@@ -195,7 +195,7 @@ export function PropertiesPanel() {
         </div>
 
         {/* Properties Tab */}
-        <TabsContent value="properties" className="mt-0 flex-1 overflow-hidden">
+        <TabsContent value="properties" className="mt-0 flex-1 min-h-0">
           <ScrollArea className="h-full">
         <div className="space-y-4 p-4">
           {/* Element Name */}
@@ -1292,7 +1292,7 @@ export function PropertiesPanel() {
         </TabsContent>
 
         {/* History Tab */}
-        <TabsContent value="history" className="mt-0 flex-1 overflow-hidden">
+        <TabsContent value="history" className="mt-0 flex-1 min-h-0">
           <ScrollArea className="h-full">
             <div className="space-y-2 p-4">
               {/* Undo/Redo buttons */}
