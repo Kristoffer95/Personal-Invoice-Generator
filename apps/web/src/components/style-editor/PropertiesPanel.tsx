@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -1288,6 +1288,7 @@ export function PropertiesPanel() {
             </div>
           </div>
         </div>
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </TabsContent>
 
@@ -1367,6 +1368,7 @@ export function PropertiesPanel() {
                 )}
               </div>
             </div>
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </TabsContent>
       </Tabs>

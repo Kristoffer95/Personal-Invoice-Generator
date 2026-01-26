@@ -106,5 +106,30 @@
       "Test with layout container displayMode changes (flex vs grid) if applicable"
     ],
     "passes": true
+  },
+  "properties-panel-horizontal-scroll-not-working": {
+    "category": "Bug Fix",
+    "description": "The Properties panel does not allow horizontal scrolling. Content that exceeds the 320px panel width (such as the Appearance section) gets clipped with no way to scroll horizontally. Root cause: The ScrollArea component only renders a vertical scrollbar by default. The existing scroll-area.tsx exports ScrollBar with horizontal orientation support, but it's not being used in PropertiesPanel.tsx.",
+    "notes": [
+      "The Radix UI ScrollArea supports horizontal scrolling via its internal viewport mechanism - just need to add a horizontal ScrollBar component.",
+      "Both Properties and History tabs should have horizontal scrollbars added for consistency."
+    ],
+    "fix": {
+      "file": "apps/web/src/components/style-editor/PropertiesPanel.tsx",
+      "changes": [
+        "Line 26: Update import to include ScrollBar: import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'",
+        "Line 1291 (before </ScrollArea>): Add <ScrollBar orientation=\"horizontal\" /> for Properties tab",
+        "Line 1370 (before </ScrollArea>): Add <ScrollBar orientation=\"horizontal\" /> for History tab"
+      ]
+    },
+    "stepsToVerify": [
+      "Open the Style Editor and select any element to open the Properties panel",
+      "Ensure content exceeds the panel width (or test with elements that have wide content)",
+      "Verify a horizontal scrollbar appears when content overflows horizontally",
+      "Verify the Appearance section and all other sections are fully accessible via horizontal scroll",
+      "Test the History tab for horizontal scrolling as well",
+      "Confirm vertical scrolling still works correctly in both tabs"
+    ],
+    "passes": true
   }
 }

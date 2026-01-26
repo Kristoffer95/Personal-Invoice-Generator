@@ -57,3 +57,20 @@ Files changed:
 - apps/web/src/components/style-editor/PropertiesPanel.tsx (lines 198, 1295)
 
 Build passes. Tests/lint env issues persist (unrelated).
+
+## properties-panel-horizontal-scroll-not-working (completed)
+Fixed Properties Panel horizontal scroll not working in Style Editor.
+
+Root cause: ScrollArea only rendered vertical scrollbar by default. ScrollBar component supports horizontal orientation but wasn't used.
+
+Fix: Added ScrollBar with orientation="horizontal" to both Properties and History tab ScrollAreas.
+
+Changes:
+- Line 26: Added ScrollBar to import from scroll-area
+- Line 1291: Added <ScrollBar orientation="horizontal" /> before </ScrollArea> for Properties tab
+- Line 1371: Added <ScrollBar orientation="horizontal" /> before </ScrollArea> for History tab
+
+Files changed:
+- apps/web/src/components/style-editor/PropertiesPanel.tsx
+
+Build passes. Tests/lint env issues persist (unrelated).
