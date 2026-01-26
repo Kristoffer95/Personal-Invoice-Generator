@@ -56,14 +56,39 @@
   - packages/shared-types/src/layout-engine.ts
   - apps/web/src/components/style-editor/PropertiesPanel.tsx
 
+### Style Editor - Unsaved Changes Warning (PRD Item 2)
+- Added lastSavedState tracking to template-store for dirty detection
+- Added markAsSaved() and hasUnsavedChanges() methods to store
+- hasUnsavedChanges compares template fingerprint (JSON of essential data)
+- Updated setCurrentTemplateFromConvex to set lastSavedState on load
+- Updated handleSave to call markAsSaved() after successful save
+- Added beforeunload event listener for browser refresh/close warning
+- Added AlertDialog with Save/Discard/Cancel options on back navigation
+- Back button now checks hasUnsavedChanges before navigation
+- Files changed:
+  - apps/web/src/lib/template-store.ts
+  - apps/web/src/hooks/use-template-editor.ts
+  - apps/web/src/components/style-editor/StyleEditorHeader.tsx
+
 ### Previously Completed (from git history)
 - Style Editor Bug - Overlapping Borders (d725265)
 - Style Editor - Row Margins for Gaps (6367b7b)
 - Style Editor Bug - Justify Content in Row (85bdd3e)
 
+### Style Editor - Properties Panel Tabs (PRD Item 3)
+- Added Tabs component to PropertiesPanel: Properties + History
+- Properties tab contains all existing property controls
+- History tab shows:
+  - Undo/Redo buttons with disabled state
+  - Scrollable list of history states
+  - Current state highlighted with "Current" label
+  - Click to jump to any history state
+- Added jumpToHistoryIndex() to template-store for direct history navigation
+- Files changed:
+  - apps/web/src/components/style-editor/PropertiesPanel.tsx
+  - apps/web/src/lib/template-store.ts
+
 ## Remaining PRD Items
 - Width/Height Modes for All Elements (not started)
-- Unsaved Changes Warning (not started)
-- Properties Panel Tabs (not started)
 - Preview Button (not started)
 - Invoice Preview - Edit Style Button (not started)

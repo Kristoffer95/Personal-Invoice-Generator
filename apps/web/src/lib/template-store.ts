@@ -37,6 +37,9 @@ interface TemplateState {
   // Convex template ID - tracks if current template is from Convex (for save operations)
   convexTemplateId: Id<"templates"> | null
 
+  // Last saved state - used to detect unsaved changes
+  lastSavedState: string | null
+
   // Selected element
   selectedElementId: string | null
 
@@ -90,6 +93,7 @@ interface TemplateState {
   canUndo: () => boolean
   canRedo: () => boolean
   pushHistory: () => void
+  jumpToHistoryIndex: (index: number) => void
 
   // Editor settings actions
   updateEditorSettings: (settings: Partial<EditorSettings>) => void
@@ -112,6 +116,10 @@ interface TemplateState {
   setCurrentTemplateFromConvex: (convexTemplate: ConvexTemplate) => void
   setConvexTemplateId: (id: Id<"templates"> | null) => void
   getConvexTemplateId: () => Id<"templates"> | null
+
+  // Unsaved changes tracking
+  markAsSaved: () => void
+  hasUnsavedChanges: () => boolean
 
   // System template helpers
   loadSystemTemplate: (id: string) => void
@@ -144,9 +152,28 @@ const defaultTemplate: Omit<InvoiceTemplate, 'id' | 'createdAt' | 'updatedAt'> =
   isSystem: false,
 }
 
+// Helper to create a stable string representation for dirty checking
+function getTemplateFingerprint(template: InvoiceTemplate | null): string | null {
+  if (!template) return null
+  // Create a fingerprint from the essential data (excluding timestamps)
+  const data = {
+    name: template.name,
+    description: template.description,
+    pageSize: template.pageSize,
+    orientation: template.orientation,
+    margins: template.margins,
+    theme: template.theme,
+    backgroundColor: template.backgroundColor,
+    elements: template.elements,
+    isDefault: template.isDefault,
+  }
+  return JSON.stringify(data)
+}
+
 export const useTemplateStore = create<TemplateState>()((set, get) => ({
   currentTemplate: null,
   convexTemplateId: null,
+  lastSavedState: null,
   selectedElementId: null,
   editorSettings: defaultEditorSettings,
   history: [],
@@ -818,6 +845,25 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
       }
     }),
 
+  jumpToHistoryIndex: (index) =>
+    set((state) => {
+      if (!state.currentTemplate) return state
+      if (index < 0 || index >= state.history.length) return state
+
+      const targetState = state.history[index]
+      if (!targetState) return state
+
+      return {
+        currentTemplate: {
+          ...state.currentTemplate,
+          elements: targetState.elements,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedElementId: targetState.selectedElementId,
+        historyIndex: index,
+      }
+    }),
+
   // Editor settings
   updateEditorSettings: (settings) =>
     set((state) => ({
@@ -1045,6 +1091,7 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
       return {
         currentTemplate: template,
         convexTemplateId: convexTemplate._id,
+        lastSavedState: getTemplateFingerprint(template),
         selectedElementId: null,
         history: [],
         historyIndex: -1,
@@ -1076,5 +1123,21 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
     return state.currentTemplate.elements.filter(
       (el) => el.parentId === containerId
     ).length
+  },
+
+  // Unsaved changes tracking
+  markAsSaved: () =>
+    set((state) => ({
+      lastSavedState: getTemplateFingerprint(state.currentTemplate),
+    })),
+
+  hasUnsavedChanges: () => {
+    const state = get()
+    if (!state.currentTemplate) return false
+    // If no Convex ID and no last saved state, it's a new unsaved template
+    if (!state.convexTemplateId && !state.lastSavedState) return true
+    // Compare current state with last saved state
+    const currentFingerprint = getTemplateFingerprint(state.currentTemplate)
+    return currentFingerprint !== state.lastSavedState
   },
 }))

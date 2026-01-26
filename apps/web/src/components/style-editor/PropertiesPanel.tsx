@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   X,
   Lock,
@@ -16,6 +16,9 @@ import {
   ChevronUp,
   ChevronDown,
   Unlink,
+  History,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +35,7 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTemplateStore } from '@/lib/template-store'
 import { FontPicker } from './FontPicker'
 import { ColorPicker } from './ColorPicker'
@@ -54,7 +58,16 @@ export function PropertiesPanel() {
     addElementToContainer,
     removeElementFromContainer,
     updateLayoutConfig,
+    history,
+    historyIndex,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    jumpToHistoryIndex,
   } = useTemplateStore()
+
+  const [activeTab, setActiveTab] = useState<'properties' | 'history'>('properties')
 
   const element = currentTemplate?.elements.find(
     (el) => el.id === selectedElementId
@@ -122,11 +135,22 @@ export function PropertiesPanel() {
     return null
   }
 
+  // Generate history descriptions for display
+  const getHistoryDescription = (index: number): string => {
+    if (index < 0) return 'Initial state'
+    const state = history[index]
+    if (!state) return `State ${index + 1}`
+    const elementCount = state.elements.length
+    return `${elementCount} element${elementCount !== 1 ? 's' : ''}`
+  }
+
   return (
     <div className="flex w-80 flex-col border-l bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b p-3">
-        <h3 className="text-sm font-semibold">Properties</h3>
+        <h3 className="text-sm font-semibold">
+          {activeTab === 'properties' ? 'Properties' : 'History'}
+        </h3>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -158,7 +182,21 @@ export function PropertiesPanel() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'properties' | 'history')} className="flex flex-1 flex-col">
+        <div className="border-b px-3 pt-2">
+          <TabsList className="w-full">
+            <TabsTrigger value="properties" className="flex-1">Properties</TabsTrigger>
+            <TabsTrigger value="history" className="flex-1">
+              <History className="mr-1 h-3 w-3" />
+              History
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Properties Tab */}
+        <TabsContent value="properties" className="mt-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
         <div className="space-y-4 p-4">
           {/* Element Name */}
           <div className="space-y-2">
@@ -1138,7 +1176,88 @@ export function PropertiesPanel() {
             </div>
           </div>
         </div>
-      </ScrollArea>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="mt-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="space-y-2 p-4">
+              {/* Undo/Redo buttons */}
+              <div className="flex gap-2 mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={undo}
+                  disabled={!canUndo()}
+                >
+                  <RotateCcw className="mr-1 h-4 w-4" />
+                  Undo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={redo}
+                  disabled={!canRedo()}
+                >
+                  <RotateCw className="mr-1 h-4 w-4" />
+                  Redo
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* History list */}
+              <div className="space-y-1 pt-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase">
+                  Change History
+                </Label>
+                {history.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    No changes yet
+                  </p>
+                ) : (
+                  <div className="space-y-1 mt-2">
+                    {history.map((state, index) => {
+                      const isCurrent = index === historyIndex
+                      const isPast = index < historyIndex
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => jumpToHistoryIndex(index)}
+                          className={`
+                            w-full text-left px-3 py-2 rounded-md text-sm transition-colors
+                            ${isCurrent
+                              ? 'bg-primary text-primary-foreground'
+                              : isPast
+                                ? 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                                : 'hover:bg-muted'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">
+                              State {index + 1}
+                            </span>
+                            {isCurrent && (
+                              <span className="text-xs opacity-75">Current</span>
+                            )}
+                          </div>
+                          <p className="text-xs opacity-75">
+                            {getHistoryDescription(index)}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
 
       {/* Footer Actions */}
       <div className="border-t p-3">
