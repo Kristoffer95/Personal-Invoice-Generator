@@ -13,3 +13,35 @@ Files changed:
 - packages/backend/convex/templates.ts
 
 Build passes. Tests/lint have env issues (rollup native module, eslint config) unrelated to changes.
+
+## template-sizing-modes-not-loading-from-convex (completed)
+Fixed setCurrentTemplateFromConvex function missing sizing mode fields when mapping elements from Convex.
+
+Fields added to element mapping:
+- heightMode, heightPercent (layout container height)
+- widthMode, widthPercent (element width sizing)
+- heightSizingMode, heightSizingPercent (element height sizing)
+- flexBasis, gridColumn, gridRow (flex/grid item props)
+
+Files changed:
+- apps/web/src/lib/template-store.ts (lines 1085-1096)
+
+Build passes. Tests/lint env issues persist (unrelated).
+
+## invoice-preview-not-reflecting-style-editor-changes (completed)
+Fixed Invoice Preview in InvoiceCalendarPage not reflecting Style Editor changes. Two issues fixed:
+
+1. InvoiceCalendarPage.tsx userTemplates useMemo missing element fields
+   - Added: flexBasis, gridColumn, gridRow (flex/grid item props)
+   - Added: heightMode, heightPercent (layout container height)
+   - Added: widthMode, widthPercent (element width sizing)
+   - Added: heightSizingMode, heightSizingPercent (element height sizing)
+   - Added: displayMode to layoutConfig
+
+2. template-store.ts setCurrentTemplateFromConvex missing displayMode in layoutConfig
+
+Files changed:
+- apps/web/src/components/invoice/InvoiceCalendarPage.tsx (lines 231-248)
+- apps/web/src/lib/template-store.ts (line 1084)
+
+Build passes. Tests/lint env issues persist (unrelated).

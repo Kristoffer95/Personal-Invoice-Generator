@@ -1081,6 +1081,7 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
             align: el.layoutConfig.align ?? 'stretch',
             justify: el.layoutConfig.justify ?? 'start',
             wrap: el.layoutConfig.wrap ?? false,
+            displayMode: el.layoutConfig.displayMode,
           } : undefined,
           // Flex/grid item properties
           flexBasis: el.flexBasis,

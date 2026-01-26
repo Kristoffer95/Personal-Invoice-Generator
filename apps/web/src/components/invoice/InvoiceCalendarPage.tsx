@@ -234,7 +234,20 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
           align: el.layoutConfig.align ?? 'stretch',
           justify: el.layoutConfig.justify ?? 'start',
           wrap: el.layoutConfig.wrap ?? false,
+          displayMode: el.layoutConfig.displayMode,
         } : undefined,
+        // Flex/grid item properties
+        flexBasis: el.flexBasis,
+        gridColumn: el.gridColumn,
+        gridRow: el.gridRow,
+        // Layout container height mode
+        heightMode: el.heightMode,
+        heightPercent: el.heightPercent,
+        // Width/height sizing modes for non-container elements
+        widthMode: el.widthMode,
+        widthPercent: el.widthPercent,
+        heightSizingMode: el.heightSizingMode,
+        heightSizingPercent: el.heightSizingPercent,
       })),
       isDefault: t.isDefault,
       isSystem: false,
