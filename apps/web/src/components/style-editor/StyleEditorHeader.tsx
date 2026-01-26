@@ -273,8 +273,21 @@ export function StyleEditorHeader() {
         spacing: el.spacing,
         flexGrow: el.flexGrow,
         flexShrink: el.flexShrink,
+        flexBasis: el.flexBasis,
         alignSelf: el.alignSelf,
+        // Grid item properties
+        gridColumn: el.gridColumn,
+        gridRow: el.gridRow,
+        // Layout container configuration
         layoutConfig: el.layoutConfig,
+        // Layout container height mode
+        heightMode: el.heightMode,
+        heightPercent: el.heightPercent,
+        // Width/height sizing modes for non-container elements
+        widthMode: el.widthMode,
+        widthPercent: el.widthPercent,
+        heightSizingMode: el.heightSizingMode,
+        heightSizingPercent: el.heightSizingPercent,
       }))
 
       if (convexTemplateId) {
