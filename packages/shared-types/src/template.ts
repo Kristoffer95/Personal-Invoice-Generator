@@ -196,8 +196,9 @@ export const templateElementSchema = z.object({
   parentId: z.string().optional(), // Container element ID for relative elements
   order: z.number().default(0), // Sort order within container
   spacing: spacingSchema.optional(), // Margin around element
-  flexGrow: z.number().min(0).max(1).default(0),
-  flexShrink: z.number().min(0).max(1).default(1),
+  flexGrow: z.number().min(0).default(0),
+  flexShrink: z.number().min(0).default(1),
+  flexBasis: z.union([z.literal('auto'), z.number().min(0)]).optional(), // 'auto' or number in points
   alignSelf: alignmentSchema.optional(), // Override container alignment
   // Layout container configuration
   layoutConfig: layoutConfigSchema.optional(),

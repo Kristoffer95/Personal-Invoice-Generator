@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useTemplateStore } from '@/lib/template-store'
 import { FontPicker } from './FontPicker'
@@ -444,6 +445,94 @@ export function PropertiesPanel() {
                       <p className="text-xs text-muted-foreground">Top, Right, Bottom, Left</p>
                     </div>
 
+                    {/* Flex item properties */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase">
+                        Flex Item
+                      </Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="flex-grow" className="text-xs">Grow</Label>
+                          <Input
+                            id="flex-grow"
+                            type="number"
+                            value={element.flexGrow ?? 0}
+                            onChange={(e) =>
+                              updateElement(element.id, {
+                                flexGrow: Math.max(0, Number(e.target.value)),
+                              })
+                            }
+                            min={0}
+                            step={1}
+                            className="h-8"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="flex-shrink" className="text-xs">Shrink</Label>
+                          <Input
+                            id="flex-shrink"
+                            type="number"
+                            value={element.flexShrink ?? 1}
+                            onChange={(e) =>
+                              updateElement(element.id, {
+                                flexShrink: Math.max(0, Number(e.target.value)),
+                              })
+                            }
+                            min={0}
+                            step={1}
+                            className="h-8"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="flex-basis" className="text-xs">Basis</Label>
+                          <Input
+                            id="flex-basis"
+                            type="text"
+                            value={element.flexBasis === 'auto' ? 'auto' : (element.flexBasis ?? '')}
+                            onChange={(e) => {
+                              const val = e.target.value.trim()
+                              if (val === '' || val === 'auto') {
+                                updateElement(element.id, { flexBasis: val === '' ? undefined : 'auto' })
+                              } else {
+                                const num = parseFloat(val)
+                                if (!isNaN(num) && num >= 0) {
+                                  updateElement(element.id, { flexBasis: num })
+                                }
+                              }
+                            }}
+                            placeholder="auto"
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Grow/shrink factors and basis size (auto or px)
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs">Align Self</Label>
+                      <Select
+                        value={element.alignSelf ?? '__inherit__'}
+                        onValueChange={(value) =>
+                          updateElement(element.id, {
+                            alignSelf: value === '__inherit__' ? undefined : value as 'start' | 'center' | 'end' | 'stretch',
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__inherit__">Inherit from container</SelectItem>
+                          <SelectItem value="start">Start</SelectItem>
+                          <SelectItem value="center">Center</SelectItem>
+                          <SelectItem value="end">End</SelectItem>
+                          <SelectItem value="stretch">Stretch</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -546,6 +635,17 @@ export function PropertiesPanel() {
                       <SelectItem value="space-evenly">Space Evenly</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="flex-wrap" className="text-xs">Wrap</Label>
+                  <Switch
+                    id="flex-wrap"
+                    checked={element.layoutConfig?.wrap ?? false}
+                    onCheckedChange={(checked) =>
+                      updateLayoutConfig(element.id, { wrap: checked })
+                    }
+                  />
                 </div>
 
                 {/* Margin controls for Row layout containers */}

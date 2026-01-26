@@ -187,7 +187,39 @@ function calculateEffectiveHeight(
 }
 
 /**
+ * Get the flex basis for a child element
+ * Returns the basis size along the main axis
+ */
+function getFlexBasis(
+  child: TemplateElement,
+  isColumn: boolean,
+  elements: TemplateElement[],
+  pageHeight: number,
+  containerHeight: number
+): number {
+  const flexBasis = child.flexBasis
+
+  // If flexBasis is a number, use it directly
+  if (typeof flexBasis === 'number') {
+    return flexBasis
+  }
+
+  // If 'auto' or undefined, use the element's natural size
+  if (isColumn) {
+    // For column layout, main axis is height
+    if (child.type === 'layout_container') {
+      return calculateEffectiveHeight(child, elements, pageHeight, containerHeight)
+    }
+    return child.position.height
+  } else {
+    // For row layout, main axis is width
+    return child.position.width
+  }
+}
+
+/**
  * Calculate positions for children of a layout container
+ * Implements flexbox-like behavior with flex-grow, flex-shrink, and flex-basis
  */
 function calculateContainerChildPositions(
   container: TemplateElement,
@@ -205,147 +237,198 @@ function calculateContainerChildPositions(
   const availableWidth = containerPosition.width - padding * 2
   const availableHeight = containerPosition.height - padding * 2
   const availableMainSize = isColumn ? availableHeight : availableWidth
+  const availableCrossSize = isColumn ? availableWidth : availableHeight
 
-  // First pass: calculate child sizes and total content size
-  const childSizes: Array<{
+  // First pass: calculate base sizes and flex factors
+  const childData: Array<{
     child: TemplateElement
-    width: number
-    height: number
     spacing: Spacing
-    mainSize: number // Size along main axis including spacing
+    baseCrossSize: number // Size along cross axis (height for row, width for column)
+    baseMainSize: number // Flex basis (size along main axis before flex adjustment)
+    flexGrow: number
+    flexShrink: number
+    finalMainSize: number // Will be calculated
+    finalCrossSize: number // Will be calculated
   }> = []
 
-  let totalContentSize = 0
+  let totalBaseMainSize = 0
+  let totalFlexGrow = 0
+  let totalFlexShrink = 0
 
   for (const child of children) {
     const spacing = child.spacing ?? defaultSpacing
-    const baseWidth = child.position.width
+    const flexGrow = child.flexGrow ?? 0
+    const flexShrink = child.flexShrink ?? 1
 
-    // Calculate effective height for child based on its height mode
-    let baseHeight = child.position.height
-    if (child.type === 'layout_container') {
-      baseHeight = calculateEffectiveHeight(child, elements, pageHeight, containerPosition.height)
-    }
+    // Get flex basis (main axis size)
+    const baseMainSize = getFlexBasis(child, isColumn, elements, pageHeight, containerPosition.height)
 
-    let childWidth: number
-    let childHeight: number
-
+    // Get cross axis size
+    let baseCrossSize: number
     if (isColumn) {
-      childWidth = calculateChildSize(
-        baseWidth,
-        availableWidth - spacing.left - spacing.right,
-        config.align,
-        child.alignSelf
-      )
-      childHeight = baseHeight
+      baseCrossSize = child.position.width
     } else {
-      childWidth = baseWidth
-      childHeight = calculateChildSize(
-        baseHeight,
-        availableHeight - spacing.top - spacing.bottom,
-        config.align,
-        child.alignSelf
-      )
+      if (child.type === 'layout_container') {
+        baseCrossSize = calculateEffectiveHeight(child, elements, pageHeight, containerPosition.height)
+      } else {
+        baseCrossSize = child.position.height
+      }
     }
 
-    const mainSize = isColumn
-      ? childHeight + spacing.top + spacing.bottom
-      : childWidth + spacing.left + spacing.right
+    // Add spacing to main size for total calculation
+    const mainSizeWithSpacing = baseMainSize + (isColumn ? spacing.top + spacing.bottom : spacing.left + spacing.right)
 
-    childSizes.push({ child, width: childWidth, height: childHeight, spacing, mainSize })
-    totalContentSize += mainSize
+    childData.push({
+      child,
+      spacing,
+      baseCrossSize,
+      baseMainSize,
+      flexGrow,
+      flexShrink,
+      finalMainSize: baseMainSize,
+      finalCrossSize: baseCrossSize,
+    })
+
+    totalBaseMainSize += mainSizeWithSpacing
+    totalFlexGrow += flexGrow
+    totalFlexShrink += flexShrink
   }
 
-  // Add gaps between children (n-1 gaps for n children)
+  // Calculate total gap size
   const totalGapSize = children.length > 1 ? (children.length - 1) * config.gap : 0
-  const contentWithGaps = totalContentSize + totalGapSize
-  const freeSpace = Math.max(0, availableMainSize - contentWithGaps)
+  const totalContentSize = totalBaseMainSize + totalGapSize
+  let freeSpace = availableMainSize - totalContentSize
 
-  // Calculate justify-content distribution
+  // Distribute free space based on flex-grow (positive space) or flex-shrink (negative space)
+  if (freeSpace > 0 && totalFlexGrow > 0) {
+    // Positive free space: distribute based on flex-grow
+    const spacePerGrow = freeSpace / totalFlexGrow
+    for (const data of childData) {
+      data.finalMainSize = data.baseMainSize + spacePerGrow * data.flexGrow
+    }
+    freeSpace = 0 // All space distributed
+  } else if (freeSpace < 0 && totalFlexShrink > 0) {
+    // Negative free space: shrink based on flex-shrink
+    // Use weighted shrink factor: flexShrink * baseMainSize
+    let totalShrinkFactor = 0
+    for (const data of childData) {
+      totalShrinkFactor += data.flexShrink * data.baseMainSize
+    }
+
+    if (totalShrinkFactor > 0) {
+      const shrinkAmount = Math.abs(freeSpace)
+      for (const data of childData) {
+        const shrinkFactor = (data.flexShrink * data.baseMainSize) / totalShrinkFactor
+        const itemShrink = shrinkAmount * shrinkFactor
+        data.finalMainSize = Math.max(0, data.baseMainSize - itemShrink)
+      }
+      freeSpace = 0 // All shrinkage applied
+    }
+  }
+
+  // Calculate cross-axis sizes based on alignment
+  for (const data of childData) {
+    const { child, spacing } = data
+    const spacingCross = isColumn ? spacing.left + spacing.right : spacing.top + spacing.bottom
+
+    data.finalCrossSize = calculateChildSize(
+      data.baseCrossSize,
+      availableCrossSize - spacingCross,
+      config.align,
+      child.alignSelf
+    )
+  }
+
+  // Calculate justify-content distribution (only if there's remaining free space)
   let startOffset = 0
   let gapBetween = config.gap
 
+  // Recalculate free space after flex adjustments
+  let totalFinalMainSize = 0
+  for (const data of childData) {
+    const mainSpacing = isColumn
+      ? data.spacing.top + data.spacing.bottom
+      : data.spacing.left + data.spacing.right
+    totalFinalMainSize += data.finalMainSize + mainSpacing
+  }
+  const remainingFreeSpace = Math.max(0, availableMainSize - totalFinalMainSize - totalGapSize)
+
   switch (config.justify) {
     case 'start':
-      // Default: items start at the beginning
       startOffset = 0
       break
     case 'center':
-      // Items are centered
-      startOffset = freeSpace / 2
+      startOffset = remainingFreeSpace / 2
       break
     case 'end':
-      // Items are at the end
-      startOffset = freeSpace
+      startOffset = remainingFreeSpace
       break
     case 'space-between':
-      // Items are evenly distributed; first item at start, last at end
-      if (children.length > 1) {
-        gapBetween = config.gap + freeSpace / (children.length - 1)
+      if (children.length > 1 && remainingFreeSpace > 0) {
+        gapBetween = config.gap + remainingFreeSpace / (children.length - 1)
       }
       startOffset = 0
       break
     case 'space-around':
-      // Items have equal space around them
-      if (children.length > 0) {
-        const spacePerItem = freeSpace / children.length
+      if (children.length > 0 && remainingFreeSpace > 0) {
+        const spacePerItem = remainingFreeSpace / children.length
         startOffset = spacePerItem / 2
         gapBetween = config.gap + spacePerItem
       }
       break
     case 'space-evenly':
-      // Items have equal space between them and at edges
-      if (children.length > 0) {
+      if (children.length > 0 && remainingFreeSpace > 0) {
         const totalSpaces = children.length + 1
-        const spacePerSlot = freeSpace / totalSpaces
+        const spacePerSlot = remainingFreeSpace / totalSpaces
         startOffset = spacePerSlot
         gapBetween = config.gap + spacePerSlot
       }
       break
   }
 
-  // Second pass: position children
+  // Final pass: position children
   let currentMainPos = startOffset
 
-  for (let i = 0; i < childSizes.length; i++) {
-    const { child, width: childWidth, height: childHeight, spacing } = childSizes[i]
+  for (let i = 0; i < childData.length; i++) {
+    const { child, spacing, finalMainSize, finalCrossSize } = childData[i]
 
     let x: number
     let y: number
+    let width: number
+    let height: number
 
     if (isColumn) {
-      // Column layout: children stack vertically
+      // Column layout: main axis is vertical
       const alignOffset = calculateAlignOffset(
-        childWidth + spacing.left + spacing.right,
+        finalCrossSize + spacing.left + spacing.right,
         availableWidth,
         child.alignSelf ?? config.align
       )
       x = containerPosition.x + padding + alignOffset + spacing.left
       y = containerPosition.y + padding + currentMainPos + spacing.top
-      currentMainPos += childHeight + spacing.top + spacing.bottom
+      width = finalCrossSize
+      height = finalMainSize
+      currentMainPos += finalMainSize + spacing.top + spacing.bottom
     } else {
-      // Row layout: children stack horizontally
+      // Row layout: main axis is horizontal
       const alignOffset = calculateAlignOffset(
-        childHeight + spacing.top + spacing.bottom,
+        finalCrossSize + spacing.top + spacing.bottom,
         availableHeight,
         child.alignSelf ?? config.align
       )
       x = containerPosition.x + padding + currentMainPos + spacing.left
       y = containerPosition.y + padding + alignOffset + spacing.top
-      currentMainPos += childWidth + spacing.left + spacing.right
+      width = finalMainSize
+      height = finalCrossSize
+      currentMainPos += finalMainSize + spacing.left + spacing.right
     }
 
     // Add gap after this child (except for the last one)
-    if (i < childSizes.length - 1) {
+    if (i < childData.length - 1) {
       currentMainPos += gapBetween
     }
 
-    result.set(child.id, {
-      x,
-      y,
-      width: childWidth,
-      height: childHeight,
-    })
+    result.set(child.id, { x, y, width, height })
   }
 
   return result
