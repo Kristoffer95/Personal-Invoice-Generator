@@ -145,7 +145,7 @@ export function PropertiesPanel() {
   }
 
   return (
-    <div className="flex w-80 flex-col border-l bg-background">
+    <div className="flex h-full w-80 flex-col overflow-hidden border-l bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b p-3">
         <h3 className="text-sm font-semibold">
