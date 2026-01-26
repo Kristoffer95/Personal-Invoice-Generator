@@ -174,8 +174,9 @@ function buildElementMap(elements: TemplateElement[]): Map<string, TemplateEleme
 
 /**
  * Get children of a container, sorted by order
+ * Exported for use by visibility handlers
  */
-function getContainerChildren(
+export function getContainerChildren(
   containerId: string,
   elements: TemplateElement[]
 ): TemplateElement[] {
@@ -1170,4 +1171,24 @@ export function orphanChildren(
     }
     return el
   })
+}
+
+/**
+ * Get visible children of a container using visibility filter
+ * Used by visibility-aware layout calculations
+ */
+export function getVisibleContainerChildren(
+  containerId: string,
+  elements: TemplateElement[],
+  isVisible: (element: TemplateElement) => boolean
+): TemplateElement[] {
+  return elements
+    .filter(
+      (el) =>
+        el.parentId === containerId &&
+        el.positionMode === 'relative' &&
+        el.visible !== false &&
+        isVisible(el)
+    )
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }

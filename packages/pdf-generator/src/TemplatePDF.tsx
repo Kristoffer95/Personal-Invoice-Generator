@@ -23,6 +23,7 @@ import type {
   PageSizeKey,
   CalculatedPosition,
   TableContentData,
+  RenderContext,
 } from '@invoice-generator/shared-types'
 import {
   PAGE_SIZES,
@@ -30,6 +31,8 @@ import {
   ALLOWED_TOKENS,
   sanitizeForPdf,
   calculateElementPositions,
+  shouldRenderElement,
+  buildRenderContext,
 } from '@invoice-generator/shared-types'
 
 interface TemplatePDFProps {
@@ -176,8 +179,8 @@ function mapFontFamily(
   return base
 }
 
-// Render text element
-function renderTextElement(
+// Render text element (visibility already checked by caller)
+function renderTextElementWithPosition(
   element: TemplateElement,
   tokenValues: Record<AllowedToken, string>,
   margins: { top: number; left: number },
@@ -189,24 +192,10 @@ function renderTextElement(
   const rawContent = typeof element.content === 'string' ? element.content : ''
   const interpolatedContent = interpolateTokens(rawContent, tokenValues)
 
-  // Auto-hide text elements when all tokens resolve to empty (unless showWhenEmpty is true)
-  const isEmpty = !interpolatedContent || interpolatedContent.trim() === ''
-  if (isEmpty && !element.showWhenEmpty) {
-    if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
-      console.log('[PDF DEBUG] Hiding empty text element:', {
-        id: element.id,
-        name: element.name,
-        rawContent,
-        showWhenEmpty: element.showWhenEmpty,
-      })
-    }
-    return null
-  }
-
   // DEBUG: Log element rendering details to trace token interpolation issues
   // Set PDF_DEBUG=true in environment to enable logging
   if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
-    console.log('[PDF DEBUG] renderTextElement:', {
+    console.log('[PDF DEBUG] renderTextElementWithPosition:', {
       id: element.id,
       name: element.name,
       contentRaw: element.content,
@@ -304,7 +293,7 @@ function renderTextElement(
   )
 }
 
-// Render work hours table
+// Render work hours table (visibility already checked by caller)
 function renderWorkHoursTable(
   element: TemplateElement,
   invoice: Invoice,
@@ -314,10 +303,7 @@ function renderWorkHoursTable(
   const { tableStyle } = element
   const workDays = invoice.dailyWorkHours.filter((d) => d.isWorkday && d.hours > 0)
 
-  if (workDays.length === 0) {
-    return null
-  }
-
+  // Note: visibility check (workDays.length === 0, showDetailedHours) handled by visibility system
   const headerBg = tableStyle?.headerBackgroundColor ?? '#1a1a2e'
   const headerText = tableStyle?.headerTextColor ?? '#ffffff'
   const borderColor = tableStyle?.borderColor ?? '#e0e0e0'
@@ -389,7 +375,7 @@ function renderWorkHoursTable(
   )
 }
 
-// Render line items table
+// Render line items table (visibility already checked by caller)
 function renderLineItemsTable(
   element: TemplateElement,
   invoice: Invoice,
@@ -398,10 +384,7 @@ function renderLineItemsTable(
 ) {
   const { tableStyle } = element
 
-  if (!invoice.lineItems || invoice.lineItems.length === 0) {
-    return null
-  }
-
+  // Note: visibility check (lineItems.length === 0) handled by visibility system
   const headerBg = tableStyle?.headerBackgroundColor ?? '#1a1a2e'
   const headerText = tableStyle?.headerTextColor ?? '#ffffff'
   const borderColor = tableStyle?.borderColor ?? '#e0e0e0'
@@ -614,7 +597,7 @@ function renderRectangle(
   return <View key={element.id} style={style} />
 }
 
-// Render logo
+// Render logo (visibility already checked by caller)
 function renderLogo(
   element: TemplateElement,
   invoice: Invoice,
@@ -622,11 +605,8 @@ function renderLogo(
   calculatedPosition: CalculatedPosition
 ) {
   const { objectFit } = element
+  // Note: visibility check (logoUrl existence) handled by visibility system
   const logoUrl = element.logoUrl || invoice.from?.logo
-
-  if (!logoUrl) {
-    return null
-  }
 
   return (
     <Image
@@ -704,6 +684,19 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
     summaryRowCount: 2 + (invoice.discountPercent > 0 ? 1 : 0) + (invoice.taxPercent > 0 ? 1 : 0),
   }
 
+  // Build visibility context for unified visibility checks
+  const visibilityContext: RenderContext = buildRenderContext(
+    tokenValues,
+    tableContent,
+    {
+      showDetailedHours: invoice.showDetailedHours,
+      lineItemsCount: invoice.lineItems?.length ?? 0,
+      workDaysCount: workDays.length,
+      logoUrl: invoice.from?.logo,
+    },
+    template.elements
+  )
+
   // Calculate positions using layout engine for consistency with editor
   const calculatedPositions = calculateElementPositions(
     template.elements,
@@ -751,6 +744,14 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
   }
 
   const renderElement = (element: TemplateElement) => {
+    // Check visibility using unified visibility system
+    if (!shouldRenderElement(element, visibilityContext)) {
+      if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+        console.log(`[PDF DEBUG] Element hidden by visibility system: ${element.id} (${element.name})`)
+      }
+      return null
+    }
+
     // Get calculated position for this element
     const calcPos = calculatedPositions.get(element.id)
     if (!calcPos) {
@@ -762,9 +763,9 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
 
     switch (element.type) {
       case 'text':
-        return renderTextElement(element, tokenValues, margins, calcPos)
+        return renderTextElementWithPosition(element, tokenValues, margins, calcPos)
       case 'table_work_hours':
-        return invoice.showDetailedHours ? renderWorkHoursTable(element, invoice, margins, calcPos) : null
+        return renderWorkHoursTable(element, invoice, margins, calcPos)
       case 'table_line_items':
         return renderLineItemsTable(element, invoice, margins, calcPos)
       case 'table_summary':
@@ -775,20 +776,8 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         return renderRectangle(element, margins, calcPos)
       case 'logo':
         return renderLogo(element, invoice, margins, calcPos)
-      case 'layout_container': {
-        // Check if container should collapse (auto-height, empty, showWhenEmpty=false)
-        const isAutoHeight = element.heightMode === 'auto'
-        const hasChildren = template.elements.some(
-          el => el.parentId === element.id && el.positionMode === 'relative' && el.visible !== false
-        )
-        const shouldHide = isAutoHeight && !hasChildren &&
-          (element.showWhenEmpty === false || element.showWhenEmpty === undefined)
-
-        if (shouldHide) {
-          return null
-        }
+      case 'layout_container':
         return renderLayoutContainerBackground(element, margins, calcPos)
-      }
       default:
         return null
     }

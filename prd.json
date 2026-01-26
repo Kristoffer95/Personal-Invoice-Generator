@@ -116,5 +116,36 @@
       "Add an element inside the container, generate PDF - verify container renders normally"
     ],
     "passes": true
+  },
+  "unified-element-visibility-system": {
+    "category": "Feature",
+    "description": "Create a future-proof Element Visibility System using a registry pattern. Problem: Layout engine calculates positions for all elements BEFORE the PDF renderer decides to hide them, causing gaps. Solution: Create a shared shouldRender() utility that both layout engine and PDF renderer use, with element-type-specific handlers. Architecture: (1) VisibilityHandler registry with default 'always render' fallback, (2) Custom handlers for: text (token interpolation + showWhenEmpty), tables (invoice data checks), logo (URL/invoice logo), containers (child visibility). (3) RenderContext for real invoices, PreviewRenderContext for editor. (4) registerHandler() API for runtime registration of new element types. New elements automatically work with default handler.",
+    "stepsToVerify": [
+      "Verify new files exist: packages/shared-types/src/element-visibility/{index.ts, types.ts, registry.ts, utils.ts, handlers/*.ts}",
+      "Run 'npm run build' - all packages compile without errors",
+      "Run 'npm run test' - all visibility handler unit tests pass",
+      "Test text element: Create invoice with empty from_phone, add {{from_phone}} element - verify NO gap in PDF",
+      "Test text showWhenEmpty: Enable 'Show when empty' on text element - verify it renders even when empty",
+      "Test work hours table: Toggle showDetailedHours OFF - verify table gone AND no gap remains",
+      "Test line items table: Remove all line items - verify table gone AND no gap remains",
+      "Test logo: Remove all logo sources - verify logo element hidden AND no gap",
+      "Test container: Add container with single text child that resolves empty - verify container collapses",
+      "Test nested containers: Inner container empty causes outer to collapse if all children hidden",
+      "Test editor preview: Verify Style Editor preview matches PDF output behavior",
+      "Verify backwards compatibility: Existing templates load and render correctly without changes"
+    ],
+    "passes": true
+  },
+  "element-visibility-future-proof-guide": {
+    "category": "Documentation",
+    "description": "Document the Element Visibility System for future element development. When adding a new element type: (1) Add type to templateElementTypeSchema in template.ts, (2) Decide if custom handler needed - NO handler needed if element always renders when visible, has no empty content, no invoice-data dependencies (default handler applies automatically), (3) If custom handler needed: create handler file in element-visibility/handlers/, export from handlers/index.ts, register in registry.ts VISIBILITY_HANDLERS object, (4) Add unit tests for the handler. Include code examples and decision flowchart.",
+    "stepsToVerify": [
+      "Verify registry.ts contains comment block explaining when custom handlers are needed",
+      "Verify each handler file has JSDoc explaining the handler's rules",
+      "Test adding a hypothetical new element type without custom handler - verify it renders by default",
+      "Test registerHandler() API - verify runtime registration works",
+      "Verify code comments guide developers on extending the system"
+    ],
+    "passes": false
   }
 }

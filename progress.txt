@@ -178,3 +178,40 @@ Empty layout containers (Row/Column) with showWhenEmpty=false and heightMode=aut
 
 ### Notes
 - Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)
+
+## unified-element-visibility-system (Feature) - COMPLETED
+
+### Task completed
+PRD: unified-element-visibility-system
+Created a registry-based Element Visibility System ensuring consistent visibility decisions between layout engine and PDF renderer.
+
+### Key decisions
+- Created element-visibility module in shared-types with handler registry pattern
+- VisibilityHandler interface: (element, context) => { shouldRender, reason? }
+- Two context types: RenderContext (PDF output), PreviewRenderContext (Style Editor preview)
+- Custom handlers for: text (token interpolation check), tables (data-dependent), logo (URL check), containers (recursive child visibility)
+- Default handler for: divider, rectangle (always render)
+- registerVisibilityHandler() API for runtime extension of new element types
+- setContainerShouldRenderFn() breaks circular dependency between container handler and registry
+- PDF renderer now uses unified shouldRenderElement() for all visibility checks
+- getContainerChildren() exported from layout-engine for visibility handlers
+
+### Files changed
+- packages/shared-types/src/element-visibility/types.ts: RenderContext, PreviewRenderContext, VisibilityHandler types
+- packages/shared-types/src/element-visibility/handlers/default.ts: Default always-render handler
+- packages/shared-types/src/element-visibility/handlers/text.ts: Token interpolation + showWhenEmpty check
+- packages/shared-types/src/element-visibility/handlers/tables.ts: Work hours, line items, summary handlers
+- packages/shared-types/src/element-visibility/handlers/logo.ts: Logo URL check
+- packages/shared-types/src/element-visibility/handlers/container.ts: Recursive child visibility check
+- packages/shared-types/src/element-visibility/handlers/index.ts: Handler exports
+- packages/shared-types/src/element-visibility/registry.ts: Handler registry with checkElementVisibility(), shouldRenderElement()
+- packages/shared-types/src/element-visibility/utils.ts: buildRenderContext(), buildPreviewContext() helpers
+- packages/shared-types/src/element-visibility/index.ts: Module exports
+- packages/shared-types/src/index.ts: Export element-visibility module
+- packages/shared-types/src/layout-engine.ts: Exported getContainerChildren(), added getVisibleContainerChildren()
+- packages/pdf-generator/src/TemplatePDF.tsx: Integrated visibility system, removed duplicated visibility logic
+
+### Notes
+- Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)
+- Future element types get default handler automatically. Custom handlers only needed for data-dependent visibility
+- Preview mode shows all elements; render mode applies visibility rules
