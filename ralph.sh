@@ -18,7 +18,7 @@ This should be the one YOU decide has the highest priority, \
 - not necessarily the first in the list. \
 - Only work on task that are not complete and have the passes field set to false.
 2. Check any feedback loops, such as types and tests. \
-- run vitest, eslint, typecheck, playwright tests if needed \
+- run vitest, eslint, typecheck, playwright tests if needed. And don't hesitate to spawn playwright browser tests if needed \
 - If a new test file is ideal to have, then create one (I would prefer) \
 3. After completing each task, append to progress.txt: \
 - Task completed and PRD item reference \
