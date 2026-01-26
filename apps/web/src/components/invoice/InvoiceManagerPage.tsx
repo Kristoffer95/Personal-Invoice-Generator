@@ -162,12 +162,6 @@ function getCalendarUrl(folderId: FolderSelection, invoiceId?: Id<"invoices">): 
   return `/folders/${folderSegment}/calendar`;
 }
 
-// Helper to get folder URL
-function getFolderUrl(folderId: FolderSelection): string {
-  if (!folderId) return "/";
-  if (folderId === UNCATEGORIZED_FOLDER) return "/folders/uncategorized";
-  return `/folders/${folderId}`;
-}
 
 interface InvoiceManagerPageProps {
   /**
@@ -195,7 +189,7 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
     bulkMoveToFolder,
     quickCreateInvoice,
   } = useInvoiceMutations();
-  const { toggleFolderMoveLock } = useFolderMutations();
+  useFolderMutations();
   const { tree: folderTree } = useFolderTree();
 
   // View state - use initialFolderId for folder selection
@@ -211,7 +205,7 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
   // For "All Invoices" view (undefined), use unfiled invoices
   // For UNCATEGORIZED_FOLDER, also use unfiled invoices
   const selectedFolderIdForInvoiceNumber = selectedFolder && selectedFolder !== UNCATEGORIZED_FOLDER ? selectedFolder : undefined;
-  const { formatted: nextInvoiceNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumberForFolder(selectedFolderIdForInvoiceNumber);
+  const { formatted: nextInvoiceNumber } = useNextInvoiceNumberForFolder(selectedFolderIdForInvoiceNumber);
   const [filters, setFilters] = useState<InvoiceFiltersState>(defaultFilters);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
 
@@ -240,7 +234,7 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
   const { period: nextBillingPeriod, isLoading: nextPeriodLoading } = useNextBillingPeriod(selectedFolderIdForClients);
 
   // Get all clients for "All" folder scenario
-  const { clients: allClients, isLoading: allClientsLoading } = useClientProfiles();
+  const { clients: _allClients, isLoading: allClientsLoading } = useClientProfiles();
 
   // Build filter options for hooks
   const filterOptions = useMemo(() => {
@@ -580,7 +574,6 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
 
       // Check if there are any clients available
       // allClients is always an array (from hook: clients ?? [])
-      const clientCount = Array.isArray(allClients) ? allClients.length : 0;
 
       // Show 3-step wizard modal (client → folder → invoice details)
       // If no clients exist, the wizard handles that with its "Create New Client" flow

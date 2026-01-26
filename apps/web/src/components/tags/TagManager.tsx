@@ -128,7 +128,7 @@ export function TagManager() {
       toast({ title: "Tag deleted" });
       setDeleteDialogOpen(false);
       setTagToDelete(null);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete tag",

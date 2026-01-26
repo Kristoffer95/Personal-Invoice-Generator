@@ -8,7 +8,7 @@
     "dev:backend": "pnpm --filter @invoice-generator/backend dev",
     "build": "next build",
     "start": "next start -p 3005",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",

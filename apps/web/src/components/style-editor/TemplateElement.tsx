@@ -18,8 +18,8 @@ interface TemplateElementProps {
 }
 
 export function TemplateElement({ element, isSelected, margins, calculatedPosition, childCount }: TemplateElementProps) {
-  const { selectElement, moveElement, resizeElement, updateElement, currentTemplate } = useTemplateStore()
-  const [isResizing, setIsResizing] = useState(false)
+  const { selectElement, resizeElement } = useTemplateStore()
+  const [_isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
 
   const isContainer = element.type === 'layout_container'
@@ -153,7 +153,7 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
             Logo
           </div>
         )
-      case 'layout_container':
+      case 'layout_container': {
         // Map justify values to CSS justify-content
         const justifyMap: Record<string, string> = {
           'start': 'flex-start',
@@ -231,6 +231,7 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
             )}
           </div>
         )
+      }
       default:
         return null
     }

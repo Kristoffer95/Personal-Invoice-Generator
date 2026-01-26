@@ -1,6 +1,7 @@
 {
   "name": "invoice-generator",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -20,9 +21,16 @@
     "clean:cache": "turbo run clean:cache && rm -rf .turbo"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@next/eslint-plugin-next": "^16.1.5",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.1.0",
     "prettier": "^3.2.5",
     "turbo": "^2.3.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.54.0"
   },
   "packageManager": "pnpm@10.28.1",
   "engines": {

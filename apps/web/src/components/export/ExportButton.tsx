@@ -13,7 +13,6 @@ import {
 import { StylePickerDialog } from './StylePickerDialog'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplates, useDefaultTemplate } from '@/hooks/use-templates'
-import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
 import { convexToInvoiceTemplate } from '@/lib/template-utils'
 import type { Invoice, InvoiceTemplate, BackgroundDesign } from '@invoice-generator/shared-types'
 
@@ -31,7 +30,7 @@ interface ExportButtonProps {
 
 export function ExportButton({
   invoice,
-  backgroundDesign,
+  backgroundDesign: _backgroundDesign,
   onExportPDF,
   disabled,
   size = 'default',

@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useFolderTree, useFolderPath, useFolderMutations } from "@/hooks/use-invoice-folders";
 import { useClientProfiles } from "@/hooks/use-client-profiles";
-import { TagSelector, TagBadgeList } from "@/components/tags/TagSelector";
+import { TagSelector } from "@/components/tags/TagSelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
@@ -387,7 +387,7 @@ export function FolderTree({
         });
         toast({ title: "Folder updated" });
       } else {
-        const newId = await createFolder({
+        await createFolder({
           name: folderName.trim(),
           description: folderDescription || undefined,
           color: folderColor,
@@ -461,7 +461,7 @@ export function FolderTree({
       if (selectedFolderId === folderToDelete._id) {
         onSelectFolder(undefined);
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete folder",

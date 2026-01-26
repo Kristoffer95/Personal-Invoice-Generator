@@ -114,3 +114,30 @@ MinHeight properties and showWhenEmpty now persist to Convex. Fixed both Convex 
 ### Notes
 - Build passes. Tests/lint fail due to pre-existing issues (rollup arm64, missing eslint config)
 - Previous iteration only fixed Convex validators; this iteration fixed frontend save/load mappings
+
+## eslint-setup (Refactor) - COMPLETED
+
+### Task completed
+PRD: eslint-setup
+Set up proper ESLint 9 flat config for monorepo. All packages now run actual linting, not placeholders.
+
+### Key decisions
+- Created root-level eslint.config.js using ESLint 9 flat config format with typescript-eslint
+- React + React Hooks + Next.js rules for apps/web
+- React + React Hooks for pdf-generator (no Next.js)
+- TypeScript rules for backend and shared-types
+- Unused vars with _ prefix allowed via argsIgnorePattern/varsIgnorePattern
+- @typescript-eslint/no-explicit-any set to warn (not error)
+- Tailwind config files exempt from no-require-imports rule
+
+### Files changed
+- eslint.config.js: New root ESLint 9 flat config
+- apps/web/.eslintrc.json: Deleted (legacy config)
+- apps/web/package.json: lint script now runs eslint
+- packages/*/package.json: lint scripts updated to eslint
+- package.json: Added ESLint dependencies, type: module
+- ~40 source files: Fixed unused imports, unused vars, catch blocks without error param
+
+### Notes
+- Build passes, tests pass, lint passes (warnings only)
+- Warnings remain for: @typescript-eslint/no-explicit-any (8), react-hooks/exhaustive-deps (1), no-img-element (1)

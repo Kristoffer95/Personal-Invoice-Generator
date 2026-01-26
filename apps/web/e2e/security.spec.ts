@@ -280,11 +280,11 @@ test.describe('Security Tests', () => {
 
 test.describe('Content Security Policy', () => {
   test('should not have inline script execution', async ({ page }) => {
-    let cspViolation = false
+    let _cspViolation = false
 
     page.on('console', (msg) => {
       if (msg.text().includes('Content Security Policy')) {
-        cspViolation = true
+        _cspViolation = true
       }
     })
 

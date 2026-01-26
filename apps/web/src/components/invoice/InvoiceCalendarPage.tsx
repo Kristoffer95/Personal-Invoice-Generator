@@ -15,8 +15,6 @@ import {
 } from 'date-fns'
 import {
   Settings,
-  FileDown,
-  Save,
   RotateCcw,
   Eye,
   ChevronLeft,
@@ -131,7 +129,7 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
   // For new invoices in a folder, use the folder ID from URL params
   // Otherwise, use undefined for unfiled invoices
   const folderIdForInvoiceNumber = folderId && !invoiceId ? (folderId as Id<'invoiceFolders'>) : undefined
-  const { formatted: nextInvoiceNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumberForFolder(folderIdForInvoiceNumber)
+  const { formatted: nextInvoiceNumber } = useNextInvoiceNumberForFolder(folderIdForInvoiceNumber)
 
   // Get folder with client profiles for auto-filling new invoices
   const { folder: linkedFolder, clientProfiles: folderClientProfiles } = useFolderWithClientProfiles(
@@ -145,9 +143,9 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
   const [previewStyleId, setPreviewStyleId] = useState<string>('classic-light')
 
   // Use Convex templates for preview style selection
-  const { isAuthenticated } = useCurrentUser()
+  useCurrentUser()
   const { templates: convexTemplates } = useTemplates()
-  const { template: defaultTemplate } = useDefaultTemplate()
+  useDefaultTemplate()
 
   // Convert Convex templates to preview format
   const userTemplates = useMemo(() => {
@@ -791,22 +789,6 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
     toast,
   ])
 
-  const handleSave = useCallback(() => {
-    const saved = saveInvoice()
-    if (saved) {
-      toast({
-        title: 'Invoice saved locally',
-        description: `Invoice #${saved.invoiceNumber} has been saved.`,
-      })
-    } else {
-      toast({
-        title: 'Cannot save invoice',
-        description: 'Please fill in required fields (invoice number, from, to, hourly rate, hours/day).',
-        variant: 'destructive',
-      })
-    }
-  }, [saveInvoice, toast])
-
   const handlePreview = useCallback(() => {
     if (!validateInvoice()) {
       toast({
@@ -824,43 +806,6 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
     }
     setShowPreview(true)
   }, [validateInvoice, toast, validationErrors.hourlyRate, validationErrors.defaultHoursPerDay])
-
-  const handleExport = useCallback(async () => {
-    if (!validateInvoice()) {
-      toast({
-        title: 'Cannot export',
-        description: 'Please fill in required fields: Invoice Number, From/To names, Hourly Rate, and Hours/Day.',
-        variant: 'destructive',
-      })
-      // Show quick settings on mobile if rate/hours are missing
-      if (validationErrors.hourlyRate || validationErrors.defaultHoursPerDay) {
-        setShowMobileQuickSettings(true)
-      } else {
-        setShowSettings(true)
-      }
-      return
-    }
-
-    setIsExporting(true)
-    try {
-      const saved = saveInvoice()
-      if (saved) {
-        await onExportPDF(saved)
-        toast({
-          title: 'PDF exported',
-          description: 'Your invoice has been downloaded.',
-        })
-      }
-    } catch {
-      toast({
-        title: 'Export failed',
-        description: 'There was an error exporting the PDF.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsExporting(false)
-    }
-  }, [validateInvoice, toast, updateCurrentInvoice, saveInvoice, onExportPDF])
 
   const handleReset = useCallback(() => {
     resetCurrentInvoice()

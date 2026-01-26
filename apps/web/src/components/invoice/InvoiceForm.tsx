@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { format, addDays, parseISO } from 'date-fns'
-import { FileDown, Save, RotateCcw, Calendar as CalendarIcon, Eye } from 'lucide-react'
+import { Save, RotateCcw, Calendar as CalendarIcon, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -150,37 +150,6 @@ export function InvoiceForm({ onExportPDF }: InvoiceFormProps) {
     }
     setShowPreview(true)
   }, [validateInvoice, toast])
-
-  const handleExport = useCallback(async () => {
-    if (!validateInvoice()) {
-      toast({
-        title: 'Cannot export',
-        description: 'Please fill in required fields (marked in red) before exporting.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setIsExporting(true)
-    try {
-      const saved = saveInvoice()
-      if (saved) {
-        await onExportPDF(saved)
-        toast({
-          title: 'PDF exported',
-          description: 'Your invoice has been downloaded.',
-        })
-      }
-    } catch {
-      toast({
-        title: 'Export failed',
-        description: 'There was an error exporting the PDF.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsExporting(false)
-    }
-  }, [validateInvoice, toast, saveInvoice, onExportPDF])
 
   const handleReset = useCallback(() => {
     resetCurrentInvoice()

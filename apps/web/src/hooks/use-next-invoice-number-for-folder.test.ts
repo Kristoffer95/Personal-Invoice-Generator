@@ -8,7 +8,7 @@ const mockState = vi.hoisted(() => ({
 
 // Mock convex/react
 vi.mock('convex/react', () => ({
-  useQuery: (query: string, args?: unknown) => {
+  useQuery: (query: string, _args?: unknown) => {
     // Return the mock value regardless of args for simplicity
     return mockState.queryReturns[query]
   },

@@ -9,15 +9,10 @@ import type {
   BorderStyle,
   TableStyle,
   LayoutConfig,
-  Spacing,
-  Alignment,
-  CalculatedPosition,
 } from '@invoice-generator/shared-types'
 import { calculateElementPositions, orphanChildren } from '@invoice-generator/shared-types'
 import type { Doc, Id } from '@invoice-generator/backend/convex/_generated/dataModel'
 import {
-  DEFAULT_SYSTEM_TEMPLATE_ID,
-  isSystemTemplate,
   getSystemTemplate,
 } from './system-templates'
 

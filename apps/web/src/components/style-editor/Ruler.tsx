@@ -31,7 +31,6 @@ export function Ruler({ orientation, length, scale }: RulerProps) {
   }, [length])
 
   const scaledLength = length * scale
-  const rulerThickness = 20
 
   return (
     <div

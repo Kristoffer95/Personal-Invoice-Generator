@@ -5,7 +5,6 @@ import {
   InvoiceFilters,
   InvoiceStatusFilter,
   defaultFilters,
-  type InvoiceFiltersState,
 } from './InvoiceFilters'
 
 // Mock the TagSelector component since it uses Convex
@@ -435,7 +434,7 @@ describe('InvoiceFilters', () => {
       await waitFor(() => {
         expect(screen.getByText('Date From')).toBeInTheDocument()
       })
-      const dateInputs = screen.getAllByRole('textbox').filter((input) =>
+      screen.getAllByRole('textbox').filter((input) =>
         (input as HTMLInputElement).type === 'date'
       )
       // Should have at least the date from input (it might be type="date" which shows as no role)

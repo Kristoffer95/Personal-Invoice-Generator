@@ -7,7 +7,7 @@ import { useTemplateStore } from "@/lib/template-store";
 import { useCurrentUser } from "./use-current-user";
 import type { EditorSettings } from "@invoice-generator/shared-types";
 
-const defaultEditorSettings: EditorSettings = {
+const _defaultEditorSettings: EditorSettings = {
   showRulers: true,
   showGrid: true,
   snapToGrid: true,

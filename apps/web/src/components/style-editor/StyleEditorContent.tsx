@@ -12,7 +12,6 @@ import {
   useSensors,
   PointerSensor,
   KeyboardSensor,
-  Active,
 } from '@dnd-kit/core'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import {
@@ -290,7 +289,7 @@ export default function StyleEditorContent() {
         if (predefined) {
           if (isContainerDrop && targetContainerId) {
             // Drop into container - create as relative element
-            const newElementId = addElement({
+            addElement({
               ...predefined.defaultElement,
               positionMode: 'relative',
               parentId: targetContainerId,

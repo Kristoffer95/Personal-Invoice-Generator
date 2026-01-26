@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
-import { ConvexReactClient } from 'convex/react'
-import { ConvexProvider } from 'convex/react'
-import React from 'react'
+import { renderHook } from '@testing-library/react'
 
 // Mock the Convex client
 vi.mock('convex/react', async () => {

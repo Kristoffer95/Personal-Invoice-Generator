@@ -68,7 +68,7 @@ describe('InvoicePreview', () => {
     updatedAt: '2024-01-15T00:00:00Z',
   }
 
-  const mockBackgroundDesign: BackgroundDesign = {
+  const _mockBackgroundDesign: BackgroundDesign = {
     id: 'minimal',
     name: 'Minimal',
     backgroundColor: '#ffffff',

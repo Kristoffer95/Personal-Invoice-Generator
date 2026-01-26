@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getOrCreateUserFromIdentity, getUserFromIdentityOrE2E } from "./users";
-import type { Id, Doc } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 
 // Reusable validators (same as schema)
 const pageSizeValidator = v.union(

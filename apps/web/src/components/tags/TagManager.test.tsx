@@ -107,7 +107,7 @@ describe('TagManager', () => {
 
     // The dialog might show "Edit Tag" title
     await waitFor(() => {
-      const dialog = screen.queryByText('Edit Tag')
+      screen.queryByText('Edit Tag')
       // Dialog should be present or we should see the tag name in an input
     })
   })

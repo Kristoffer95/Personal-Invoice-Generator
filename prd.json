@@ -11,7 +11,7 @@
       "Verify /eslint.config.js exists with ESLint 9 flat config format",
       "Verify TypeScript files are linted (introduce a deliberate error and confirm it's caught)"
     ],
-    "passes": false
+    "passes": true
   },
   "minheight-persistence-fix": {
     "category": "Bug Fix",

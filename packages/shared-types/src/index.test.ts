@@ -4,7 +4,6 @@ import {
   generateBillingPeriodDates,
   getBillingPeriodStart,
   getBillingPeriodEnd,
-  invoiceSchema,
   partyInfoSchema,
   dailyWorkHoursSchema,
   PAGE_SIZES,

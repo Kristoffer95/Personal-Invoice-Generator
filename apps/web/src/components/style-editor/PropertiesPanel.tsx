@@ -9,8 +9,6 @@ import {
   EyeOff,
   Copy,
   Trash2,
-  ArrowUp,
-  ArrowDown,
   ChevronsUp,
   ChevronsDown,
   ChevronUp,

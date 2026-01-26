@@ -25,6 +25,8 @@ vi.mock('@invoice-generator/backend/convex/_generated/api', () => ({
 // Mock template store
 const mockTemplateState = vi.hoisted(() => ({
   savedTemplates: [] as Array<{ id: string; name: string; isDefault: boolean }>,
+  currentTemplate: null,
+  getConvexTemplateId: () => null,
 }))
 
 vi.mock('@/lib/template-store', () => ({

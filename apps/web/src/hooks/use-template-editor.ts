@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useTemplateStore } from '@/lib/template-store'
-import type { TemplateElement, InvoiceTemplate } from '@invoice-generator/shared-types'
+import type { InvoiceTemplate } from '@invoice-generator/shared-types'
 
 export function useTemplateEditor() {
   const store = useTemplateStore()
@@ -8,8 +8,6 @@ export function useTemplateEditor() {
   const {
     currentTemplate,
     selectedElementId,
-    editorSettings,
-    convexTemplateId,
   } = store
 
   // Get the currently selected element

@@ -86,7 +86,7 @@ test.describe('Style Manager with Templates', () => {
     await templateCard.hover()
 
     // Look for the actions menu trigger (MoreVertical icon button)
-    const actionsMenu = page.locator('[role="button"]').filter({ has: page.locator('svg') }).first()
+    const _actionsMenu = page.locator('[role="button"]').filter({ has: page.locator('svg') }).first()
 
     // Verify the template exists by checking the name
     await expect(page.getByText('Test Template')).toBeVisible()

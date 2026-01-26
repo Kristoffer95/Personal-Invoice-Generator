@@ -30,7 +30,7 @@ interface ProfileFormData {
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data, user, profile, isLoading, upsertProfile } = useUserProfile();
+  const { user, profile, isLoading, upsertProfile } = useUserProfile();
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -98,7 +98,7 @@ export default function ProfilePage() {
         title: "Profile saved",
         description: "Your profile has been updated successfully.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to save profile. Please try again.",

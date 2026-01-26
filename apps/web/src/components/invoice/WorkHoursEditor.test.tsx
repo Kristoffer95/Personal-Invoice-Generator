@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkHoursEditor } from './WorkHoursEditor'
 import type { DailyWorkHours } from '@invoice-generator/shared-types'
 
 describe('WorkHoursEditor', () => {
-  const user = userEvent.setup()
+  userEvent.setup()
 
   const defaultProps = {
     periodStart: undefined,

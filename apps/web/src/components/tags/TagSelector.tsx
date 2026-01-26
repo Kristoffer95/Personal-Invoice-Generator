@@ -131,7 +131,7 @@ export function TagSelector({
               variant="secondary"
               className="gap-1 pr-1"
               style={{
-                backgroundColor: `${tag.color}20` || "#6b728020",
+                backgroundColor: tag.color ? `${tag.color}20` : "#6b728020",
                 borderColor: tag.color || "#6b7280",
               }}
             >
@@ -179,7 +179,7 @@ export function TagBadgeList({ tagIds, type }: TagBadgeListProps) {
           variant="secondary"
           className="text-xs"
           style={{
-            backgroundColor: `${tag.color}20` || "#6b728020",
+            backgroundColor: tag.color ? `${tag.color}20` : "#6b728020",
             color: tag.color || "#6b7280",
           }}
         >

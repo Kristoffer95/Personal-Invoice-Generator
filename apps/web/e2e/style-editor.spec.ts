@@ -160,9 +160,9 @@ test.describe('Style Editor E2E Tests', () => {
         const newElementBox = await element.boundingBox()
 
         if (newElementBox) {
-          // Store initial position
-          const initialX = newElementBox.x
-          const initialY = newElementBox.y
+          // Store initial position (used for reference during drag operations)
+          const _initialX = newElementBox.x
+          const _initialY = newElementBox.y
 
           // Drag the element
           await page.mouse.move(

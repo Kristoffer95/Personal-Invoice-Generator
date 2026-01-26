@@ -21,7 +21,7 @@ export default function StyleManagerPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useCurrentUser()
 
   // Local store for creating new templates
-  const { createNewTemplate, setCurrentTemplate, loadSystemTemplate } = useTemplateStore()
+  const { createNewTemplate, setCurrentTemplate } = useTemplateStore()
 
   // Convex hooks for templates
   const { templates: convexTemplates, isLoading: isTemplatesLoading } = useTemplates()

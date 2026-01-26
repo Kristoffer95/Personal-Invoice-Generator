@@ -4,8 +4,6 @@ import type {
   LayoutConfig,
   Spacing,
   Alignment,
-  LayoutDirection,
-  HeightMode,
   GridConfig,
   SizingMode,
   MinHeightMode,
@@ -1073,7 +1071,7 @@ export function calculateElementPositions(
   tableContent?: TableContentData
 ): Map<string, CalculatedPosition> {
   const result = new Map<string, CalculatedPosition>()
-  const elementMap = buildElementMap(elements)
+  const _elementMap = buildElementMap(elements)
 
   // First pass: position absolute elements and root containers
   for (const element of elements) {

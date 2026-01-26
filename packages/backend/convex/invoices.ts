@@ -52,7 +52,7 @@ const statusValidator = v.union(
   v.literal("REFUNDED")
 );
 
-const statusChangeEventValidator = v.object({
+const _statusChangeEventValidator = v.object({
   status: statusValidator,
   changedAt: v.string(),
   notes: v.optional(v.string()),
@@ -416,7 +416,7 @@ export const createInvoice = mutation({
       },
     ];
 
-    const { removeDraftOnSave, ...invoiceData } = args;
+    const { removeDraftOnSave: _removeDraftOnSave, ...invoiceData } = args;
 
     const invoiceId = await ctx.db.insert("invoices", {
       userId: user._id,
@@ -778,19 +778,18 @@ export const duplicateInvoice = mutation({
     const today = new Date().toISOString().split("T")[0];
     const nowStr = new Date().toISOString();
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const {
-      _id,
-      _creationTime,
-      createdAt,
-      updatedAt,
-      deletedAt,
-      statusHistory,
-      sentAt,
-      paidAt,
-      viewedAt,
-      isArchived,
-      archivedAt,
+      _id: _sourceId,
+      _creationTime: _sourceCreationTime,
+      createdAt: _sourceCreatedAt,
+      updatedAt: _sourceUpdatedAt,
+      deletedAt: _sourceDeletedAt,
+      statusHistory: _sourceStatusHistory,
+      sentAt: _sourceSentAt,
+      paidAt: _sourcePaidAt,
+      viewedAt: _sourceViewedAt,
+      isArchived: _sourceIsArchived,
+      archivedAt: _sourceArchivedAt,
       ...invoiceData
     } = sourceInvoice;
 

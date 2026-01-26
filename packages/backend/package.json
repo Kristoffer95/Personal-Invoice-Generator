@@ -8,6 +8,7 @@
     "dev": "convex dev",
     "deploy": "convex deploy",
     "codegen": "convex codegen",
+    "lint": "eslint .",
     "clean": "rm -rf node_modules .turbo dist",
     "clean:cache": "rm -rf .turbo"
   },
