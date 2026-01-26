@@ -56,6 +56,13 @@ vi.mock('@/hooks/use-templates', () => ({
     })),
     isLoading: false,
   }),
+  useTemplateMutations: () => ({
+    duplicateFromSystemTemplate: vi.fn().mockResolvedValue('new-template-id'),
+    createTemplate: vi.fn(),
+    updateTemplate: vi.fn(),
+    deleteTemplate: vi.fn(),
+    setDefaultTemplate: vi.fn(),
+  }),
 }))
 
 // Mock template-utils

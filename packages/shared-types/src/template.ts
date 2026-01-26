@@ -89,6 +89,10 @@ export type Justify = z.infer<typeof justifySchema>
 export const heightModeSchema = z.enum(['fixed', 'auto', 'percentage'])
 export type HeightMode = z.infer<typeof heightModeSchema>
 
+// Sizing mode for general elements (width and height)
+export const sizingModeSchema = z.enum(['fixed', 'auto', 'percentage', 'fill'])
+export type SizingMode = z.infer<typeof sizingModeSchema>
+
 // Display mode for layout containers (flexbox or grid)
 export const displayModeSchema = z.enum(['flex', 'grid'])
 export type DisplayMode = z.infer<typeof displayModeSchema>
@@ -230,6 +234,15 @@ export const templateElementSchema = z.object({
   heightMode: heightModeSchema.optional(),
   // Height as percentage (0-100) when heightMode is 'percentage'
   heightPercent: z.number().min(0).max(100).optional(),
+  // Width sizing mode for non-container elements (fixed, auto, percentage, fill)
+  widthMode: sizingModeSchema.optional(),
+  // Width as percentage (0-100) when widthMode is 'percentage'
+  widthPercent: z.number().min(0).max(100).optional(),
+  // Height sizing mode for non-container elements (fixed, auto, percentage, fill)
+  // Note: heightMode above is for layout containers only; this is for all other elements
+  heightSizingMode: sizingModeSchema.optional(),
+  // Height as percentage (0-100) when heightSizingMode is 'percentage'
+  heightSizingPercent: z.number().min(0).max(100).optional(),
 })
 
 export type TemplateElement = z.infer<typeof templateElementSchema>

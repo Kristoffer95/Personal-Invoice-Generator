@@ -7,6 +7,7 @@ import type {
   LayoutDirection,
   HeightMode,
   GridConfig,
+  SizingMode,
 } from './template'
 
 // Calculated position for rendering
@@ -166,31 +167,97 @@ function calculateChildSize(
 
 /**
  * Calculate effective height for an element based on its height mode
+ * Works for both layout containers (using heightMode) and other elements (using heightSizingMode)
  */
 function calculateEffectiveHeight(
   element: TemplateElement,
   elements: TemplateElement[],
   pageHeight: number,
-  parentHeight?: number
+  parentHeight?: number,
+  availableHeight?: number
 ): number {
-  const heightMode = element.heightMode ?? 'fixed'
+  // For layout containers, use the legacy heightMode
+  if (element.type === 'layout_container') {
+    const heightMode = element.heightMode ?? 'fixed'
 
-  switch (heightMode) {
-    case 'auto': {
-      if (element.type === 'layout_container') {
+    switch (heightMode) {
+      case 'auto': {
         const children = getContainerChildren(element.id, elements)
         return calculateAutoHeight(element, children, elements)
       }
-      return element.position.height
+      case 'percentage': {
+        const percent = element.heightPercent ?? 100
+        const referenceHeight = parentHeight ?? pageHeight
+        return Math.max(10, (referenceHeight * percent) / 100)
+      }
+      case 'fixed':
+      default:
+        return element.position.height
     }
+  }
+
+  // For other elements, use heightSizingMode
+  const sizingMode: SizingMode = element.heightSizingMode ?? 'fixed'
+
+  switch (sizingMode) {
+    case 'auto':
+      // Auto height: for most elements, use their natural height
+      // In the future, this could be enhanced to measure text content
+      return element.position.height
     case 'percentage': {
-      const percent = element.heightPercent ?? 100
+      const percent = element.heightSizingPercent ?? 100
       const referenceHeight = parentHeight ?? pageHeight
       return Math.max(10, (referenceHeight * percent) / 100)
+    }
+    case 'fill': {
+      // Fill available height in parent container
+      if (availableHeight !== undefined) {
+        return Math.max(10, availableHeight)
+      }
+      return element.position.height
     }
     case 'fixed':
     default:
       return element.position.height
+  }
+}
+
+/**
+ * Calculate effective width for an element based on its width mode
+ */
+function calculateEffectiveWidth(
+  element: TemplateElement,
+  pageWidth: number,
+  parentWidth?: number,
+  availableWidth?: number
+): number {
+  // Layout containers don't use widthMode - they use their position width
+  if (element.type === 'layout_container') {
+    return element.position.width
+  }
+
+  const sizingMode: SizingMode = element.widthMode ?? 'fixed'
+
+  switch (sizingMode) {
+    case 'auto':
+      // Auto width: for most elements, use their natural width
+      // In the future, this could be enhanced to measure text content
+      return element.position.width
+    case 'percentage': {
+      const percent = element.widthPercent ?? 100
+      const referenceWidth = parentWidth ?? pageWidth
+      return Math.max(10, (referenceWidth * percent) / 100)
+    }
+    case 'fill': {
+      // Fill available width in parent container
+      if (availableWidth !== undefined) {
+        return Math.max(10, availableWidth)
+      }
+      return element.position.width
+    }
+    case 'fixed':
+    default:
+      return element.position.width
   }
 }
 
@@ -203,7 +270,9 @@ function getFlexBasis(
   isColumn: boolean,
   elements: TemplateElement[],
   pageHeight: number,
-  containerHeight: number
+  containerHeight: number,
+  containerWidth: number,
+  availableMainSize: number
 ): number {
   const flexBasis = child.flexBasis
 
@@ -212,16 +281,24 @@ function getFlexBasis(
     return flexBasis
   }
 
-  // If 'auto' or undefined, use the element's natural size
+  // If 'auto' or undefined, use the element's natural size based on sizing mode
   if (isColumn) {
     // For column layout, main axis is height
-    if (child.type === 'layout_container') {
-      return calculateEffectiveHeight(child, elements, pageHeight, containerHeight)
-    }
-    return child.position.height
+    return calculateEffectiveHeight(
+      child,
+      elements,
+      pageHeight,
+      containerHeight,
+      availableMainSize // For 'fill' mode
+    )
   } else {
     // For row layout, main axis is width
-    return child.position.width
+    return calculateEffectiveWidth(
+      child,
+      containerWidth,
+      containerWidth,
+      availableMainSize // For 'fill' mode - note: 'fill' on main axis handled by flexGrow
+    )
   }
 }
 
@@ -582,18 +659,35 @@ function calculateContainerChildPositions(
     const flexShrink = child.flexShrink ?? 1
 
     // Get flex basis (main axis size)
-    const baseMainSize = getFlexBasis(child, isColumn, elements, pageHeight, containerPosition.height)
+    const baseMainSize = getFlexBasis(
+      child,
+      isColumn,
+      elements,
+      pageHeight,
+      containerPosition.height,
+      containerPosition.width,
+      availableMainSize
+    )
 
-    // Get cross axis size
+    // Get cross axis size - use effective calculations for width/height modes
     let baseCrossSize: number
     if (isColumn) {
-      baseCrossSize = child.position.width
+      // Cross axis is width for column layout
+      baseCrossSize = calculateEffectiveWidth(
+        child,
+        containerPosition.width,
+        availableWidth,
+        availableWidth // available for fill mode
+      )
     } else {
-      if (child.type === 'layout_container') {
-        baseCrossSize = calculateEffectiveHeight(child, elements, pageHeight, containerPosition.height)
-      } else {
-        baseCrossSize = child.position.height
-      }
+      // Cross axis is height for row layout
+      baseCrossSize = calculateEffectiveHeight(
+        child,
+        elements,
+        pageHeight,
+        containerPosition.height,
+        availableHeight // available for fill mode
+      )
     }
 
     // Add spacing to main size for total calculation
@@ -817,13 +911,14 @@ export function calculateElementPositions(
     // Skip relative elements (they'll be positioned by their containers)
     if (element.positionMode === 'relative' && element.parentId) continue
 
-    // Calculate effective height based on height mode
+    // Calculate effective dimensions based on sizing modes
+    const effectiveWidth = calculateEffectiveWidth(element, pageWidth)
     const effectiveHeight = calculateEffectiveHeight(element, elements, pageHeight)
 
     const position: CalculatedPosition = {
       x: element.position.x,
       y: element.position.y,
-      width: element.position.width,
+      width: effectiveWidth,
       height: effectiveHeight,
     }
 

@@ -108,5 +108,28 @@
 - Files changed:
   - apps/web/src/components/invoice/InvoicePreviewPopover.tsx
 
+### Style Editor - Width/Height Modes for All Elements (PRD Item 1)
+- Added sizingModeSchema: fixed | auto | percentage | fill
+- Added to templateElementSchema for non-container elements:
+  - widthMode, widthPercent (0-100)
+  - heightSizingMode, heightSizingPercent (0-100)
+- Layout containers keep existing heightMode for backward compat
+- Updated layout-engine.ts:
+  - calculateEffectiveWidth() for width sizing modes
+  - Updated calculateEffectiveHeight() for all element types
+  - getFlexBasis() now uses sizing modes
+  - Container child positioning respects sizing modes
+- Added UI controls in PropertiesPanel:
+  - Width mode dropdown: Fixed/Auto/Percentage/Fill
+  - Height mode dropdown: Fixed/Auto/Percentage/Fill
+  - Shows % input for percentage mode
+  - Shows descriptive text for auto/fill modes
+- Fixed pre-existing test issue: added useTemplateMutations mock
+- Files changed:
+  - packages/shared-types/src/template.ts
+  - packages/shared-types/src/layout-engine.ts
+  - apps/web/src/components/style-editor/PropertiesPanel.tsx
+  - apps/web/src/components/invoice/InvoicePreviewPopover.test.tsx
+
 ## Remaining PRD Items
-- Width/Height Modes for All Elements (not started)
+None - all items complete
