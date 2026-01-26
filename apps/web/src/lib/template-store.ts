@@ -1082,6 +1082,12 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
             justify: el.layoutConfig.justify ?? 'start',
             wrap: el.layoutConfig.wrap ?? false,
             displayMode: el.layoutConfig.displayMode,
+            grid: el.layoutConfig.grid ? {
+              templateColumns: el.layoutConfig.grid.templateColumns ?? '1fr 1fr',
+              templateRows: el.layoutConfig.grid.templateRows,
+              columnGap: el.layoutConfig.grid.columnGap ?? 8,
+              rowGap: el.layoutConfig.grid.rowGap ?? 8,
+            } : undefined,
           } : undefined,
           // Flex/grid item properties
           flexBasis: el.flexBasis,
@@ -1095,6 +1101,12 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
           widthPercent: el.widthPercent,
           heightSizingMode: el.heightSizingMode,
           heightSizingPercent: el.heightSizingPercent,
+          // Min height properties
+          minHeightMode: el.minHeightMode,
+          minHeightValue: el.minHeightValue,
+          minHeightPercent: el.minHeightPercent,
+          // Text element visibility
+          showWhenEmpty: el.showWhenEmpty,
         })),
         isDefault: convexTemplate.isDefault,
         isSystem: false, // Convex templates are always user templates

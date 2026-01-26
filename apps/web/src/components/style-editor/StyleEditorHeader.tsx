@@ -288,6 +288,12 @@ export function StyleEditorHeader() {
         widthPercent: el.widthPercent,
         heightSizingMode: el.heightSizingMode,
         heightSizingPercent: el.heightSizingPercent,
+        // Min height properties
+        minHeightMode: el.minHeightMode,
+        minHeightValue: el.minHeightValue,
+        minHeightPercent: el.minHeightPercent,
+        // Text element visibility
+        showWhenEmpty: el.showWhenEmpty,
       }))
 
       if (convexTemplateId) {

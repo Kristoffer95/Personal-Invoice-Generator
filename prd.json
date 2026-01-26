@@ -15,16 +15,17 @@
   },
   "minheight-persistence-fix": {
     "category": "Bug Fix",
-    "description": "MinHeight properties (minHeightMode, minHeightValue, minHeightPercent) and showWhenEmpty are not persisted when saving templates to Convex. These properties exist in shared-types/src/template.ts but are missing from the Convex validators in packages/backend/convex/templates.ts and schema.ts. When templates are saved, these properties are stripped during validation and lost. Fix by adding the minHeightModeValidator and all 4 missing properties to both Convex validator files.",
+    "description": "MinHeight properties (minHeightMode, minHeightValue, minHeightPercent) and showWhenEmpty are not persisted when saving/loading templates. Root cause: The Convex validators ARE correct, but the frontend code has TWO gaps: (1) StyleEditorHeader.tsx handleSave() explicitly picks properties but omits these 4 properties when sending to Convex, (2) template-store.ts setCurrentTemplateFromConvex() maps properties but omits these 4 when loading from Convex. Additionally, layoutConfig.grid is missing from the load mapping.",
     "stepsToVerify": [
       "Open Style Editor and load or create a template",
-      "Select an element and set Min Height to 'Fixed' with value 100",
+      "Select 'Row Container' element and set Min Height to 'Fixed' with value 100",
+      "Select 'Work Hours Table' element and set Min Height to 'Percentage' with value 50",
       "Save the template (ensure it syncs to Convex)",
-      "Refresh the page completely (hard refresh)",
+      "Hard refresh the page (Cmd+Shift+R)",
       "Reload the same template from Convex",
-      "Verify the Min Height is still set to 'Fixed' with value 100",
-      "Test with 'Percentage' mode as well - set to 50%, save, refresh, verify persistence",
-      "Test showWhenEmpty property on a text element - toggle on, save, refresh, verify persistence"
+      "Verify Row Container still shows Min Height = Fixed, 100",
+      "Verify Work Hours Table still shows Min Height = Percentage, 50%",
+      "Test showWhenEmpty on a text element - toggle on, save, refresh, verify persistence"
     ],
     "passes": true
   },

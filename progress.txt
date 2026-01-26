@@ -92,17 +92,25 @@ All Style Editor elements now have minHeight property with modes: None, Fixed, A
 
 ### Task completed
 PRD: minheight-persistence-fix
-MinHeight properties and showWhenEmpty now persist to Convex. Previously stripped during validation.
+MinHeight properties and showWhenEmpty now persist to Convex. Fixed both Convex validators AND frontend save/load mappings.
 
 ### Key decisions
+**Phase 1 (Convex validators):**
 - Added minHeightModeValidator (none, fixed, auto, percentage) to both Convex files
 - Added 4 missing properties to templateElementValidator: showWhenEmpty, minHeightMode, minHeightValue, minHeightPercent
 - Validators match shared-types/src/template.ts schema exactly
 
+**Phase 2 (Frontend mappings):**
+- StyleEditorHeader.tsx handleSave() was missing 4 properties when sending to Convex
+- template-store.ts setCurrentTemplateFromConvex() was missing 4 properties when loading from Convex
+- Also missing: layoutConfig.grid mapping for grid layout support
+
 ### Files changed
 - packages/backend/convex/schema.ts: Added minHeightModeValidator, added 4 properties to templateElementValidator
 - packages/backend/convex/templates.ts: Same changes as schema.ts
+- apps/web/src/components/style-editor/StyleEditorHeader.tsx: Added minHeightMode, minHeightValue, minHeightPercent, showWhenEmpty to element mapping in handleSave()
+- apps/web/src/lib/template-store.ts: Added same 4 properties + layoutConfig.grid to setCurrentTemplateFromConvex()
 
 ### Notes
 - Build passes. Tests/lint fail due to pre-existing issues (rollup arm64, missing eslint config)
-- Also updated prd.json passes field for all completed tasks
+- Previous iteration only fixed Convex validators; this iteration fixed frontend save/load mappings
