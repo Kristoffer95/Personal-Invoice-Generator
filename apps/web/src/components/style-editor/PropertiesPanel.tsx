@@ -445,93 +445,149 @@ export function PropertiesPanel() {
                       <p className="text-xs text-muted-foreground">Top, Right, Bottom, Left</p>
                     </div>
 
-                    {/* Flex item properties */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground uppercase">
-                        Flex Item
-                      </Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="flex-grow" className="text-xs">Grow</Label>
-                          <Input
-                            id="flex-grow"
-                            type="number"
-                            value={element.flexGrow ?? 0}
-                            onChange={(e) =>
-                              updateElement(element.id, {
-                                flexGrow: Math.max(0, Number(e.target.value)),
-                              })
-                            }
-                            min={0}
-                            step={1}
-                            className="h-8"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="flex-shrink" className="text-xs">Shrink</Label>
-                          <Input
-                            id="flex-shrink"
-                            type="number"
-                            value={element.flexShrink ?? 1}
-                            onChange={(e) =>
-                              updateElement(element.id, {
-                                flexShrink: Math.max(0, Number(e.target.value)),
-                              })
-                            }
-                            min={0}
-                            step={1}
-                            className="h-8"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="flex-basis" className="text-xs">Basis</Label>
-                          <Input
-                            id="flex-basis"
-                            type="text"
-                            value={element.flexBasis === 'auto' ? 'auto' : (element.flexBasis ?? '')}
-                            onChange={(e) => {
-                              const val = e.target.value.trim()
-                              if (val === '' || val === 'auto') {
-                                updateElement(element.id, { flexBasis: val === '' ? undefined : 'auto' })
-                              } else {
-                                const num = parseFloat(val)
-                                if (!isNaN(num) && num >= 0) {
-                                  updateElement(element.id, { flexBasis: num })
-                                }
-                              }
-                            }}
-                            placeholder="auto"
-                            className="h-8"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Grow/shrink factors and basis size (auto or px)
-                      </p>
-                    </div>
+                    {/* Flex item properties - shown when parent uses flexbox */}
+                    {(() => {
+                      const parentElement = currentTemplate?.elements.find(
+                        (el) => el.id === element.parentId
+                      )
+                      const isParentGrid = parentElement?.layoutConfig?.displayMode === 'grid'
 
-                    <div className="space-y-2">
-                      <Label className="text-xs">Align Self</Label>
-                      <Select
-                        value={element.alignSelf ?? '__inherit__'}
-                        onValueChange={(value) =>
-                          updateElement(element.id, {
-                            alignSelf: value === '__inherit__' ? undefined : value as 'start' | 'center' | 'end' | 'stretch',
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__inherit__">Inherit from container</SelectItem>
-                          <SelectItem value="start">Start</SelectItem>
-                          <SelectItem value="center">Center</SelectItem>
-                          <SelectItem value="end">End</SelectItem>
-                          <SelectItem value="stretch">Stretch</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      if (isParentGrid) {
+                        return (
+                          <div className="space-y-2">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase">
+                              Grid Item
+                            </Label>
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <Label htmlFor="grid-column" className="text-xs">Grid Column</Label>
+                                <Input
+                                  id="grid-column"
+                                  type="text"
+                                  value={element.gridColumn ?? ''}
+                                  onChange={(e) =>
+                                    updateElement(element.id, {
+                                      gridColumn: e.target.value || undefined,
+                                    })
+                                  }
+                                  placeholder="auto (e.g., 1 / 3, span 2)"
+                                  className="h-8"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="grid-row" className="text-xs">Grid Row</Label>
+                                <Input
+                                  id="grid-row"
+                                  type="text"
+                                  value={element.gridRow ?? ''}
+                                  onChange={(e) =>
+                                    updateElement(element.id, {
+                                      gridRow: e.target.value || undefined,
+                                    })
+                                  }
+                                  placeholder="auto (e.g., 1 / 2, span 2)"
+                                  className="h-8"
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Placement: line numbers or span
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase">
+                              Flex Item
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <Label htmlFor="flex-grow" className="text-xs">Grow</Label>
+                                <Input
+                                  id="flex-grow"
+                                  type="number"
+                                  value={element.flexGrow ?? 0}
+                                  onChange={(e) =>
+                                    updateElement(element.id, {
+                                      flexGrow: Math.max(0, Number(e.target.value)),
+                                    })
+                                  }
+                                  min={0}
+                                  step={1}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="flex-shrink" className="text-xs">Shrink</Label>
+                                <Input
+                                  id="flex-shrink"
+                                  type="number"
+                                  value={element.flexShrink ?? 1}
+                                  onChange={(e) =>
+                                    updateElement(element.id, {
+                                      flexShrink: Math.max(0, Number(e.target.value)),
+                                    })
+                                  }
+                                  min={0}
+                                  step={1}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="flex-basis" className="text-xs">Basis</Label>
+                                <Input
+                                  id="flex-basis"
+                                  type="text"
+                                  value={element.flexBasis === 'auto' ? 'auto' : (element.flexBasis ?? '')}
+                                  onChange={(e) => {
+                                    const val = e.target.value.trim()
+                                    if (val === '' || val === 'auto') {
+                                      updateElement(element.id, { flexBasis: val === '' ? undefined : 'auto' })
+                                    } else {
+                                      const num = parseFloat(val)
+                                      if (!isNaN(num) && num >= 0) {
+                                        updateElement(element.id, { flexBasis: num })
+                                      }
+                                    }
+                                  }}
+                                  placeholder="auto"
+                                  className="h-8"
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Grow/shrink factors and basis size (auto or px)
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Align Self</Label>
+                            <Select
+                              value={element.alignSelf ?? '__inherit__'}
+                              onValueChange={(value) =>
+                                updateElement(element.id, {
+                                  alignSelf: value === '__inherit__' ? undefined : value as 'start' | 'center' | 'end' | 'stretch',
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__inherit__">Inherit from container</SelectItem>
+                                <SelectItem value="start">Start</SelectItem>
+                                <SelectItem value="center">Center</SelectItem>
+                                <SelectItem value="end">End</SelectItem>
+                                <SelectItem value="stretch">Stretch</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )
+                    })()}
 
                     <Button
                       variant="outline"
@@ -558,12 +614,12 @@ export function PropertiesPanel() {
                 </Label>
 
                 <div className="space-y-2">
-                  <Label className="text-xs">Direction</Label>
+                  <Label className="text-xs">Display Mode</Label>
                   <Select
-                    value={element.layoutConfig?.direction ?? 'column'}
+                    value={element.layoutConfig?.displayMode ?? 'flex'}
                     onValueChange={(value) =>
                       updateLayoutConfig(element.id, {
-                        direction: value as 'column' | 'row',
+                        displayMode: value as 'flex' | 'grid',
                       })
                     }
                   >
@@ -571,85 +627,206 @@ export function PropertiesPanel() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="column">Column (Vertical)</SelectItem>
-                      <SelectItem value="row">Row (Horizontal)</SelectItem>
+                      <SelectItem value="flex">Flexbox</SelectItem>
+                      <SelectItem value="grid">Grid</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Gap</Label>
-                  <Input
-                    type="number"
-                    value={element.layoutConfig?.gap ?? 8}
-                    onChange={(e) =>
-                      updateLayoutConfig(element.id, { gap: Number(e.target.value) })
-                    }
-                    min={0}
-                    max={100}
-                    className="h-8"
-                  />
-                </div>
+                {/* Flexbox-specific controls */}
+                {(element.layoutConfig?.displayMode ?? 'flex') === 'flex' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Direction</Label>
+                      <Select
+                        value={element.layoutConfig?.direction ?? 'column'}
+                        onValueChange={(value) =>
+                          updateLayoutConfig(element.id, {
+                            direction: value as 'column' | 'row',
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="column">Column (Vertical)</SelectItem>
+                          <SelectItem value="row">Row (Horizontal)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Align Items</Label>
-                  <Select
-                    value={element.layoutConfig?.align ?? 'stretch'}
-                    onValueChange={(value) =>
-                      updateLayoutConfig(element.id, {
-                        align: value as 'start' | 'center' | 'end' | 'stretch',
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="start">Start</SelectItem>
-                      <SelectItem value="center">Center</SelectItem>
-                      <SelectItem value="end">End</SelectItem>
-                      <SelectItem value="stretch">Stretch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Gap</Label>
+                      <Input
+                        type="number"
+                        value={element.layoutConfig?.gap ?? 8}
+                        onChange={(e) =>
+                          updateLayoutConfig(element.id, { gap: Number(e.target.value) })
+                        }
+                        min={0}
+                        max={100}
+                        className="h-8"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Justify Content</Label>
-                  <Select
-                    value={element.layoutConfig?.justify ?? 'start'}
-                    onValueChange={(value) =>
-                      updateLayoutConfig(element.id, {
-                        justify: value as 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'space-evenly',
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="start">Start</SelectItem>
-                      <SelectItem value="center">Center</SelectItem>
-                      <SelectItem value="end">End</SelectItem>
-                      <SelectItem value="space-between">Space Between</SelectItem>
-                      <SelectItem value="space-around">Space Around</SelectItem>
-                      <SelectItem value="space-evenly">Space Evenly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Align Items</Label>
+                      <Select
+                        value={element.layoutConfig?.align ?? 'stretch'}
+                        onValueChange={(value) =>
+                          updateLayoutConfig(element.id, {
+                            align: value as 'start' | 'center' | 'end' | 'stretch',
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="start">Start</SelectItem>
+                          <SelectItem value="center">Center</SelectItem>
+                          <SelectItem value="end">End</SelectItem>
+                          <SelectItem value="stretch">Stretch</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="flex-wrap" className="text-xs">Wrap</Label>
-                  <Switch
-                    id="flex-wrap"
-                    checked={element.layoutConfig?.wrap ?? false}
-                    onCheckedChange={(checked) =>
-                      updateLayoutConfig(element.id, { wrap: checked })
-                    }
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Justify Content</Label>
+                      <Select
+                        value={element.layoutConfig?.justify ?? 'start'}
+                        onValueChange={(value) =>
+                          updateLayoutConfig(element.id, {
+                            justify: value as 'start' | 'center' | 'end' | 'space-between' | 'space-around' | 'space-evenly',
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="start">Start</SelectItem>
+                          <SelectItem value="center">Center</SelectItem>
+                          <SelectItem value="end">End</SelectItem>
+                          <SelectItem value="space-between">Space Between</SelectItem>
+                          <SelectItem value="space-around">Space Around</SelectItem>
+                          <SelectItem value="space-evenly">Space Evenly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
 
-                {/* Margin controls for Row layout containers */}
-                {element.layoutConfig?.direction === 'row' && (
+                {/* Grid-specific controls */}
+                {element.layoutConfig?.displayMode === 'grid' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Grid Columns</Label>
+                      <Input
+                        type="text"
+                        value={element.layoutConfig?.grid?.templateColumns ?? '1fr 1fr'}
+                        onChange={(e) =>
+                          updateLayoutConfig(element.id, {
+                            grid: {
+                              ...element.layoutConfig?.grid,
+                              templateColumns: e.target.value,
+                              columnGap: element.layoutConfig?.grid?.columnGap ?? 8,
+                              rowGap: element.layoutConfig?.grid?.rowGap ?? 8,
+                            },
+                          })
+                        }
+                        placeholder="e.g., 1fr 1fr 1fr"
+                        className="h-8"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use fr units, px, or %
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs">Grid Rows (optional)</Label>
+                      <Input
+                        type="text"
+                        value={element.layoutConfig?.grid?.templateRows ?? ''}
+                        onChange={(e) =>
+                          updateLayoutConfig(element.id, {
+                            grid: {
+                              ...element.layoutConfig?.grid,
+                              templateColumns: element.layoutConfig?.grid?.templateColumns ?? '1fr 1fr',
+                              templateRows: e.target.value || undefined,
+                              columnGap: element.layoutConfig?.grid?.columnGap ?? 8,
+                              rowGap: element.layoutConfig?.grid?.rowGap ?? 8,
+                            },
+                          })
+                        }
+                        placeholder="auto (default)"
+                        className="h-8"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Column Gap</Label>
+                        <Input
+                          type="number"
+                          value={element.layoutConfig?.grid?.columnGap ?? 8}
+                          onChange={(e) =>
+                            updateLayoutConfig(element.id, {
+                              grid: {
+                                ...element.layoutConfig?.grid,
+                                templateColumns: element.layoutConfig?.grid?.templateColumns ?? '1fr 1fr',
+                                columnGap: Number(e.target.value),
+                                rowGap: element.layoutConfig?.grid?.rowGap ?? 8,
+                              },
+                            })
+                          }
+                          min={0}
+                          max={100}
+                          className="h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Row Gap</Label>
+                        <Input
+                          type="number"
+                          value={element.layoutConfig?.grid?.rowGap ?? 8}
+                          onChange={(e) =>
+                            updateLayoutConfig(element.id, {
+                              grid: {
+                                ...element.layoutConfig?.grid,
+                                templateColumns: element.layoutConfig?.grid?.templateColumns ?? '1fr 1fr',
+                                columnGap: element.layoutConfig?.grid?.columnGap ?? 8,
+                                rowGap: Number(e.target.value),
+                              },
+                            })
+                          }
+                          min={0}
+                          max={100}
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Flexbox-only: Wrap toggle */}
+                {(element.layoutConfig?.displayMode ?? 'flex') === 'flex' && (
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="flex-wrap" className="text-xs">Wrap</Label>
+                    <Switch
+                      id="flex-wrap"
+                      checked={element.layoutConfig?.wrap ?? false}
+                      onCheckedChange={(checked) =>
+                        updateLayoutConfig(element.id, { wrap: checked })
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* Margin controls for Row layout containers (flexbox only) */}
+                {(element.layoutConfig?.displayMode ?? 'flex') === 'flex' &&
+                  element.layoutConfig?.direction === 'row' && (
                   <div className="space-y-2">
                     <Label className="text-xs">Row Margin</Label>
                     <div className="grid grid-cols-4 gap-1">

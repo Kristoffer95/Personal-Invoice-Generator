@@ -6,6 +6,7 @@ import type {
   Alignment,
   LayoutDirection,
   HeightMode,
+  GridConfig,
 } from './template'
 
 // Calculated position for rendering
@@ -31,6 +32,13 @@ const defaultSpacing: Spacing = {
   right: 0,
   bottom: 0,
   left: 0,
+}
+
+// Default grid config
+const defaultGridConfig: GridConfig = {
+  templateColumns: '1fr 1fr',
+  columnGap: 8,
+  rowGap: 8,
 }
 
 /**
@@ -218,6 +226,306 @@ function getFlexBasis(
 }
 
 /**
+ * Parse a CSS grid track value (e.g., "1fr", "100px", "auto")
+ * Returns the resolved size in points
+ */
+function parseGridTrack(
+  track: string,
+  availableSpace: number,
+  totalFr: number
+): number {
+  track = track.trim()
+
+  if (track === 'auto') {
+    // Auto: will be determined by content, default to fair share
+    return availableSpace / Math.max(1, totalFr || 1)
+  }
+
+  if (track.endsWith('fr')) {
+    const fr = parseFloat(track.slice(0, -2))
+    if (!isNaN(fr) && totalFr > 0) {
+      return (availableSpace * fr) / totalFr
+    }
+    return availableSpace / Math.max(1, totalFr || 1)
+  }
+
+  if (track.endsWith('px') || track.endsWith('pt')) {
+    const value = parseFloat(track.slice(0, -2))
+    if (!isNaN(value)) {
+      return value
+    }
+  }
+
+  if (track.endsWith('%')) {
+    const percent = parseFloat(track.slice(0, -1))
+    if (!isNaN(percent)) {
+      return (availableSpace * percent) / 100
+    }
+  }
+
+  // Try parsing as raw number (points)
+  const num = parseFloat(track)
+  if (!isNaN(num)) {
+    return num
+  }
+
+  // Default fallback
+  return availableSpace / Math.max(1, totalFr || 1)
+}
+
+/**
+ * Parse grid template string into track sizes
+ * e.g., "1fr 1fr 1fr" -> [size1, size2, size3]
+ */
+function parseGridTemplate(
+  template: string,
+  availableSpace: number
+): number[] {
+  const tracks = template.trim().split(/\s+/)
+
+  // First pass: calculate total fr units and fixed sizes
+  let totalFr = 0
+  let usedSpace = 0
+
+  for (const track of tracks) {
+    if (track.endsWith('fr')) {
+      totalFr += parseFloat(track.slice(0, -2)) || 0
+    } else if (track !== 'auto') {
+      // Fixed size
+      const size = parseGridTrack(track, availableSpace, 0)
+      usedSpace += size
+    }
+  }
+
+  // Calculate space available for fr units
+  const frSpace = Math.max(0, availableSpace - usedSpace)
+
+  // Second pass: resolve all track sizes
+  return tracks.map((track) => parseGridTrack(track, frSpace, totalFr))
+}
+
+/**
+ * Parse grid line specification (e.g., "1 / 3", "span 2", "1")
+ * Returns [startLine, endLine] (1-indexed)
+ */
+function parseGridLine(
+  spec: string | undefined,
+  defaultStart: number,
+  maxLines: number
+): [number, number] {
+  if (!spec) {
+    return [defaultStart, defaultStart + 1]
+  }
+
+  spec = spec.trim()
+
+  // Handle "span N"
+  if (spec.startsWith('span ')) {
+    const span = parseInt(spec.slice(5), 10) || 1
+    return [defaultStart, Math.min(defaultStart + span, maxLines + 1)]
+  }
+
+  // Handle "start / end"
+  if (spec.includes('/')) {
+    const [startStr, endStr] = spec.split('/').map((s) => s.trim())
+
+    let start = parseInt(startStr, 10)
+    if (isNaN(start)) start = defaultStart
+
+    let end: number
+    if (endStr.startsWith('span ')) {
+      const span = parseInt(endStr.slice(5), 10) || 1
+      end = start + span
+    } else {
+      end = parseInt(endStr, 10)
+      if (isNaN(end)) end = start + 1
+    }
+
+    return [
+      Math.max(1, Math.min(start, maxLines)),
+      Math.max(start + 1, Math.min(end, maxLines + 1)),
+    ]
+  }
+
+  // Single value
+  const line = parseInt(spec, 10)
+  if (!isNaN(line)) {
+    return [Math.max(1, line), Math.max(1, line) + 1]
+  }
+
+  return [defaultStart, defaultStart + 1]
+}
+
+/**
+ * Calculate positions for children using CSS Grid layout
+ */
+function calculateGridChildPositions(
+  container: TemplateElement,
+  children: TemplateElement[],
+  containerPosition: CalculatedPosition,
+  elements: TemplateElement[] = [],
+  pageHeight: number = 0
+): Map<string, CalculatedPosition> {
+  const result = new Map<string, CalculatedPosition>()
+  const config = container.layoutConfig ?? defaultLayoutConfig
+  const gridConfig = config.grid ?? defaultGridConfig
+  const padding = container.padding ?? 0
+
+  // Available space after padding
+  const availableWidth = containerPosition.width - padding * 2
+  const availableHeight = containerPosition.height - padding * 2
+
+  // Parse column and row templates
+  const columnSizes = parseGridTemplate(gridConfig.templateColumns, availableWidth)
+  const numColumns = columnSizes.length
+
+  // For row template: if not specified, create auto rows based on children
+  let rowSizes: number[]
+  const numChildren = children.length
+  const implicitRows = Math.ceil(numChildren / numColumns)
+
+  if (gridConfig.templateRows) {
+    rowSizes = parseGridTemplate(gridConfig.templateRows, availableHeight)
+  } else {
+    // Auto rows: distribute available height (minus gaps) equally
+    const totalRowGap = Math.max(0, implicitRows - 1) * (gridConfig.rowGap ?? 8)
+    const rowHeight = (availableHeight - totalRowGap) / Math.max(1, implicitRows)
+    rowSizes = Array(implicitRows).fill(rowHeight)
+  }
+  const numRows = rowSizes.length
+
+  // Subtract gaps from column sizes to get actual track widths
+  const totalColumnGap = Math.max(0, numColumns - 1) * (gridConfig.columnGap ?? 8)
+  const adjustedColumnSizes = columnSizes.map(
+    (size) => size - totalColumnGap / numColumns
+  )
+
+  // Calculate column start positions (x offsets)
+  const columnStarts: number[] = [padding]
+  for (let i = 0; i < numColumns - 1; i++) {
+    columnStarts.push(
+      columnStarts[i] + adjustedColumnSizes[i] + (gridConfig.columnGap ?? 8)
+    )
+  }
+
+  // Calculate row start positions (y offsets)
+  const rowStarts: number[] = [padding]
+  for (let i = 0; i < numRows - 1; i++) {
+    rowStarts.push(rowStarts[i] + rowSizes[i] + (gridConfig.rowGap ?? 8))
+  }
+
+  // Track which cells are occupied
+  const occupied = new Set<string>()
+
+  // Find next available cell
+  function findNextCell(startRow: number): [number, number] {
+    for (let row = startRow; row <= numRows; row++) {
+      for (let col = 1; col <= numColumns; col++) {
+        if (!occupied.has(`${row}-${col}`)) {
+          return [row, col]
+        }
+      }
+    }
+    return [numRows + 1, 1] // Overflow
+  }
+
+  // Mark cells as occupied
+  function markOccupied(
+    rowStart: number,
+    rowEnd: number,
+    colStart: number,
+    colEnd: number
+  ): void {
+    for (let r = rowStart; r < rowEnd; r++) {
+      for (let c = colStart; c < colEnd; c++) {
+        occupied.add(`${r}-${c}`)
+      }
+    }
+  }
+
+  let currentRow = 1
+
+  for (const child of children) {
+    const spacing = child.spacing ?? defaultSpacing
+
+    // Parse grid placement
+    let [colStart, colEnd] = parseGridLine(child.gridColumn, 1, numColumns)
+    let [rowStart, rowEnd] = parseGridLine(child.gridRow, currentRow, numRows)
+
+    // If no explicit placement, auto-place
+    if (!child.gridColumn && !child.gridRow) {
+      const [autoRow, autoCol] = findNextCell(currentRow)
+      colStart = autoCol
+      colEnd = autoCol + 1
+      rowStart = autoRow
+      rowEnd = autoRow + 1
+    }
+
+    // Ensure we don't exceed grid bounds
+    colStart = Math.max(1, Math.min(colStart, numColumns))
+    colEnd = Math.max(colStart + 1, Math.min(colEnd, numColumns + 1))
+    rowStart = Math.max(1, Math.min(rowStart, numRows))
+    rowEnd = Math.max(rowStart + 1, Math.min(rowEnd, numRows + 1))
+
+    // Mark cells as occupied
+    markOccupied(rowStart, rowEnd, colStart, colEnd)
+
+    // Calculate position and size
+    const x =
+      containerPosition.x +
+      (columnStarts[colStart - 1] ?? padding) +
+      spacing.left
+    const y =
+      containerPosition.y + (rowStarts[rowStart - 1] ?? padding) + spacing.top
+
+    // Calculate width spanning multiple columns
+    let width = 0
+    for (let c = colStart - 1; c < colEnd - 1; c++) {
+      width += adjustedColumnSizes[c] ?? 0
+      if (c < colEnd - 2) {
+        width += gridConfig.columnGap ?? 8 // Add gap for spanned columns
+      }
+    }
+    width -= spacing.left + spacing.right
+
+    // Calculate height spanning multiple rows
+    let height = 0
+    for (let r = rowStart - 1; r < rowEnd - 1; r++) {
+      height += rowSizes[r] ?? 0
+      if (r < rowEnd - 2) {
+        height += gridConfig.rowGap ?? 8 // Add gap for spanned rows
+      }
+    }
+    height -= spacing.top + spacing.bottom
+
+    // Handle nested layout containers
+    if (child.type === 'layout_container') {
+      const effectiveHeight = calculateEffectiveHeight(
+        child,
+        elements,
+        pageHeight,
+        height
+      )
+      height = effectiveHeight
+    }
+
+    result.set(child.id, {
+      x,
+      y,
+      width: Math.max(10, width),
+      height: Math.max(10, height),
+    })
+
+    // Update current row for auto-placement
+    if (!child.gridRow) {
+      currentRow = rowStart
+    }
+  }
+
+  return result
+}
+
+/**
  * Calculate positions for children of a layout container
  * Implements flexbox-like behavior with flex-grow, flex-shrink, and flex-basis
  */
@@ -228,8 +536,21 @@ function calculateContainerChildPositions(
   elements: TemplateElement[] = [],
   pageHeight: number = 0
 ): Map<string, CalculatedPosition> {
-  const result = new Map<string, CalculatedPosition>()
   const config = container.layoutConfig ?? defaultLayoutConfig
+
+  // If grid mode, use grid calculation
+  if (config.displayMode === 'grid') {
+    return calculateGridChildPositions(
+      container,
+      children,
+      containerPosition,
+      elements,
+      pageHeight
+    )
+  }
+
+  // Otherwise use flexbox (default)
+  const result = new Map<string, CalculatedPosition>()
   const isColumn = config.direction === 'column'
   const padding = container.padding ?? 0
 

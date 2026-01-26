@@ -89,6 +89,23 @@ export type Justify = z.infer<typeof justifySchema>
 export const heightModeSchema = z.enum(['fixed', 'auto', 'percentage'])
 export type HeightMode = z.infer<typeof heightModeSchema>
 
+// Display mode for layout containers (flexbox or grid)
+export const displayModeSchema = z.enum(['flex', 'grid'])
+export type DisplayMode = z.infer<typeof displayModeSchema>
+
+// Grid configuration for CSS Grid layout
+export const gridConfigSchema = z.object({
+  // Template columns (e.g., "1fr 1fr 1fr" or "100px auto 1fr")
+  templateColumns: z.string().default('1fr 1fr'),
+  // Template rows (e.g., "auto auto" or "100px 1fr")
+  templateRows: z.string().optional(),
+  // Column gap (in points)
+  columnGap: z.number().min(0).max(100).default(8),
+  // Row gap (in points)
+  rowGap: z.number().min(0).max(100).default(8),
+})
+export type GridConfig = z.infer<typeof gridConfigSchema>
+
 // Layout container configuration
 export const layoutConfigSchema = z.object({
   direction: layoutDirectionSchema.default('column'),
@@ -96,6 +113,10 @@ export const layoutConfigSchema = z.object({
   align: alignmentSchema.default('stretch'),
   justify: justifySchema.default('start'),
   wrap: z.boolean().default(false),
+  // Display mode: flex (default) or grid
+  displayMode: displayModeSchema.optional(),
+  // Grid-specific configuration (only used when displayMode is 'grid')
+  grid: gridConfigSchema.optional(),
 })
 export type LayoutConfig = z.infer<typeof layoutConfigSchema>
 
@@ -200,6 +221,9 @@ export const templateElementSchema = z.object({
   flexShrink: z.number().min(0).default(1),
   flexBasis: z.union([z.literal('auto'), z.number().min(0)]).optional(), // 'auto' or number in points
   alignSelf: alignmentSchema.optional(), // Override container alignment
+  // Grid item properties (only used when parent is in grid mode)
+  gridColumn: z.string().optional(), // e.g., "1 / 3" or "span 2"
+  gridRow: z.string().optional(), // e.g., "1 / 2" or "span 2"
   // Layout container configuration
   layoutConfig: layoutConfigSchema.optional(),
   // Height mode for layout containers (fixed, auto, percentage)
