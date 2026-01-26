@@ -672,7 +672,10 @@ function renderLayoutContainerBackground(
     containerStyle.backgroundColor = backgroundColor
   }
 
-  if (border && border.width > 0) {
+  // Only render borders for layout containers if they're NOT dashed
+  // Dashed borders are editor-only visual indicators, not intended for PDF output
+  // Solid and dotted borders are user-configured and should render normally
+  if (border && border.width > 0 && border.style !== 'dashed') {
     containerStyle.borderWidth = border.width
     containerStyle.borderColor = border.color
     containerStyle.borderStyle = border.style

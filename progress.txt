@@ -141,3 +141,21 @@ Set up proper ESLint 9 flat config for monorepo. All packages now run actual lin
 ### Notes
 - Build passes, tests pass, lint passes (warnings only)
 - Warnings remain for: @typescript-eslint/no-explicit-any (8), react-hooks/exhaustive-deps (1), no-img-element (1)
+
+## container-border-editor-only (Bug Fix) - COMPLETED
+
+### Task completed
+PRD: container-border-editor-only
+Dashed borders on layout containers (editor-only visual indicators) no longer render in PDF output. Solid and dotted borders still render normally.
+
+### Key decisions
+- In renderLayoutContainerBackground(), added check: border.style !== 'dashed'
+- Dashed borders = editor visual indicators, skipped in PDF
+- Solid/dotted borders = user-configured, rendered normally
+- Minimal change, single condition addition
+
+### Files changed
+- packages/pdf-generator/src/TemplatePDF.tsx: Added dashed border filter in renderLayoutContainerBackground()
+
+### Notes
+- Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)

@@ -99,7 +99,7 @@
       "Generate PDF again - verify the solid border now appears in PDF",
       "Test with Row Container - same behavior expected (dashed hidden, solid visible)"
     ],
-    "passes": false
+    "passes": true
   },
   "empty-container-collapse": {
     "category": "Bug Fix",
