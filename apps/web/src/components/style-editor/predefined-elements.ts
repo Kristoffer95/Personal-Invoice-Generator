@@ -20,6 +20,7 @@ const defaultPositioningFields = {
   order: 0,
   flexGrow: 0,
   flexShrink: 1,
+  showWhenEmpty: false,
 }
 
 // Default table style
@@ -421,6 +422,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       order: 0,
       flexGrow: 0,
       flexShrink: 1,
+      showWhenEmpty: false,
       layoutConfig: {
         direction: 'column',
         gap: 8,
@@ -457,6 +459,7 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       order: 0,
       flexGrow: 0,
       flexShrink: 1,
+      showWhenEmpty: false,
       layoutConfig: {
         direction: 'row',
         gap: 8,

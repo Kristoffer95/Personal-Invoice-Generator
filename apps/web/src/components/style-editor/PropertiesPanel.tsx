@@ -1064,6 +1064,21 @@ export function PropertiesPanel() {
                   className="text-sm"
                 />
                 <TokenInserter onInsert={handleInsertToken} />
+                <div className="flex items-center justify-between pt-2">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="show-when-empty" className="text-xs">Show when empty</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Display even if all tokens resolve to empty
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-when-empty"
+                    checked={element.showWhenEmpty ?? false}
+                    onCheckedChange={(checked) =>
+                      updateElement(element.id, { showWhenEmpty: checked })
+                    }
+                  />
+                </div>
               </div>
 
               <Separator />

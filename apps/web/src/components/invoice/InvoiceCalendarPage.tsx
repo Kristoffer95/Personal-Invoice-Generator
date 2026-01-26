@@ -197,6 +197,7 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
         zIndex: el.zIndex ?? 0,
         locked: el.locked ?? false,
         visible: el.visible ?? true,
+        showWhenEmpty: (el as { showWhenEmpty?: boolean }).showWhenEmpty ?? false,
         tableStyle: el.tableStyle ? {
           headerBackgroundColor: el.tableStyle.headerBackgroundColor ?? '#1a1a2e',
           headerTextColor: el.tableStyle.headerTextColor ?? '#ffffff',

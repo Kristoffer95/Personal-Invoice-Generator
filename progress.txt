@@ -39,3 +39,27 @@ Replaced complex Flex Items inputs (Grow/Shrink/Basis) with simple dropdown pres
 ### Notes
 - Build passes. Tests/lint fail due to same pre-existing issues (rollup arm64, missing eslint config)
 - No schema/type changes needed - underlying flexGrow/flexShrink/flexBasis properties unchanged
+
+## auto-hide-empty-elements (Feature) - COMPLETED
+
+### Task completed
+PRD: auto-hide-empty-elements
+Text elements with all-empty token interpolations auto-hide in PDF output. Toggle "Show when empty" overrides this per element.
+
+### Key decisions
+- showWhenEmpty property on TemplateElement (optional, defaults to false = auto-hide)
+- Default false: empty text elements hidden, no space reserved in PDF
+- Check after token interpolation: if content.trim() === '' && !showWhenEmpty, return null
+- UI toggle in PropertiesPanel under Content section for text elements
+- Backward compatible: existing templates without property use default (auto-hide)
+
+### Files changed
+- packages/shared-types/src/template.ts: Added showWhenEmpty: z.boolean().optional()
+- packages/pdf-generator/src/TemplatePDF.tsx: Added early return null for empty text elements
+- apps/web/src/components/style-editor/PropertiesPanel.tsx: Added Switch toggle for text elements
+- apps/web/src/components/style-editor/predefined-elements.ts: Added showWhenEmpty to defaults
+- apps/web/src/components/invoice/InvoiceCalendarPage.tsx: Map showWhenEmpty from Convex templates
+
+### Notes
+- Build passes. Tests/lint fail due to same pre-existing issues (rollup arm64, missing eslint config)
+- Only affects text elements; tables already have built-in empty auto-hide

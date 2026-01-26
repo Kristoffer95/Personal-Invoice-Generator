@@ -211,6 +211,8 @@ export const templateElementSchema = z.object({
   zIndex: z.number().default(0),
   locked: z.boolean().default(false),
   visible: z.boolean().default(true),
+  // Text-specific: when false (default), text elements with all-empty tokens are hidden in PDF
+  showWhenEmpty: z.boolean().optional(),
   // Table-specific
   tableStyle: tableStyleSchema.optional(),
   // Logo-specific

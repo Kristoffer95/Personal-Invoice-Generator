@@ -189,6 +189,20 @@ function renderTextElement(
   const rawContent = typeof element.content === 'string' ? element.content : ''
   const interpolatedContent = interpolateTokens(rawContent, tokenValues)
 
+  // Auto-hide text elements when all tokens resolve to empty (unless showWhenEmpty is true)
+  const isEmpty = !interpolatedContent || interpolatedContent.trim() === ''
+  if (isEmpty && !element.showWhenEmpty) {
+    if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
+      console.log('[PDF DEBUG] Hiding empty text element:', {
+        id: element.id,
+        name: element.name,
+        rawContent,
+        showWhenEmpty: element.showWhenEmpty,
+      })
+    }
+    return null
+  }
+
   // DEBUG: Log element rendering details to trace token interpolation issues
   // Set PDF_DEBUG=true in environment to enable logging
   if (process.env.NODE_ENV === 'development' || process.env.PDF_DEBUG === 'true') {
