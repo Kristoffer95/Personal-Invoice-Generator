@@ -1,135 +1,22 @@
 {
-  "convex-schema-sizing-modes": {
+  "invoice-preview-using-stale-template-data": {
     "category": "Bug Fix",
-    "description": "Add missing sizing mode fields (widthMode, widthPercent, heightSizingMode, heightSizingPercent, flexBasis, gridColumn, gridRow) to Convex templateElementValidator in both schema.ts and templates.ts to match the Zod schemas and frontend save handler. Currently, saving templates with sizing mode changes fails with ArgumentValidationError.",
-    "stepsToVerify": [
-      "Open the Style Editor with an existing template",
-      "Select any element (e.g., Work Hours Table)",
-      "Modify the element's sizing mode via the Properties Panel (change width or height sizing)",
-      "Click Save in the Style Editor header",
-      "Verify no console errors appear (specifically no ArgumentValidationError)",
-      "Refresh the page and confirm the template loads with the saved changes",
-      "Create a new element, adjust its sizing settings, and save again to verify new elements work too"
-    ],
-    "passes": true
-  },
-  "template-sizing-modes-not-loading-from-convex": {
-    "category": "Bug Fix",
-    "description": "Sizing mode fields (heightMode, heightPercent, widthMode, widthPercent, heightSizingMode, heightSizingPercent) are not persisting after page reload. Root cause: the setCurrentTemplateFromConvex function in template-store.ts (lines 1048-1085) is missing these fields when mapping elements from Convex back to client state. The save function (StyleEditorHeader.tsx:284-290) correctly includes all fields, but they are lost during load.",
+    "description": "Invoice Preview shows stale template data after editing in Style Editor. Root cause: Template Preview uses Zustand store (currentTemplate) with instant updates, while Invoice Preview uses Convex query via useTemplates() which is cached for 60 seconds. Solution: When Invoice Preview displays a template being edited in Style Editor, use the Zustand store's currentTemplate instead of the cached Convex version.",
     "fix": {
-      "file": "apps/web/src/lib/template-store.ts",
-      "location": "setCurrentTemplateFromConvex function, after layoutConfig mapping (around line 1084)",
-      "addFields": [
-        "heightMode: el.heightMode",
-        "heightPercent: el.heightPercent",
-        "widthMode: el.widthMode",
-        "widthPercent: el.widthPercent",
-        "heightSizingMode: el.heightSizingMode",
-        "heightSizingPercent: el.heightSizingPercent"
-      ]
-    },
-    "stepsToVerify": [
-      "Open the Style Editor with an existing template",
-      "Select a layout container element",
-      "Change its height mode to 'auto' via the Properties Panel",
-      "Click Save in the Style Editor header",
-      "Refresh the page",
-      "Verify the height mode is still set to 'auto'",
-      "Test with other sizing modes (widthMode, heightSizingMode) to ensure all persist"
-    ],
-    "passes": true
-  },
-  "properties-panel-scroll-not-working": {
-    "category": "Bug Fix",
-    "description": "The Properties panel on the right side of the Style Editor does not scroll vertically when content overflows. Both 'Properties' and 'History' tabs are affected. Root cause: TabsContent components at lines 198 and 1295 in PropertiesPanel.tsx have 'overflow-hidden' which clips the ScrollArea's custom scrollbar.",
-    "notes": [
-      "The Properties/History tabs use TabsContent + ScrollArea inside a flex column. Without min-h-0 on the flex chain (TabsContent/parent), the scrollable viewport cannot shrink, so scrollbars never appear.",
-      "Both tabs share the same structure, so any fix to the scroll container should apply to both."
-    ],
-    "fix": {
-      "file": "apps/web/src/components/style-editor/PropertiesPanel.tsx",
+      "file": "apps/web/src/components/invoice/InvoicePreviewPopover.tsx",
       "changes": [
-        "Line 198: Remove 'overflow-hidden' from TabsContent className (Properties tab)",
-        "Line 1295: Remove 'overflow-hidden' from TabsContent className (History tab)"
+        "After line 42: Add import { useTemplateStore } from '@/lib/template-store'",
+        "After line 78: Add const { currentTemplate: storeTemplate, getConvexTemplateId } = useTemplateStore(); const storeTemplateConvexId = getConvexTemplateId();",
+        "Lines 143-151: Update selectedPreviewTemplate useMemo to check if viewing template currently being edited in Style Editor and use store version if so"
       ]
     },
     "stepsToVerify": [
-      "Open the Style Editor and select any element to open the Properties panel",
-      "Add enough content or resize browser window so Properties tab content exceeds panel height",
-      "Verify a vertical scrollbar appears and scrolling works in the Properties tab",
-      "Switch to the History tab",
-      "Verify the History tab also scrolls when content overflows",
-      "Confirm scrolling works with mouse wheel, trackpad, and dragging the scrollbar"
+      "Open Style Editor with a user template",
+      "Change a property (e.g., set row height to 'auto')",
+      "Navigate to an invoice and open Invoice Preview",
+      "Select the same template in the style selector",
+      "Verify the preview shows the updated value (matching Template Preview)"
     ],
-    "passes": true
-  },
-  "invoice-preview-not-reflecting-style-editor-changes": {
-    "category": "Bug Fix",
-    "description": "Invoice Preview in InvoiceCalendarPage does not reflect recent Style Editor changes. Root cause: The userTemplates useMemo conversion (lines 153-244) is missing element fields (flexBasis, gridColumn, gridRow, heightMode, heightPercent, widthMode, widthPercent, heightSizingMode, heightSizingPercent) and layoutConfig.displayMode when mapping Convex templates to InvoiceTemplate format. The template-store.ts setCurrentTemplateFromConvex is also missing layoutConfig.displayMode.",
-    "notes": [
-      "Invoice preview regeneration in InvoicePreview is keyed by template.id only; template edits do not change that value, so PDF blobs can stay stale.",
-      "Consider including template.updatedAt (or a template fingerprint) in the preview key/dependencies to force regeneration after edits."
-    ],
-    "fix": {
-      "files": [
-        {
-          "file": "apps/web/src/components/invoice/InvoiceCalendarPage.tsx",
-          "location": "userTemplates useMemo element mapping (after line 230)",
-          "addFields": [
-            "flexBasis: el.flexBasis",
-            "gridColumn: el.gridColumn",
-            "gridRow: el.gridRow",
-            "heightMode: el.heightMode",
-            "heightPercent: el.heightPercent",
-            "widthMode: el.widthMode",
-            "widthPercent: el.widthPercent",
-            "heightSizingMode: el.heightSizingMode",
-            "heightSizingPercent: el.heightSizingPercent"
-          ],
-          "addToLayoutConfig": "displayMode: el.layoutConfig.displayMode"
-        },
-        {
-          "file": "apps/web/src/lib/template-store.ts",
-          "location": "setCurrentTemplateFromConvex layoutConfig mapping (lines 1078-1084)",
-          "addToLayoutConfig": "displayMode: el.layoutConfig.displayMode"
-        }
-      ]
-    },
-    "stepsToVerify": [
-      "Open the Style Editor and load an existing template",
-      "Make visible changes: modify element colors, positions, or sizing modes",
-      "Click Save in the Style Editor header and wait for success toast",
-      "Navigate to the Invoice Calendar page",
-      "Select the edited template from the style picker dropdown",
-      "Verify the Invoice Preview immediately shows all saved changes",
-      "Test with sizing mode changes (width/height modes) to ensure they render correctly",
-      "Test with layout container displayMode changes (flex vs grid) if applicable"
-    ],
-    "passes": true
-  },
-  "properties-panel-horizontal-scroll-not-working": {
-    "category": "Bug Fix",
-    "description": "The Properties panel does not allow horizontal scrolling. Content that exceeds the 320px panel width (such as the Appearance section) gets clipped with no way to scroll horizontally. Root cause: The ScrollArea component only renders a vertical scrollbar by default. The existing scroll-area.tsx exports ScrollBar with horizontal orientation support, but it's not being used in PropertiesPanel.tsx.",
-    "notes": [
-      "The Radix UI ScrollArea supports horizontal scrolling via its internal viewport mechanism - just need to add a horizontal ScrollBar component.",
-      "Both Properties and History tabs should have horizontal scrollbars added for consistency."
-    ],
-    "fix": {
-      "file": "apps/web/src/components/style-editor/PropertiesPanel.tsx",
-      "changes": [
-        "Line 26: Update import to include ScrollBar: import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'",
-        "Line 1291 (before </ScrollArea>): Add <ScrollBar orientation=\"horizontal\" /> for Properties tab",
-        "Line 1370 (before </ScrollArea>): Add <ScrollBar orientation=\"horizontal\" /> for History tab"
-      ]
-    },
-    "stepsToVerify": [
-      "Open the Style Editor and select any element to open the Properties panel",
-      "Ensure content exceeds the panel width (or test with elements that have wide content)",
-      "Verify a horizontal scrollbar appears when content overflows horizontally",
-      "Verify the Appearance section and all other sections are fully accessible via horizontal scroll",
-      "Test the History tab for horizontal scrolling as well",
-      "Confirm vertical scrolling still works correctly in both tabs"
-    ],
-    "passes": true
+    "passes": false
   }
 }

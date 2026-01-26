@@ -39,6 +39,7 @@ import { useTemplates, useTemplateMutations } from "@/hooks/use-templates";
 import { useToast } from "@/hooks/use-toast";
 import { SYSTEM_TEMPLATE_IDS, getSystemTemplate } from "@/lib/system-templates";
 import { convexToInvoiceTemplate } from "@/lib/template-utils";
+import { useTemplateStore } from "@/lib/template-store";
 import type { InvoiceTemplate } from "@invoice-generator/shared-types";
 
 interface InvoicePreviewPopoverProps {
@@ -76,6 +77,10 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
   const { isAuthenticated } = useCurrentUser();
   const { templates: convexTemplates } = useTemplates();
   const { duplicateFromSystemTemplate } = useTemplateMutations();
+
+  // Get current template from Zustand store (for Style Editor live updates)
+  const { currentTemplate: storeTemplate, getConvexTemplateId } = useTemplateStore();
+  const storeTemplateConvexId = getConvexTemplateId();
 
   // Convert Convex templates to InvoiceTemplate format
   const userTemplates = useMemo(() => {
@@ -146,9 +151,14 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
     if (systemTemplate) {
       return systemTemplate;
     }
-    // Then check user templates
+    // Check if viewing template currently being edited in Style Editor
+    // Use Zustand store version for instant updates (Convex version is cached)
+    if (storeTemplate && storeTemplateConvexId === previewStyleId) {
+      return storeTemplate;
+    }
+    // Then check user templates from Convex
     return userTemplates.find((t: InvoiceTemplate) => t.id === previewStyleId);
-  }, [previewStyleId, userTemplates]);
+  }, [previewStyleId, userTemplates, storeTemplate, storeTemplateConvexId]);
 
   const handleExportPDF = async () => {
     if (!invoiceData) return;
