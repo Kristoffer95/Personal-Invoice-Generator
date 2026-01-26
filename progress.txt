@@ -159,3 +159,22 @@ Dashed borders on layout containers (editor-only visual indicators) no longer re
 
 ### Notes
 - Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)
+
+## empty-container-collapse (Bug Fix) - COMPLETED
+
+### Task completed
+PRD: empty-container-collapse
+Empty layout containers (Row/Column) with showWhenEmpty=false and heightMode=auto now collapse to 0 height in PDF output instead of rendering with minimum 40 points.
+
+### Key decisions
+- Layout engine: calculateAutoHeight() now returns 0 for empty containers when showWhenEmpty is false/undefined (default)
+- Layout engine: Empty containers with showWhenEmpty=true still get minimum 40pt height
+- PDF renderer: Added early return null in layout_container case for auto-height empty containers with showWhenEmpty=false
+- Double check: both layout engine (height=0) AND PDF renderer (return null) ensure empty containers collapse
+
+### Files changed
+- packages/shared-types/src/layout-engine.ts: Modified calculateAutoHeight() to return 0 for empty containers with showWhenEmpty=false
+- packages/pdf-generator/src/TemplatePDF.tsx: Added shouldHide check in layout_container case before rendering
+
+### Notes
+- Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)

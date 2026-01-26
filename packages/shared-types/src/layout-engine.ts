@@ -192,6 +192,7 @@ function getContainerChildren(
 /**
  * Calculate auto-height for a container based on its children
  * Now includes table height estimation when tableContent is provided
+ * Returns 0 for empty containers when showWhenEmpty is false (auto-collapse)
  */
 function calculateAutoHeight(
   container: TemplateElement,
@@ -200,8 +201,11 @@ function calculateAutoHeight(
   tableContent?: TableContentData
 ): number {
   if (children.length === 0) {
-    // Minimum height when empty
-    return 40
+    // Empty container: return 0 if showWhenEmpty is false (collapse), otherwise minimum height
+    if (container.showWhenEmpty === false || container.showWhenEmpty === undefined) {
+      return 0
+    }
+    return 40 // Minimum height when showWhenEmpty is true
   }
 
   const config = container.layoutConfig ?? defaultLayoutConfig

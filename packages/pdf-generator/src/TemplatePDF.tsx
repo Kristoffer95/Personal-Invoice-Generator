@@ -775,8 +775,20 @@ export function TemplatePDF({ template, invoice }: TemplatePDFProps) {
         return renderRectangle(element, margins, calcPos)
       case 'logo':
         return renderLogo(element, invoice, margins, calcPos)
-      case 'layout_container':
+      case 'layout_container': {
+        // Check if container should collapse (auto-height, empty, showWhenEmpty=false)
+        const isAutoHeight = element.heightMode === 'auto'
+        const hasChildren = template.elements.some(
+          el => el.parentId === element.id && el.positionMode === 'relative' && el.visible !== false
+        )
+        const shouldHide = isAutoHeight && !hasChildren &&
+          (element.showWhenEmpty === false || element.showWhenEmpty === undefined)
+
+        if (shouldHide) {
+          return null
+        }
         return renderLayoutContainerBackground(element, margins, calcPos)
+      }
       default:
         return null
     }

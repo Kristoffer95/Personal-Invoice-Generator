@@ -115,6 +115,6 @@
       "Generate PDF again - verify the container now renders with minimum height",
       "Add an element inside the container, generate PDF - verify container renders normally"
     ],
-    "passes": false
+    "passes": true
   }
 }
