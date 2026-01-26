@@ -450,6 +450,74 @@ export function PropertiesPanel() {
                   </div>
                 </div>
               )}
+              {/* Min Height - available for all element types */}
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Min Height</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={element.minHeightMode ?? 'none'}
+                    onValueChange={(value) =>
+                      updateElement(element.id, {
+                        minHeightMode: value as 'none' | 'fixed' | 'auto' | 'percentage',
+                        ...(value === 'none' && { minHeightValue: undefined, minHeightPercent: undefined }),
+                        ...(value === 'fixed' && !element.minHeightValue && { minHeightValue: 50 }),
+                        ...(value === 'percentage' && !element.minHeightPercent && { minHeightPercent: 25 }),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 w-[90px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="fixed">Fixed</SelectItem>
+                      <SelectItem value="auto">Auto</SelectItem>
+                      <SelectItem value="percentage">Percent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {element.minHeightMode === 'fixed' && (
+                    <Input
+                      type="number"
+                      value={element.minHeightValue ?? 50}
+                      onChange={(e) =>
+                        updateElement(element.id, {
+                          minHeightValue: Math.max(0, Number(e.target.value)),
+                        })
+                      }
+                      className="h-8 flex-1"
+                      min={0}
+                      placeholder="pts"
+                    />
+                  )}
+                  {element.minHeightMode === 'percentage' && (
+                    <div className="flex items-center gap-1 flex-1">
+                      <Input
+                        type="number"
+                        value={element.minHeightPercent ?? 25}
+                        onChange={(e) =>
+                          updateElement(element.id, {
+                            minHeightPercent: Math.min(100, Math.max(0, Number(e.target.value))),
+                          })
+                        }
+                        className="h-8 flex-1"
+                        min={0}
+                        max={100}
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  )}
+                  {element.minHeightMode === 'auto' && (
+                    <span className="text-xs text-muted-foreground self-center flex-1">
+                      Content-based
+                    </span>
+                  )}
+                  {(element.minHeightMode ?? 'none') === 'none' && (
+                    <span className="text-xs text-muted-foreground self-center flex-1">
+                      No minimum
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

@@ -21,6 +21,7 @@ const defaultPositioningFields = {
   flexGrow: 0,
   flexShrink: 1,
   showWhenEmpty: false,
+  minHeightMode: undefined, // 'none' by default - no minimum height constraint
 }
 
 // Default table style

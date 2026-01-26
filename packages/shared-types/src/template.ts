@@ -89,6 +89,10 @@ export type Justify = z.infer<typeof justifySchema>
 export const heightModeSchema = z.enum(['fixed', 'auto', 'percentage'])
 export type HeightMode = z.infer<typeof heightModeSchema>
 
+// Min height mode for all elements
+export const minHeightModeSchema = z.enum(['none', 'fixed', 'auto', 'percentage'])
+export type MinHeightMode = z.infer<typeof minHeightModeSchema>
+
 // Sizing mode for general elements (width and height)
 export const sizingModeSchema = z.enum(['fixed', 'auto', 'percentage', 'fill'])
 export type SizingMode = z.infer<typeof sizingModeSchema>
@@ -245,6 +249,12 @@ export const templateElementSchema = z.object({
   heightSizingMode: sizingModeSchema.optional(),
   // Height as percentage (0-100) when heightSizingMode is 'percentage'
   heightSizingPercent: z.number().min(0).max(100).optional(),
+  // Min height mode for all elements (none, fixed, auto, percentage)
+  minHeightMode: minHeightModeSchema.optional(),
+  // Min height value in points when minHeightMode is 'fixed'
+  minHeightValue: z.number().min(0).optional(),
+  // Min height as percentage (0-100) when minHeightMode is 'percentage'
+  minHeightPercent: z.number().min(0).max(100).optional(),
 })
 
 export type TemplateElement = z.infer<typeof templateElementSchema>

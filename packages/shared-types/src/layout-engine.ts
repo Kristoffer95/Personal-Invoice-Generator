@@ -8,6 +8,7 @@ import type {
   HeightMode,
   GridConfig,
   SizingMode,
+  MinHeightMode,
 } from './template'
 
 // Calculated position for rendering
@@ -52,6 +53,69 @@ const defaultGridConfig: GridConfig = {
   templateColumns: '1fr 1fr',
   columnGap: 8,
   rowGap: 8,
+}
+
+/**
+ * Calculate minimum height constraint for an element
+ * Returns the minimum height in points, or 0 if no minimum is set
+ */
+function calculateMinHeight(
+  element: TemplateElement,
+  elements: TemplateElement[],
+  pageHeight: number,
+  parentHeight?: number,
+  tableContent?: TableContentData
+): number {
+  const minHeightMode: MinHeightMode = element.minHeightMode ?? 'none'
+
+  switch (minHeightMode) {
+    case 'none':
+      return 0 // No minimum constraint
+    case 'fixed':
+      return element.minHeightValue ?? 0
+    case 'auto': {
+      // Auto minimum: use content-based height
+      // For layout containers, calculate auto height
+      if (element.type === 'layout_container') {
+        const children = getContainerChildren(element.id, elements)
+        return calculateAutoHeight(element, children, elements, tableContent)
+      }
+      // For tables, estimate based on content
+      if (isTableElement(element.type)) {
+        return estimateTableHeight(element, tableContent)
+      }
+      // For other elements, use their natural height
+      return element.position.height
+    }
+    case 'percentage': {
+      const percent = element.minHeightPercent ?? 0
+      const referenceHeight = parentHeight ?? pageHeight
+      return (referenceHeight * percent) / 100
+    }
+    default:
+      return 0
+  }
+}
+
+/**
+ * Apply minimum height constraint to a calculated height
+ */
+function applyMinHeight(
+  calculatedHeight: number,
+  element: TemplateElement,
+  elements: TemplateElement[],
+  pageHeight: number,
+  parentHeight?: number,
+  tableContent?: TableContentData
+): number {
+  const minHeight = calculateMinHeight(
+    element,
+    elements,
+    pageHeight,
+    parentHeight,
+    tableContent
+  )
+  return Math.max(calculatedHeight, minHeight)
 }
 
 /**
@@ -248,6 +312,8 @@ function calculateEffectiveHeight(
   availableHeight?: number,
   tableContent?: TableContentData
 ): number {
+  let height: number
+
   // For layout containers, use the legacy heightMode
   if (element.type === 'layout_container') {
     const heightMode = element.heightMode ?? 'fixed'
@@ -255,48 +321,55 @@ function calculateEffectiveHeight(
     switch (heightMode) {
       case 'auto': {
         const children = getContainerChildren(element.id, elements)
-        return calculateAutoHeight(element, children, elements, tableContent)
+        height = calculateAutoHeight(element, children, elements, tableContent)
+        break
       }
       case 'percentage': {
         const percent = element.heightPercent ?? 100
         const referenceHeight = parentHeight ?? pageHeight
-        return Math.max(10, (referenceHeight * percent) / 100)
+        height = Math.max(10, (referenceHeight * percent) / 100)
+        break
       }
       case 'fixed':
       default:
-        return element.position.height
+        height = element.position.height
     }
-  }
+  } else if (isTableElement(element.type) && tableContent) {
+    // For table elements, estimate height based on content
+    height = estimateTableHeight(element, tableContent)
+  } else {
+    // For other elements, use heightSizingMode
+    const sizingMode: SizingMode = element.heightSizingMode ?? 'fixed'
 
-  // For table elements, estimate height based on content
-  if (isTableElement(element.type) && tableContent) {
-    return estimateTableHeight(element, tableContent)
-  }
-
-  // For other elements, use heightSizingMode
-  const sizingMode: SizingMode = element.heightSizingMode ?? 'fixed'
-
-  switch (sizingMode) {
-    case 'auto':
-      // Auto height: for most elements, use their natural height
-      // In the future, this could be enhanced to measure text content
-      return element.position.height
-    case 'percentage': {
-      const percent = element.heightSizingPercent ?? 100
-      const referenceHeight = parentHeight ?? pageHeight
-      return Math.max(10, (referenceHeight * percent) / 100)
-    }
-    case 'fill': {
-      // Fill available height in parent container
-      if (availableHeight !== undefined) {
-        return Math.max(10, availableHeight)
+    switch (sizingMode) {
+      case 'auto':
+        // Auto height: for most elements, use their natural height
+        // In the future, this could be enhanced to measure text content
+        height = element.position.height
+        break
+      case 'percentage': {
+        const percent = element.heightSizingPercent ?? 100
+        const referenceHeight = parentHeight ?? pageHeight
+        height = Math.max(10, (referenceHeight * percent) / 100)
+        break
       }
-      return element.position.height
+      case 'fill': {
+        // Fill available height in parent container
+        if (availableHeight !== undefined) {
+          height = Math.max(10, availableHeight)
+        } else {
+          height = element.position.height
+        }
+        break
+      }
+      case 'fixed':
+      default:
+        height = element.position.height
     }
-    case 'fixed':
-    default:
-      return element.position.height
   }
+
+  // Apply minHeight constraint
+  return applyMinHeight(height, element, elements, pageHeight, parentHeight, tableContent)
 }
 
 /**
