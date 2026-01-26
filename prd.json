@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "id": "STYLE-001",
+      "category": "Style Editor",
+      "title": "Refactor System Templates to Use Layout Containers",
+      "description": "Refactor all 11 system templates (Classic Light, Classic Dark, Vercel Minimal, Vercel Professional, Vercel Executive, Vercel Modern, Vercel Classic, Dark Noir, Midnight Blue, Carbon Terminal, Obsidian Elegance) from absolute positioning to use layout_container elements with column/row layouts. The visual design must remain identical - only the underlying structure changes to use the container-based layout system.",
+      "acceptance_criteria": [
+        "All 11 system templates use layout_container elements instead of absolute positioning",
+        "Column containers are used for vertically stacked sections (header, billing info, tables, footer)",
+        "Row containers are used for side-by-side elements (Title+From, BillTo+Dates, Notes+Summary)",
+        "Child elements use positionMode: 'relative' with parentId references",
+        "Visual output is pixel-perfect identical to original templates",
+        "PDF export produces identical output",
+        "Table visibility toggles work correctly (work hours show/hide)",
+        "Empty containers collapse properly when showWhenEmpty: false",
+        "All token interpolation ({{invoice_number}}, etc.) works correctly",
+        "Style editor displays containers correctly"
+      ],
+      "steps_to_verify": [
+        "Generate PDF screenshots of all templates BEFORE refactoring",
+        "Refactor Classic Light template first as reference implementation",
+        "Compare visual output - must be identical",
+        "Refactor remaining 10 templates using same pattern",
+        "Test each template: PDF export, visibility toggles, token interpolation",
+        "Verify style editor shows containers with proper hierarchy",
+        "Screenshot comparison: BEFORE vs AFTER must match"
+      ],
+      "files_to_modify": [
+        "apps/web/src/lib/system-templates.ts"
+      ],
+      "passes": true
+    }
+  ]
+}

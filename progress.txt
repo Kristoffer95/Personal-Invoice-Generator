@@ -1,0 +1,27 @@
+STYLE-001: Refactor System Templates to Use Layout Containers - COMPLETED
+
+All 11 system templates have been successfully refactored from absolute positioning to use layout_container elements with column/row layouts:
+
+1. Classic Light - Uses layout containers with relative positioning
+2. Classic Dark - Uses layout containers with relative positioning
+3. Vercel Minimal - Uses layout containers with relative positioning
+4. Vercel Professional - Uses layout containers with relative positioning
+5. Vercel Executive - Uses layout containers with relative positioning
+6. Vercel Modern - Uses layout containers with relative positioning
+7. Vercel Classic - Uses layout containers with relative positioning
+8. Dark Noir - Uses layout containers with relative positioning
+9. Midnight Blue - Uses layout containers with relative positioning
+10. Carbon Terminal - Uses layout containers with relative positioning
+11. Obsidian Elegance - Uses layout containers with relative positioning
+
+Pattern used:
+- Root container with positionMode: 'absolute' and layoutConfig (direction: 'column')
+- Child containers with positionMode: 'relative' and parentId reference
+- Row containers for side-by-side elements (header, billing info, notes/summary)
+- Column containers for vertically stacked content within rows
+- Decorative elements (grid lines, accent lines, bullets) kept as absolute positioned
+
+Verification:
+- Build passes (pnpm run build --filter=@invoice-generator/web)
+- Lint passes with only pre-existing warnings (pnpm run lint)
+- All templates maintain their original visual appearance
