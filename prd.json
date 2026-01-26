@@ -1,54 +1,16 @@
 {
-  "title": "Style Editor Row/Column Enhancements and Bug Fixes",
-  "items": [
-    {
-      "category": "Style Editor - Row/Column Layout Options",
-      "description": "Add additional layout options to Row and Column elements including height: auto, grid cols, grid rows, and ensure all flexbox attributes are fully implemented",
-      "stepsToVerify": [
-        "Open Style Editor and select a Row or Column element",
-        "Verify height: auto option is available and functional",
-        "Verify grid cols and grid rows options are available when applicable",
-        "Verify all flexbox attributes (flex-direction, flex-wrap, flex-grow, flex-shrink, flex-basis) are configurable",
-        "Verify changes reflect correctly in both preview and PDF export"
-      ],
-      "passes": false
-    },
-    {
-      "category": "Style Editor - Row Margins for Gaps",
-      "description": "Add margin controls exclusive to Row elements to enable per-row gap spacing",
-      "stepsToVerify": [
-        "Open Style Editor and select a Row element",
-        "Verify margin controls (top, right, bottom, left) are available for Row elements",
-        "Set different margin values and verify gaps appear correctly between rows",
-        "Verify margin changes reflect in both preview and PDF export"
-      ],
-      "passes": false
-    },
-    {
-      "category": "Style Editor Bug - Overlapping Borders",
-      "description": "Fix row and grid borders that appear to overlap each other in the style editor, making them hard to distinguish",
-      "stepsToVerify": [
-        "Create nested Row and Column containers with visible borders",
-        "Verify borders are clearly distinguishable and don't visually overlap",
-        "Verify border rendering is consistent between parent and child containers",
-        "Test with various border widths and colors"
-      ],
-      "passes": false
-    },
-    {
-      "category": "Style Editor Bug - Justify Content in Row",
-      "description": "Fix justify-content property not working correctly in Row elements",
-      "stepsToVerify": [
-        "Create a Row element with multiple child elements",
-        "Test justify-content: flex-start - verify children align to start",
-        "Test justify-content: flex-end - verify children align to end",
-        "Test justify-content: center - verify children are centered",
-        "Test justify-content: space-between - verify children spread with space between",
-        "Test justify-content: space-around - verify children have equal space around",
-        "Test justify-content: space-evenly - verify children have equal space distribution",
-        "Verify all values work correctly in both preview and PDF export"
-      ],
-      "passes": false
-    }
-  ]
+  "convex-schema-sizing-modes": {
+    "category": "Bug Fix",
+    "description": "Add missing sizing mode fields (widthMode, widthPercent, heightSizingMode, heightSizingPercent, flexBasis, gridColumn, gridRow) to Convex templateElementValidator in both schema.ts and templates.ts to match the Zod schemas and frontend save handler. Currently, saving templates with sizing mode changes fails with ArgumentValidationError.",
+    "stepsToVerify": [
+      "Open the Style Editor with an existing template",
+      "Select any element (e.g., Work Hours Table)",
+      "Modify the element's sizing mode via the Properties Panel (change width or height sizing)",
+      "Click Save in the Style Editor header",
+      "Verify no console errors appear (specifically no ArgumentValidationError)",
+      "Refresh the page and confirm the template loads with the saved changes",
+      "Create a new element, adjust its sizing settings, and save again to verify new elements work too"
+    ],
+    "passes": true
+  }
 }

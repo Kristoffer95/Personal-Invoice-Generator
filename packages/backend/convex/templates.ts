@@ -118,6 +118,32 @@ const justifyValidator = v.union(
 // Layout direction
 const layoutDirectionValidator = v.union(v.literal("column"), v.literal("row"));
 
+// Height mode for layout containers
+const heightModeValidator = v.union(
+  v.literal("fixed"),
+  v.literal("auto"),
+  v.literal("percentage")
+);
+
+// Sizing mode for general elements (width and height)
+const sizingModeValidator = v.union(
+  v.literal("fixed"),
+  v.literal("auto"),
+  v.literal("percentage"),
+  v.literal("fill")
+);
+
+// Display mode for layout containers (flexbox or grid)
+const displayModeValidator = v.union(v.literal("flex"), v.literal("grid"));
+
+// Grid configuration for CSS Grid layout
+const gridConfigValidator = v.object({
+  templateColumns: v.optional(v.string()),
+  templateRows: v.optional(v.string()),
+  columnGap: v.optional(v.number()),
+  rowGap: v.optional(v.number()),
+});
+
 // Layout container configuration
 const layoutConfigValidator = v.object({
   direction: v.optional(layoutDirectionValidator),
@@ -125,6 +151,8 @@ const layoutConfigValidator = v.object({
   align: v.optional(alignmentValidator),
   justify: v.optional(justifyValidator),
   wrap: v.optional(v.boolean()),
+  displayMode: v.optional(displayModeValidator),
+  grid: v.optional(gridConfigValidator),
 });
 
 // Spacing for relative elements
@@ -159,8 +187,25 @@ const templateElementValidator = v.object({
   spacing: v.optional(spacingValidator),
   flexGrow: v.optional(v.number()),
   flexShrink: v.optional(v.number()),
+  flexBasis: v.optional(v.union(v.literal("auto"), v.number())),
   alignSelf: v.optional(alignmentValidator),
+  // Grid item properties (only used when parent is in grid mode)
+  gridColumn: v.optional(v.string()),
+  gridRow: v.optional(v.string()),
+  // Layout container configuration
   layoutConfig: v.optional(layoutConfigValidator),
+  // Height mode for layout containers (fixed, auto, percentage)
+  heightMode: v.optional(heightModeValidator),
+  // Height as percentage (0-100) when heightMode is 'percentage'
+  heightPercent: v.optional(v.number()),
+  // Width sizing mode for non-container elements (fixed, auto, percentage, fill)
+  widthMode: v.optional(sizingModeValidator),
+  // Width as percentage (0-100) when widthMode is 'percentage'
+  widthPercent: v.optional(v.number()),
+  // Height sizing mode for non-container elements (fixed, auto, percentage, fill)
+  heightSizingMode: v.optional(sizingModeValidator),
+  // Height as percentage (0-100) when heightSizingMode is 'percentage'
+  heightSizingPercent: v.optional(v.number()),
 });
 
 const templateThemeValidator = v.object({

@@ -1,12 +1,15 @@
-## BUG - Style Editor - Row/Element Properties Not Saving
-- FIXED: handleSave() in StyleEditorHeader.tsx was missing element properties
-- Added: widthMode, widthPercent, heightMode, heightPercent, heightSizingMode, heightSizingPercent, flexBasis, gridColumn, gridRow
-- Root cause: Incomplete element mapping when preparing elements for Convex save
-- File changed: apps/web/src/components/style-editor/StyleEditorHeader.tsx
-- Commit: 25ac21a
+## convex-schema-sizing-modes (completed)
+Added missing sizing mode fields to Convex templateElementValidator in schema.ts and templates.ts.
 
-## BUG - Style Editor - Properties Panel Scroll Not Working
-- FIXED: PropertiesPanel outer div missing height constraint
-- Root cause: ScrollArea needs constrained height from parent; outer div was flex-col but lacked h-full overflow-hidden
-- Fix: Added `h-full overflow-hidden` to main container div
-- File changed: apps/web/src/components/style-editor/PropertiesPanel.tsx
+Fields added:
+- widthMode, widthPercent (element width sizing)
+- heightSizingMode, heightSizingPercent (element height sizing)
+- heightMode, heightPercent (layout container height)
+- flexBasis, gridColumn, gridRow (flex/grid props)
+- displayMode, grid config in layoutConfigValidator
+
+Files changed:
+- packages/backend/convex/schema.ts
+- packages/backend/convex/templates.ts
+
+Build passes. Tests/lint have env issues (rollup native module, eslint config) unrelated to changes.
