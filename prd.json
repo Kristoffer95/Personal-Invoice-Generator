@@ -146,6 +146,6 @@
       "Test registerHandler() API - verify runtime registration works",
       "Verify code comments guide developers on extending the system"
     ],
-    "passes": false
+    "passes": true
   }
 }

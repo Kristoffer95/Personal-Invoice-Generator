@@ -215,3 +215,26 @@ Created a registry-based Element Visibility System ensuring consistent visibilit
 - Build passes. Lint passes (warnings only). Tests fail due to pre-existing rollup arm64 module issue (unrelated)
 - Future element types get default handler automatically. Custom handlers only needed for data-dependent visibility
 - Preview mode shows all elements; render mode applies visibility rules
+
+## element-visibility-future-proof-guide (Documentation) - COMPLETED
+
+### Task completed
+PRD: element-visibility-future-proof-guide
+Documentation embedded in visibility system code files via JSDoc comments and module headers.
+
+### Key decisions
+- registry.ts has full guide at top: when custom handlers needed vs not needed, step-by-step for adding new element types
+- Each handler file has JSDoc explaining visibility rules for that element type
+- types.ts has detailed JSDoc for all interfaces and type aliases
+- index.ts has usage examples and extension guide
+- Default handler applies automatically for new element types - no action needed
+
+### Files documented
+- packages/shared-types/src/element-visibility/registry.ts: Main documentation with "When Custom Handlers Are Needed" and "Adding a New Element Type" sections
+- packages/shared-types/src/element-visibility/handlers/*.ts: Each handler has JSDoc explaining visibility rules
+- packages/shared-types/src/element-visibility/index.ts: Usage examples and extending guide
+
+### Notes
+- No separate markdown file needed - documentation lives with code
+- registerVisibilityHandler() API documented for runtime registration
+- Decision flowchart embedded in registry.ts comments
