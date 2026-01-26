@@ -1,72 +1,27 @@
-## PRD Item 4: Style Editor Bug - Justify Content in Row
+## Completed Tasks
 
-### Task completed
-Fix justify-content property not working correctly in Row elements
+### Style Editor - Height Options (PRD Item 1)
+- Added heightMode schema: fixed | auto | percentage
+- Added heightPercent field (0-100) for percentage mode
+- Updated layout-engine to calculate heights dynamically:
+  - Fixed: uses element.position.height
+  - Auto: calculates from children + padding + gaps
+  - Percentage: relative to parent or page height
+- Added UI controls in PropertiesPanel for height mode selection
+- Updated TemplateElement.tsx to show height mode indicator
+- Disabled height resize handle for auto/percentage modes
+- Files changed:
+  - packages/shared-types/src/template.ts
+  - packages/shared-types/src/layout-engine.ts
+  - apps/web/src/components/style-editor/PropertiesPanel.tsx
+  - apps/web/src/components/style-editor/TemplateElement.tsx
+  - apps/web/src/lib/template-store.ts
 
-### Key decisions and reasoning
-- Root cause: Layout engine (`layout-engine.ts`) wasn't implementing justify-content at all - just sequentially stacking children
-- Added 'space-evenly' to justify schema (was missing per PRD requirements)
-- Rewrote `calculateContainerChildPositions()` with two-pass algorithm:
-  1. First pass: Calculate total content size and child dimensions
-  2. Second pass: Apply justify-content distribution (start offset + gap calculation)
-- Updated `TemplateElement.tsx` preview to include justifyContent and alignItems CSS for visual feedback
-- Updated `PropertiesPanel.tsx` to include 'Space Evenly' option in dropdown
+### Previously Completed (from git history)
+- Style Editor Bug - Overlapping Borders (d725265)
+- Style Editor - Row Margins for Gaps (6367b7b)
+- Style Editor Bug - Justify Content in Row (85bdd3e)
 
-### Files changed
-- packages/shared-types/src/template.ts (added 'space-evenly' to justifySchema)
-- packages/shared-types/src/layout-engine.ts (complete rewrite of calculateContainerChildPositions)
-- apps/web/src/components/style-editor/TemplateElement.tsx (added justifyContent/alignItems to container preview)
-- apps/web/src/components/style-editor/PropertiesPanel.tsx (added Space Evenly option)
-
-### Notes
-- TypeScript compiles successfully for changed files
-- Pre-existing test infrastructure issues (rollup module missing for linux-arm64-gnu) prevent running tests
-- Pre-existing lint configuration issues prevent linting
-- Pre-existing type errors in StatusLogList.test.tsx (unrelated to this change)
-
-## PRD Item 2: Style Editor - Row Margins for Gaps
-
-### Task completed
-Add margin controls exclusive to Row elements to enable per-row gap spacing
-
-### Key decisions and reasoning
-- Used existing `spacing` schema property which was already defined in templateElementSchema
-- Margin controls only visible when layout_container direction='row' (per PRD requirement)
-- Updated PropertiesPanel with margin input fields (top/right/bottom/left) for Row containers
-- Updated TemplateElement preview to apply CSS margin for visual feedback in editor
-- Updated PDF renderer to offset container position and adjust dimensions by margin values
-- Also fixed pre-existing bug: Convex schema missing 'space-evenly' in justifyValidator (causing type mismatch)
-
-### Files changed
-- apps/web/src/components/style-editor/PropertiesPanel.tsx (added Row Margin section)
-- apps/web/src/components/style-editor/TemplateElement.tsx (added margin CSS for Row containers)
-- packages/pdf-generator/src/TemplatePDF.tsx (apply spacing to layout container rendering)
-- packages/backend/convex/schema.ts (added 'space-evenly' to justifyValidator)
-- packages/backend/convex/templates.ts (added 'space-evenly' to justifyValidator)
-
-### Notes
-- TypeScript compiles successfully (npm run build passes)
-- Pre-existing test/lint infrastructure issues unchanged
-
-## PRD Item 3: Style Editor Bug - Overlapping Borders
-
-### Task completed
-Fix row and grid borders that appear to overlap each other in the style editor
-
-### Key decisions and reasoning
-- Root cause: layout_container elements had two border sources:
-  1. `element.border` property applied to outer wrapper (lines 65-70)
-  2. Hardcoded `border-2 border-dashed` class on inner container div (line 179)
-- This caused visual overlap when user configured borders on containers
-- Solution: Apply border to inner container only, choosing between:
-  - User-configured border (if `element.border.width > 0`)
-  - Default blue dashed indicator (if no user border configured)
-- Added border controls to PropertiesPanel (width, color, style, radius) for all elements including layout containers
-
-### Files changed
-- apps/web/src/components/style-editor/TemplateElement.tsx (conditional border rendering, exclude layout_container from outer border)
-- apps/web/src/components/style-editor/PropertiesPanel.tsx (added Border Width/Color/Style/Radius controls in Appearance section)
-
-### Notes
-- TypeScript compiles successfully (npm run build passes)
-- Pre-existing test/lint infrastructure issues unchanged
+## Remaining PRD Items
+- CSS Grid Support (not started)
+- Row/Column Layout Options - all flexbox attrs (not started)

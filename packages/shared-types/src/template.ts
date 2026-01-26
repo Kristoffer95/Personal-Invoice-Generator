@@ -85,6 +85,10 @@ export type Alignment = z.infer<typeof alignmentSchema>
 export const justifySchema = z.enum(['start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'])
 export type Justify = z.infer<typeof justifySchema>
 
+// Height mode for layout containers
+export const heightModeSchema = z.enum(['fixed', 'auto', 'percentage'])
+export type HeightMode = z.infer<typeof heightModeSchema>
+
 // Layout container configuration
 export const layoutConfigSchema = z.object({
   direction: layoutDirectionSchema.default('column'),
@@ -197,6 +201,10 @@ export const templateElementSchema = z.object({
   alignSelf: alignmentSchema.optional(), // Override container alignment
   // Layout container configuration
   layoutConfig: layoutConfigSchema.optional(),
+  // Height mode for layout containers (fixed, auto, percentage)
+  heightMode: heightModeSchema.optional(),
+  // Height as percentage (0-100) when heightMode is 'percentage'
+  heightPercent: z.number().min(0).max(100).optional(),
 })
 
 export type TemplateElement = z.infer<typeof templateElementSchema>

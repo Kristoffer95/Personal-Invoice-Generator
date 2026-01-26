@@ -5,6 +5,7 @@ import type {
   Spacing,
   Alignment,
   LayoutDirection,
+  HeightMode,
 } from './template'
 
 // Calculated position for rendering
@@ -57,6 +58,67 @@ function getContainerChildren(
 }
 
 /**
+ * Calculate auto-height for a container based on its children
+ */
+function calculateAutoHeight(
+  container: TemplateElement,
+  children: TemplateElement[],
+  elements: TemplateElement[]
+): number {
+  if (children.length === 0) {
+    // Minimum height when empty
+    return 40
+  }
+
+  const config = container.layoutConfig ?? defaultLayoutConfig
+  const isColumn = config.direction === 'column'
+  const padding = container.padding ?? 0
+
+  let totalHeight = padding * 2 // Top and bottom padding
+
+  if (isColumn) {
+    // For column layout, sum up all children heights plus gaps
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      const spacing = child.spacing ?? defaultSpacing
+
+      // Get child height (recursively calculate if it's an auto-height container)
+      let childHeight = child.position.height
+      if (child.type === 'layout_container' && child.heightMode === 'auto') {
+        const grandchildren = getContainerChildren(child.id, elements)
+        childHeight = calculateAutoHeight(child, grandchildren, elements)
+      }
+
+      totalHeight += childHeight + spacing.top + spacing.bottom
+
+      // Add gap between children (not after the last one)
+      if (i < children.length - 1) {
+        totalHeight += config.gap
+      }
+    }
+  } else {
+    // For row layout, take the maximum height of children
+    let maxChildHeight = 0
+    for (const child of children) {
+      const spacing = child.spacing ?? defaultSpacing
+
+      // Get child height (recursively calculate if it's an auto-height container)
+      let childHeight = child.position.height
+      if (child.type === 'layout_container' && child.heightMode === 'auto') {
+        const grandchildren = getContainerChildren(child.id, elements)
+        childHeight = calculateAutoHeight(child, grandchildren, elements)
+      }
+
+      const totalChildHeight = childHeight + spacing.top + spacing.bottom
+      maxChildHeight = Math.max(maxChildHeight, totalChildHeight)
+    }
+    totalHeight += maxChildHeight
+  }
+
+  return Math.max(totalHeight, 40) // Minimum 40
+}
+
+/**
  * Calculate alignment offset for cross-axis positioning
  */
 function calculateAlignOffset(
@@ -95,12 +157,44 @@ function calculateChildSize(
 }
 
 /**
+ * Calculate effective height for an element based on its height mode
+ */
+function calculateEffectiveHeight(
+  element: TemplateElement,
+  elements: TemplateElement[],
+  pageHeight: number,
+  parentHeight?: number
+): number {
+  const heightMode = element.heightMode ?? 'fixed'
+
+  switch (heightMode) {
+    case 'auto': {
+      if (element.type === 'layout_container') {
+        const children = getContainerChildren(element.id, elements)
+        return calculateAutoHeight(element, children, elements)
+      }
+      return element.position.height
+    }
+    case 'percentage': {
+      const percent = element.heightPercent ?? 100
+      const referenceHeight = parentHeight ?? pageHeight
+      return Math.max(10, (referenceHeight * percent) / 100)
+    }
+    case 'fixed':
+    default:
+      return element.position.height
+  }
+}
+
+/**
  * Calculate positions for children of a layout container
  */
 function calculateContainerChildPositions(
   container: TemplateElement,
   children: TemplateElement[],
-  containerPosition: CalculatedPosition
+  containerPosition: CalculatedPosition,
+  elements: TemplateElement[] = [],
+  pageHeight: number = 0
 ): Map<string, CalculatedPosition> {
   const result = new Map<string, CalculatedPosition>()
   const config = container.layoutConfig ?? defaultLayoutConfig
@@ -126,7 +220,12 @@ function calculateContainerChildPositions(
   for (const child of children) {
     const spacing = child.spacing ?? defaultSpacing
     const baseWidth = child.position.width
-    const baseHeight = child.position.height
+
+    // Calculate effective height for child based on its height mode
+    let baseHeight = child.position.height
+    if (child.type === 'layout_container') {
+      baseHeight = calculateEffectiveHeight(child, elements, pageHeight, containerPosition.height)
+    }
 
     let childWidth: number
     let childHeight: number
@@ -259,7 +358,8 @@ function processContainer(
   container: TemplateElement,
   containerPosition: CalculatedPosition,
   elements: TemplateElement[],
-  result: Map<string, CalculatedPosition>
+  result: Map<string, CalculatedPosition>,
+  pageHeight: number
 ): void {
   // Set the container's position
   result.set(container.id, containerPosition)
@@ -271,7 +371,9 @@ function processContainer(
   const childPositions = calculateContainerChildPositions(
     container,
     children,
-    containerPosition
+    containerPosition,
+    elements,
+    pageHeight
   )
 
   // Add child positions to result and recursively process nested containers
@@ -280,7 +382,7 @@ function processContainer(
     if (childPos) {
       if (child.type === 'layout_container') {
         // Recursively process nested container
-        processContainer(child, childPos, elements, result)
+        processContainer(child, childPos, elements, result, pageHeight)
       } else {
         result.set(child.id, childPos)
       }
@@ -311,16 +413,19 @@ export function calculateElementPositions(
     // Skip relative elements (they'll be positioned by their containers)
     if (element.positionMode === 'relative' && element.parentId) continue
 
+    // Calculate effective height based on height mode
+    const effectiveHeight = calculateEffectiveHeight(element, elements, pageHeight)
+
     const position: CalculatedPosition = {
       x: element.position.x,
       y: element.position.y,
       width: element.position.width,
-      height: element.position.height,
+      height: effectiveHeight,
     }
 
     if (element.type === 'layout_container') {
       // Process container and its children
-      processContainer(element, position, elements, result)
+      processContainer(element, position, elements, result, pageHeight)
     } else {
       result.set(element.id, position)
     }

@@ -221,20 +221,84 @@ export function PropertiesPanel() {
                   className="h-8"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="pos-h" className="text-xs">
-                  Height
-                </Label>
-                <Input
-                  id="pos-h"
-                  type="number"
-                  value={Math.round(element.position.height)}
-                  onChange={(e) =>
-                    handlePositionChange('height', Number(e.target.value))
-                  }
-                  className="h-8"
-                />
-              </div>
+              {/* Height with mode selector for layout containers */}
+              {element.type === 'layout_container' ? (
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Height</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={element.heightMode ?? 'fixed'}
+                      onValueChange={(value) =>
+                        updateElement(element.id, {
+                          heightMode: value as 'fixed' | 'auto' | 'percentage',
+                          // Reset heightPercent when switching away from percentage
+                          ...(value !== 'percentage' && { heightPercent: undefined }),
+                          // Set default percent when switching to percentage
+                          ...(value === 'percentage' && !element.heightPercent && { heightPercent: 50 }),
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                        <SelectItem value="auto">Auto</SelectItem>
+                        <SelectItem value="percentage">Percent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(element.heightMode ?? 'fixed') === 'fixed' && (
+                      <Input
+                        id="pos-h"
+                        type="number"
+                        value={Math.round(element.position.height)}
+                        onChange={(e) =>
+                          handlePositionChange('height', Number(e.target.value))
+                        }
+                        className="h-8 flex-1"
+                        placeholder="Height"
+                      />
+                    )}
+                    {element.heightMode === 'percentage' && (
+                      <div className="flex items-center gap-1 flex-1">
+                        <Input
+                          type="number"
+                          value={element.heightPercent ?? 50}
+                          onChange={(e) =>
+                            updateElement(element.id, {
+                              heightPercent: Math.min(100, Math.max(0, Number(e.target.value))),
+                            })
+                          }
+                          className="h-8 flex-1"
+                          min={0}
+                          max={100}
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                    )}
+                    {element.heightMode === 'auto' && (
+                      <span className="text-xs text-muted-foreground self-center flex-1">
+                        Fits content
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label htmlFor="pos-h" className="text-xs">
+                    Height
+                  </Label>
+                  <Input
+                    id="pos-h"
+                    type="number"
+                    value={Math.round(element.position.height)}
+                    onChange={(e) =>
+                      handlePositionChange('height', Number(e.target.value))
+                    }
+                    className="h-8"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

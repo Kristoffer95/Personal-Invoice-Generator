@@ -80,6 +80,9 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
     [element.id, selectElement]
   )
 
+  // Check if height is resizable (only for fixed height mode or non-containers)
+  const isHeightResizable = element.type !== 'layout_container' || (element.heightMode ?? 'fixed') === 'fixed'
+
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -102,7 +105,8 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
 
         resizeElement(element.id, {
           width: Math.max(20, resizeRef.current.startWidth + deltaX),
-          height: Math.max(20, resizeRef.current.startHeight + deltaY),
+          // Only update height if it's resizable (fixed mode)
+          ...(isHeightResizable && { height: Math.max(20, resizeRef.current.startHeight + deltaY) }),
         })
       }
 
@@ -208,6 +212,12 @@ export function TemplateElement({ element, isSelected, margins, calculatedPositi
             <div className="absolute top-1 left-1 flex items-center gap-1 text-xs text-blue-500/70 pointer-events-none">
               <Box className="h-3 w-3" />
               {element.layoutConfig?.direction === 'row' ? '→ Row' : '↓ Column'}
+              {element.heightMode === 'auto' && (
+                <span className="text-[10px] bg-blue-100 text-blue-600 px-1 rounded">auto</span>
+              )}
+              {element.heightMode === 'percentage' && (
+                <span className="text-[10px] bg-blue-100 text-blue-600 px-1 rounded">{element.heightPercent ?? 100}%</span>
+              )}
             </div>
             {typeof childCount === 'number' && (
               <div className="absolute bottom-1 right-1 text-xs text-blue-500/70 pointer-events-none">

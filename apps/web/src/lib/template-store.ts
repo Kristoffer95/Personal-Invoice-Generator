@@ -66,7 +66,7 @@ interface TemplateState {
   moveUp: (id: string) => void
   moveDown: (id: string) => void
   moveElement: (id: string, position: Partial<Position>) => void
-  resizeElement: (id: string, size: { width: number; height: number }) => void
+  resizeElement: (id: string, size: { width: number; height?: number }) => void
 
   // Element style actions
   updateElementFont: (id: string, fontStyle: Partial<FontStyle>) => void
@@ -452,7 +452,9 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
             // Snap to grid if enabled
             if (snapToGrid) {
               newWidth = Math.round(newWidth / gridSize) * gridSize
-              newHeight = Math.round(newHeight / gridSize) * gridSize
+              if (newHeight !== undefined) {
+                newHeight = Math.round(newHeight / gridSize) * gridSize
+              }
             }
 
             return {
@@ -460,7 +462,7 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
               position: {
                 ...el.position,
                 width: Math.max(10, newWidth),
-                height: Math.max(10, newHeight),
+                ...(newHeight !== undefined && { height: Math.max(10, newHeight) }),
               },
             }
           }),
