@@ -97,6 +97,16 @@
 - Files changed:
   - apps/web/src/components/style-editor/StyleEditorHeader.tsx
 
+### Invoice Preview - Edit Style Button (PRD Item 5)
+- Added "Edit Style" button in invoice preview modal header
+- User templates: direct navigation to /style-editor?templateId={id}
+- System templates (Classic Light/Dark): shows duplicate confirmation dialog
+  - Creates copy via duplicateFromSystemTemplate mutation
+  - Navigates to style editor with new template ID
+- Added AlertDialog for system template duplicate confirmation
+- Reused template duplication logic from StyleManagerPage
+- Files changed:
+  - apps/web/src/components/invoice/InvoicePreviewPopover.tsx
+
 ## Remaining PRD Items
 - Width/Height Modes for All Elements (not started)
-- Invoice Preview - Edit Style Button (not started)

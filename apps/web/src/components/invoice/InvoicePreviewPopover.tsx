@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Eye, ExternalLink, Calendar, Clock, Loader2, Download, Sun, Moon, Star } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, ExternalLink, Calendar, Clock, Loader2, Download, Sun, Moon, Star, Pencil } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@invoice-generator/backend/convex/_generated/api";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
@@ -19,12 +20,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { InvoiceStatusBadge } from "./InvoiceStatusSelect";
 import { InvoicePreview } from "./InvoicePreview";
 import { useInvoiceStore } from "@/lib/store";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { useTemplates } from "@/hooks/use-templates";
+import { useTemplates, useTemplateMutations } from "@/hooks/use-templates";
+import { useToast } from "@/hooks/use-toast";
 import { SYSTEM_TEMPLATE_IDS, getSystemTemplate } from "@/lib/system-templates";
 import { convexToInvoiceTemplate } from "@/lib/template-utils";
 import type { InvoiceTemplate } from "@invoice-generator/shared-types";
@@ -51,7 +63,11 @@ function formatCurrency(amount: number, currency: Currency): string {
 }
 
 export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps) {
+  const router = useRouter();
+  const { toast } = useToast();
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const invoice = useQuery(api.invoices.getInvoice, { invoiceId });
   const { backgroundDesigns } = useInvoiceStore();
   const [previewStyleId, setPreviewStyleId] = useState<string>(SYSTEM_TEMPLATE_IDS.CLASSIC_LIGHT);
@@ -59,6 +75,7 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
   // Use Convex templates
   const { isAuthenticated } = useCurrentUser();
   const { templates: convexTemplates } = useTemplates();
+  const { duplicateFromSystemTemplate } = useTemplateMutations();
 
   // Convert Convex templates to InvoiceTemplate format
   const userTemplates = useMemo(() => {
@@ -139,6 +156,109 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
     if (selectedPreviewTemplate) {
       const { downloadTemplatePDF } = await import("@invoice-generator/pdf-generator");
       await downloadTemplatePDF({ template: selectedPreviewTemplate, invoice: invoiceData });
+    }
+  };
+
+  // Check if selected style is a system template
+  const isSystemTemplate = previewStyleId === SYSTEM_TEMPLATE_IDS.CLASSIC_LIGHT ||
+    previewStyleId === SYSTEM_TEMPLATE_IDS.CLASSIC_DARK;
+
+  const handleEditStyle = () => {
+    if (!selectedPreviewTemplate) return;
+
+    if (isSystemTemplate) {
+      // Show duplicate confirmation dialog for system templates
+      setShowDuplicateDialog(true);
+    } else {
+      // Navigate directly for user templates
+      setShowFullPreview(false);
+      router.push(`/style-editor?templateId=${previewStyleId}`);
+    }
+  };
+
+  const handleDuplicateAndEdit = async () => {
+    if (!selectedPreviewTemplate || !isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to customize templates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDuplicating(true);
+    try {
+      const template = selectedPreviewTemplate;
+      // Duplicate from system template with all fields explicitly set
+      const newTemplateId = await duplicateFromSystemTemplate({
+        name: `${template.name} (Copy)`,
+        description: template.description,
+        pageSize: template.pageSize,
+        orientation: template.orientation,
+        margins: template.margins,
+        theme: template.theme,
+        backgroundColor: template.backgroundColor,
+        elements: template.elements.map((el) => ({
+          id: el.id,
+          type: el.type,
+          name: el.name ?? "Untitled Element",
+          position: el.position,
+          content: el.content ?? "",
+          fontStyle: el.fontStyle ? {
+            fontFamily: el.fontStyle.fontFamily ?? "Helvetica",
+            fontSize: el.fontStyle.fontSize ?? 12,
+            fontWeight: el.fontStyle.fontWeight ?? "normal",
+            fontStyle: el.fontStyle.fontStyle ?? "normal",
+            textAlign: el.fontStyle.textAlign ?? "left",
+            textDecoration: el.fontStyle.textDecoration ?? "none",
+            textTransform: el.fontStyle.textTransform ?? "none",
+            letterSpacing: el.fontStyle.letterSpacing ?? 0,
+            lineHeight: el.fontStyle.lineHeight ?? 1.2,
+            color: el.fontStyle.color ?? "#333333",
+          } : undefined,
+          border: el.border ? {
+            width: el.border.width ?? 0,
+            color: el.border.color ?? "#000000",
+            style: el.border.style ?? "solid",
+            radius: el.border.radius ?? 0,
+          } : undefined,
+          backgroundColor: el.backgroundColor,
+          padding: el.padding ?? 0,
+          opacity: el.opacity ?? 1,
+          zIndex: el.zIndex ?? 0,
+          locked: el.locked ?? false,
+          visible: el.visible ?? true,
+          tableStyle: el.tableStyle ? {
+            headerBackgroundColor: el.tableStyle.headerBackgroundColor ?? "#1a1a2e",
+            headerTextColor: el.tableStyle.headerTextColor ?? "#ffffff",
+            rowBackgroundColor: el.tableStyle.rowBackgroundColor ?? "#ffffff",
+            alternateRowBackgroundColor: el.tableStyle.alternateRowBackgroundColor ?? "#f8fafc",
+            borderColor: el.tableStyle.borderColor ?? "#e0e0e0",
+            showHeaderBorder: el.tableStyle.showHeaderBorder ?? true,
+            showRowBorders: el.tableStyle.showRowBorders ?? true,
+            columns: el.tableStyle.columns,
+          } : undefined,
+          logoUrl: el.logoUrl,
+          objectFit: el.objectFit,
+        })),
+      });
+
+      setShowDuplicateDialog(false);
+      setShowFullPreview(false);
+      toast({
+        title: "Style duplicated",
+        description: `A copy of "${template.name}" has been created.`,
+      });
+      router.push(`/style-editor?templateId=${newTemplateId}`);
+    } catch (error) {
+      console.error("Failed to duplicate template:", error);
+      toast({
+        title: "Failed to duplicate",
+        description: "An error occurred while duplicating the style.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(false);
     }
   };
 
@@ -289,6 +409,10 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 shrink-0 mr-8">
+                <Button onClick={handleEditStyle} size="sm" variant="outline">
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Style
+                </Button>
                 <Button onClick={handleExportPDF} size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
@@ -345,6 +469,32 @@ export function InvoicePreviewPopover({ invoiceId }: InvoicePreviewPopoverProps)
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate System Template Confirmation Dialog */}
+      <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Customize System Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              System templates cannot be edited directly. Would you like to create a copy of
+              &ldquo;{selectedPreviewTemplate?.name}&rdquo; that you can customize?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDuplicating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateAndEdit} disabled={isDuplicating}>
+              {isDuplicating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Duplicating...
+                </>
+              ) : (
+                "Duplicate & Edit"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
