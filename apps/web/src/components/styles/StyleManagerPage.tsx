@@ -11,6 +11,8 @@ import { useTemplates, useTemplateMutations, useDefaultTemplate } from '@/hooks/
 import { useToast } from '@/hooks/use-toast'
 import { StyleCard } from './StyleCard'
 import { DeleteStyleDialog } from './DeleteStyleDialog'
+import { StyleManagerFolderDialog } from './StyleManagerFolderDialog'
+import { StyleFolder } from '@/components/export/StyleFolder'
 import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
 import { convexToInvoiceTemplate } from '@/lib/template-utils'
 import type { InvoiceTemplate } from '@invoice-generator/shared-types'
@@ -42,8 +44,22 @@ export default function StyleManagerPage() {
   // System templates (static, from code)
   const systemTemplates = SYSTEM_TEMPLATES
 
+  // Split system templates into Classic (no -v2 suffix) and V2 (with -v2 suffix)
+  const classicTemplates = useMemo(
+    () => systemTemplates.filter((t) => !t.id.endsWith('-v2')),
+    [systemTemplates]
+  )
+  const v2Templates = useMemo(
+    () => systemTemplates.filter((t) => t.id.endsWith('-v2')),
+    [systemTemplates]
+  )
+
   // Default template ID (from Convex or system template)
   const defaultTemplateId = defaultTemplate?._id ?? null
+
+  // Folder dialog state
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState<'classic' | 'v2' | null>(null)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [templateToDelete, setTemplateToDelete] = useState<InvoiceTemplate | null>(null)
@@ -291,6 +307,20 @@ export default function StyleManagerPage() {
     router.push('/style-editor')
   }
 
+  // Folder handlers
+  const handleFolderClick = (folder: 'classic' | 'v2') => {
+    setSelectedFolder(folder)
+    setFolderDialogOpen(true)
+  }
+
+  const selectedFolderTemplates = useMemo(() => {
+    if (selectedFolder === 'classic') return classicTemplates
+    if (selectedFolder === 'v2') return v2Templates
+    return []
+  }, [selectedFolder, classicTemplates, v2Templates])
+
+  const selectedFolderName = selectedFolder === 'classic' ? 'Default Styles Classic' : 'Default Styles V2'
+
   // Get selected template names for delete dialog
   const selectedTemplateNames = useMemo(() => {
     return userTemplates
@@ -333,21 +363,17 @@ export default function StyleManagerPage() {
           <p className="mb-4 text-sm text-muted-foreground">
             Professional templates available to everyone. Duplicate to customize.
           </p>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {systemTemplates.map((template) => (
-              <StyleCard
-                key={template.id}
-                template={template}
-                isDefault={false}
-                isSelected={false}
-                showCheckbox={false}
-                onEdit={() => handleEdit(template)}
-                onDuplicate={() => handleDuplicate(template)}
-                onSetDefault={() => handleSetDefault(template)}
-                onDelete={() => {}}
-                onSelect={() => {}}
-              />
-            ))}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <StyleFolder
+              name="Default Styles Classic"
+              templateCount={classicTemplates.length}
+              onClick={() => handleFolderClick('classic')}
+            />
+            <StyleFolder
+              name="Default Styles V2"
+              templateCount={v2Templates.length}
+              onClick={() => handleFolderClick('v2')}
+            />
           </div>
         </section>
 
@@ -502,6 +528,17 @@ export default function StyleManagerPage() {
         count={isBulkDelete ? selectedIds.size : undefined}
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
+      />
+
+      {/* System Templates Folder Dialog */}
+      <StyleManagerFolderDialog
+        open={folderDialogOpen}
+        onOpenChange={setFolderDialogOpen}
+        folderName={selectedFolderName}
+        templates={selectedFolderTemplates}
+        onEdit={handleEdit}
+        onDuplicate={handleDuplicate}
+        onSetDefault={handleSetDefault}
       />
     </div>
   )

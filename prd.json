@@ -96,6 +96,45 @@
         "apps/web/src/components/export/StylePickerDialog.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-004",
+      "category": "Style Editor",
+      "title": "Add Folder-Based Template Organization to /styles Page",
+      "description": "Extend the folder-based template organization (STYLE-003) to the Style Manager page (/styles). Replace the flat grid of 22 system templates with two folder cards. Clicking a folder opens a modal showing templates with full StyleCard actions (edit, duplicate, set default).",
+      "acceptance_criteria": [
+        "StyleManagerFolderDialog component created using shadcn Dialog",
+        "Modal renders StyleCard components (not StylePreviewCard) with full actions",
+        "Two folder cards displayed: 'Default Styles Classic' and 'Default Styles V2'",
+        "Classic folder contains 11 templates (IDs without '-v2' suffix)",
+        "V2 folder contains 11 templates (IDs with '-v2' suffix)",
+        "Clicking folder opens modal with templates inside",
+        "Edit action in modal navigates to style editor",
+        "Duplicate action in modal creates copy of template",
+        "Set default action works for user templates",
+        "Existing Custom Styles section remains unchanged",
+        "Reuses existing StyleFolder component from export folder"
+      ],
+      "steps_to_verify": [
+        "Create StyleManagerFolderDialog.tsx in apps/web/src/components/styles/",
+        "Import StyleFolder component into StyleManagerPage.tsx",
+        "Add folder state management (selectedFolder, folderDialogOpen)",
+        "Add useMemo to filter classicTemplates and v2Templates",
+        "Replace flat system templates grid with two StyleFolder components",
+        "Add StyleManagerFolderDialog at end of component",
+        "Run npm run dev and navigate to /styles",
+        "Verify two folder cards appear in Default Styles section",
+        "Click 'Default Styles Classic' folder - verify modal opens with 11 templates",
+        "Click 'Default Styles V2' folder - verify modal opens with 11 templates",
+        "In modal, click edit - verify navigation to style editor",
+        "In modal, click duplicate - verify template is duplicated",
+        "Verify Custom Styles section still functions correctly"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/styles/StyleManagerFolderDialog.tsx (new)",
+        "apps/web/src/components/styles/StyleManagerPage.tsx"
+      ],
+      "passes": true
     }
   ]
 }

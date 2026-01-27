@@ -74,3 +74,29 @@ Verification:
 - Build passes: pnpm run build --filter=@invoice-generator/web
 - Lint passes: only pre-existing warnings
 - Tests pass: shared-types (61), pdf-generator (9)
+
+---
+
+STYLE-004: Add Folder-Based Template Organization to /styles Page - COMPLETED
+
+Extended folder-based organization from export dialog (STYLE-003) to Style Manager page (/styles). Replaced flat grid of 22 system templates with two folder cards. Clicking folder opens modal with StyleCard components (full actions: edit, duplicate, set default).
+
+Components created:
+- StyleManagerFolderDialog.tsx: Modal using shadcn Dialog, renders StyleCard grid with full actions
+
+Changes to StyleManagerPage.tsx:
+- Imported StyleFolder from export/ and StyleManagerFolderDialog
+- Added folderDialogOpen, selectedFolder state
+- useMemo splits systemTemplates into classicTemplates / v2Templates by '-v2' suffix
+- Replaced flat template grid with 2-column grid of StyleFolder components
+- Added StyleManagerFolderDialog at end of component
+- Folder handlers pass through edit/duplicate/setDefault actions
+
+Files changed:
+- apps/web/src/components/styles/StyleManagerFolderDialog.tsx (new)
+- apps/web/src/components/styles/StyleManagerPage.tsx
+
+Verification:
+- Build passes: pnpm run build --filter=@invoice-generator/web
+- Lint passes: only pre-existing warnings
+- Tests pass: shared-types (61), pdf-generator (9)
