@@ -25,6 +25,7 @@ import {
   User,
   Calendar,
   Paintbrush,
+  ListTodo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -125,6 +126,7 @@ type InvoiceItem = {
   periodStart?: string;
   periodEnd?: string;
   totalDays?: number;
+  showDetailedHours?: boolean;
 };
 
 // Helper function to format invoice coverage info
@@ -178,6 +180,7 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
   const {
     deleteInvoice,
     duplicateInvoice,
+    updateInvoice,
     updateStatus,
     archiveInvoice,
     unarchiveInvoice,
@@ -501,6 +504,21 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
       toast({ title: isLocked ? "Invoice unlocked" : "Invoice locked" });
     } catch {
       toast({ title: "Error", description: "Failed to update lock status", variant: "destructive" });
+    }
+  };
+
+  // Toggle detailed hours display in PDF
+  const handleToggleDetailedHours = async (invoiceId: Id<"invoices">, currentValue: boolean) => {
+    try {
+      await updateInvoice({ invoiceId, showDetailedHours: !currentValue });
+      toast({
+        title: !currentValue ? "Detailed hours enabled" : "Detailed hours disabled",
+        description: !currentValue
+          ? "PDF will show per-day hours breakdown"
+          : "PDF will show hours summary only",
+      });
+    } catch {
+      toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
     }
   };
 
@@ -1169,6 +1187,12 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                                     </DropdownMenuItem>
                                   }
                                 />
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleDetailedHours(invoice._id, !!invoice.showDetailedHours)}
+                                >
+                                  <ListTodo className="h-4 w-4 mr-2" />
+                                  {invoice.showDetailedHours ? "Hide detailed hours in PDF" : "Show detailed hours in PDF"}
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {invoice.isArchived ? (
                                   <DropdownMenuItem

@@ -191,3 +191,30 @@ Verification:
 - Build passes: npm run build
 - Tests pass: 830 tests (web), 61 (shared-types), 9 (pdf-generator)
 - Lint passes: only pre-existing warnings
+
+---
+
+INV-001: Quick Toggle for Detailed Hours in Invoice List - COMPLETED
+
+Added menu item to invoice row dropdown to toggle showDetailedHours without navigating to Calendar page.
+
+Changes:
+- Added ListTodo icon import to InvoiceManagerPage
+- Added showDetailedHours to InvoiceItem type
+- Added updateInvoice to destructured useInvoiceMutations
+- Added handleToggleDetailedHours handler function
+- Added dropdown menu item after "View Logs" showing current state
+
+Menu item behavior:
+- Shows "Show detailed hours in PDF" when disabled (showDetailedHours=false)
+- Shows "Hide detailed hours in PDF" when enabled (showDetailedHours=true)
+- Clicking toggles the value via updateInvoice mutation
+- Toast confirms with "Detailed hours enabled/disabled" and description
+
+Files changed:
+- apps/web/src/components/invoice/InvoiceManagerPage.tsx
+
+Verification:
+- Build passes: npm run build
+- Tests pass: 830 tests (web), shared-types, pdf-generator
+- Lint passes: only pre-existing warnings

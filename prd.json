@@ -289,7 +289,7 @@
       "files_to_modify": [
         "apps/web/src/components/invoice/InvoiceManagerPage.tsx"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
