@@ -206,15 +206,35 @@ Changes:
 - Added dropdown menu item after "View Logs" showing current state
 
 Menu item behavior:
-- Shows "Show detailed hours in PDF" when disabled (showDetailedHours=false)
-- Shows "Hide detailed hours in PDF" when enabled (showDetailedHours=true)
-- Clicking toggles the value via updateInvoice mutation
+- Switch component shows "Detailed hours in PDF" label with toggle
+- Switch reflects current showDetailedHours state (checked/unchecked)
+- Toggling Switch updates showDetailedHours via updateInvoice mutation
 - Toast confirms with "Detailed hours enabled/disabled" and description
+
+Files changed:
+- apps/web/src/components/invoice/InvoiceManagerPage.tsx (Switch import, DropdownMenuItem with Switch)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: only pre-existing warnings
+
+---
+
+INV-001 Update: Changed from text toggle to Switch component - COMPLETED
+
+Updated per acceptance criteria requiring Switch component instead of text-based toggle.
+
+Changes:
+- Replaced text menu item "Show/Hide detailed hours in PDF" with Switch component
+- Static label "Detailed hours in PDF" with Switch toggle on right
+- Switch checked state reflects invoice.showDetailedHours
+- onCheckedChange triggers handleToggleDetailedHours
+- onSelect preventDefault keeps menu open during toggle
+- Removed unused ListTodo icon import
 
 Files changed:
 - apps/web/src/components/invoice/InvoiceManagerPage.tsx
 
 Verification:
 - Build passes: npm run build
-- Tests pass: 830 tests (web), shared-types, pdf-generator
 - Lint passes: only pre-existing warnings

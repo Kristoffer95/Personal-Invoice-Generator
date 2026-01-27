@@ -25,12 +25,12 @@ import {
   User,
   Calendar,
   Paintbrush,
-  ListTodo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -1188,10 +1188,14 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                                   }
                                 />
                                 <DropdownMenuItem
-                                  onClick={() => handleToggleDetailedHours(invoice._id, !!invoice.showDetailedHours)}
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="flex items-center justify-between gap-4"
                                 >
-                                  <ListTodo className="h-4 w-4 mr-2" />
-                                  {invoice.showDetailedHours ? "Hide detailed hours in PDF" : "Show detailed hours in PDF"}
+                                  <span>Detailed hours in PDF</span>
+                                  <Switch
+                                    checked={!!invoice.showDetailedHours}
+                                    onCheckedChange={() => handleToggleDetailedHours(invoice._id, !!invoice.showDetailedHours)}
+                                  />
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {invoice.isArchived ? (

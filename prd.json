@@ -262,7 +262,7 @@
         "apps/web/src/app/profile/page.tsx",
         "apps/web/src/components/clients/ClientManager.tsx"
       ],
-      "passes": true
+      "passes": false
     },
     {
       "id": "INV-001",
