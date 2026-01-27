@@ -225,6 +225,8 @@
       "title": "Unsaved Changes Warning System",
       "description": "Implement 'unsaved changes' warnings throughout the app to prevent users from accidentally losing work when navigating away from pages with unsaved changes. Create a reusable hook and dialog component that can be applied to Calendar page, Invoice Form, Profile Settings, and Client Manager.",
       "acceptance_criteria": [
+        "NO FALSE POSITIVES: Visiting a page and leaving WITHOUT changes must NOT trigger warning",
+        "Initialization-aware tracking: dirty state captured AFTER all init effects complete",
         "useUnsavedChanges hook created with beforeunload handler and navigation guard",
         "UnsavedChangesDialog component created with Save, Discard, and Cancel actions",
         "Browser refresh/close shows native browser warning when changes exist",
@@ -232,13 +234,14 @@
         "Dialog Save button saves changes then navigates",
         "Dialog Discard button navigates without saving",
         "Dialog Cancel button stays on current page",
-        "Invoice store has savedFingerprint, markAsSaved(), and hasUnsavedChanges()",
         "Calendar page integrated with unsaved changes protection",
         "Invoice Form integrated with unsaved changes protection",
         "Profile Settings page integrated with unsaved changes protection",
         "Client Manager modal close warns about unsaved form data"
       ],
       "steps_to_verify": [
+        "CRITICAL: Open Calendar page, make NO changes, try to leave - verify NO dialog appears",
+        "CRITICAL: Open existing invoice Calendar page, make NO changes, try to leave - verify NO dialog",
         "Open Calendar page, modify work hours, try to navigate away - verify dialog appears",
         "On dialog, click Cancel - verify stay on page with changes intact",
         "On dialog, click Discard - verify navigation occurs without saving",
