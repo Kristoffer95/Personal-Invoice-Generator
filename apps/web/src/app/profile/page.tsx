@@ -52,6 +52,13 @@ export default function ProfilePage() {
     invoicePrefix: "",
   });
 
+  // Unsaved changes detection
+  const { hasUnsavedChanges, markAsSaved, resetTracking } = useUnsavedChanges({
+    currentState: formData,
+    initialState: initialFormDataRef.current || formData,
+    enableBeforeUnload: true,
+  });
+
   // Load existing profile data
   useEffect(() => {
     if (user && profile) {
@@ -69,9 +76,10 @@ export default function ProfilePage() {
         invoicePrefix: profile.invoicePrefix ?? "",
       };
       setFormData(loadedData);
-      // Store initial state for unsaved changes detection
+      // Store initial state for unsaved changes detection and reset hook baseline
       if (initialFormDataRef.current === null) {
         initialFormDataRef.current = loadedData;
+        resetTracking(loadedData);
       }
     } else if (user && !profile) {
       // Initialize from Clerk user data
@@ -89,19 +97,13 @@ export default function ProfilePage() {
         invoicePrefix: "",
       };
       setFormData(initialData);
-      // Store initial state for unsaved changes detection
+      // Store initial state for unsaved changes detection and reset hook baseline
       if (initialFormDataRef.current === null) {
         initialFormDataRef.current = initialData;
+        resetTracking(initialData);
       }
     }
-  }, [user, profile]);
-
-  // Unsaved changes detection
-  const { hasUnsavedChanges, markAsSaved } = useUnsavedChanges({
-    currentState: formData,
-    initialState: initialFormDataRef.current || formData,
-    enableBeforeUnload: true,
-  });
+  }, [user, profile, resetTracking]);
 
   // Handle navigation with unsaved changes
   const handleNavigationAttempt = useCallback((destination: string) => {

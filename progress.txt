@@ -238,3 +238,29 @@ Files changed:
 Verification:
 - Build passes: npm run build
 - Lint passes: only pre-existing warnings
+
+---
+
+UX-001 Update: Fix false positive unsaved changes detection - COMPLETED
+
+Fixed bug where unsaved changes warning could appear incorrectly when:
+- Opening existing invoice and leaving without making changes
+- Opening new invoice and leaving after initial data loading
+
+Root cause: useUnsavedChanges hook was initialized with initial state before async data loading completed. When data loaded via useEffect, the ref was updated but hook's internal savedFingerprint was stale.
+
+Fix:
+- Call resetTracking(snapshot) after setting initialRef in data loading effects
+- Move useUnsavedChanges hook call BEFORE the useEffects that call resetTracking
+- This ensures hook is defined before effects reference resetTracking
+
+Files changed:
+- apps/web/src/components/invoice/InvoiceCalendarPage.tsx (reordered hook, added resetTracking calls)
+- apps/web/src/app/profile/page.tsx (reordered hook, added resetTracking calls)
+
+ClientManager.tsx NOT changed - uses synchronous useMemo pattern that already works correctly.
+
+Verification:
+- Build passes: npm run build
+- Tests pass: 830 tests
+- Lint passes: only pre-existing warnings

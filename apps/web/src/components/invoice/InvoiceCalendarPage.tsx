@@ -284,27 +284,32 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
     markAsSaved,
   } = useInvoiceStore()
 
-  // Track initial state for unsaved changes detection
-  // We set this after the invoice is loaded (either new or existing)
-  useEffect(() => {
-    if (initialInvoiceRef.current === null && hasLoadedInvoice) {
-      initialInvoiceRef.current = JSON.parse(JSON.stringify(currentInvoice))
-    }
-  }, [hasLoadedInvoice, currentInvoice])
-
-  // For new invoices, set initial state after profile is applied
-  useEffect(() => {
-    if (initialInvoiceRef.current === null && !invoiceId && hasAppliedProfile) {
-      initialInvoiceRef.current = JSON.parse(JSON.stringify(currentInvoice))
-    }
-  }, [hasAppliedProfile, invoiceId, currentInvoice])
-
   // Unsaved changes detection
-  const { hasUnsavedChanges, markAsSaved: markHookAsSaved } = useUnsavedChanges({
+  const { hasUnsavedChanges, markAsSaved: markHookAsSaved, resetTracking } = useUnsavedChanges({
     currentState: currentInvoice,
     initialState: initialInvoiceRef.current || currentInvoice,
     enableBeforeUnload: true,
   })
+
+  // Track initial state for unsaved changes detection
+  // We set this after the invoice is loaded (either new or existing)
+  // Also reset the hook's tracking to match the new baseline
+  useEffect(() => {
+    if (initialInvoiceRef.current === null && hasLoadedInvoice) {
+      const snapshot = JSON.parse(JSON.stringify(currentInvoice))
+      initialInvoiceRef.current = snapshot
+      resetTracking(snapshot)
+    }
+  }, [hasLoadedInvoice, currentInvoice, resetTracking])
+
+  // For new invoices, set initial state after profile is applied
+  useEffect(() => {
+    if (initialInvoiceRef.current === null && !invoiceId && hasAppliedProfile) {
+      const snapshot = JSON.parse(JSON.stringify(currentInvoice))
+      initialInvoiceRef.current = snapshot
+      resetTracking(snapshot)
+    }
+  }, [hasAppliedProfile, invoiceId, currentInvoice, resetTracking])
 
   // Handle navigation with unsaved changes
   const handleNavigationAttempt = useCallback((destination: string) => {
