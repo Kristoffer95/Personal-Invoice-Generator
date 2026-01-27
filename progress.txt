@@ -47,3 +47,30 @@ Verification:
 - Build passes: pnpm run build --filter=@invoice-generator/web
 - Lint passes: only pre-existing warnings
 - Tests pass: shared-types (61), pdf-generator (9)
+
+---
+
+STYLE-003: Implement Folder-Based Template Organization with Modal Navigation - COMPLETED
+
+Replaced flat grid of system templates with folder-based UI. Two folders: "Default Styles Classic" (11 templates without -v2 suffix) and "Default Styles V2" (11 templates with -v2 suffix). Clicking folder opens shadcn Dialog modal with templates.
+
+Components created:
+- StyleFolder.tsx: Folder card with Folder/FolderOpen icon (hover), name, badge count
+- StyleFolderContentsDialog.tsx: Modal popup using shadcn Dialog, displays StylePreviewCard grid
+
+Changes to StylePickerDialog.tsx:
+- Added folderDialogOpen, selectedFolder state
+- useMemo splits systemTemplates into classicTemplates / v2Templates by '-v2' suffix
+- Replaced flat template grid with 2-column grid of StyleFolder components
+- Added StyleFolderContentsDialog at end of component
+- Template selection in folder modal closes both dialogs, triggers export
+
+Files changed:
+- apps/web/src/components/export/StyleFolder.tsx (new)
+- apps/web/src/components/export/StyleFolderContentsDialog.tsx (new)
+- apps/web/src/components/export/StylePickerDialog.tsx
+
+Verification:
+- Build passes: pnpm run build --filter=@invoice-generator/web
+- Lint passes: only pre-existing warnings
+- Tests pass: shared-types (61), pdf-generator (9)
