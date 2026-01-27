@@ -176,6 +176,120 @@
         "packages/backend/convex/templates.ts"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-006",
+      "category": "Style Editor",
+      "title": "Add Canvas Sizing Mode and Auto-Create Root Container",
+      "description": "Add a new 'canvas' sizing mode that fills the content area (page minus margins) without overflow. Also auto-create a root column container with canvas sizing when creating a new style template. Currently, 100% width/height overflows because it calculates from full page dimensions, not the content area.",
+      "acceptance_criteria": [
+        "New 'canvas' sizing mode added to sizingModeSchema and heightModeSchema",
+        "Canvas width = pageWidth - leftMargin - rightMargin (e.g., 595.28 - 40 - 40 = 515.28 for A4)",
+        "Canvas height = pageHeight - topMargin - bottomMargin (e.g., 841.89 - 40 - 60 = 741.89 for A4)",
+        "Container Width mode selector includes 'Canvas' option",
+        "Container Height mode selector includes 'Canvas' option",
+        "Canvas mode shows 'Full content width' / 'Full content height' helper text",
+        "Layout engine calculateEffectiveWidth() handles 'canvas' mode with margin calculation",
+        "Layout engine calculateEffectiveHeight() handles 'canvas' mode with margin calculation",
+        "Creating a new style auto-creates a root Column container",
+        "Root container has widthMode: 'canvas' and heightMode: 'canvas'",
+        "Root container positioned at x=0, y=0",
+        "Root container fills content area exactly (no overflow)",
+        "PDF export renders canvas-sized containers correctly"
+      ],
+      "steps_to_verify": [
+        "Open Style Editor at /style-editor",
+        "Add a Column container to the canvas",
+        "Set Width mode to 'Canvas' - verify 'Full content width' helper text appears",
+        "Set Height mode to 'Canvas' - verify 'Full content height' helper text appears",
+        "Set position X=0, Y=0",
+        "Verify container fills exactly within margin guides (no overflow)",
+        "Export PDF - verify container fills content area correctly",
+        "Go to /styles page",
+        "Click 'Create New Style'",
+        "Verify redirected to /style-editor with a root Column container already present",
+        "Verify root container has Canvas width and height modes",
+        "Verify root container fills the content area exactly"
+      ],
+      "files_to_modify": [
+        "packages/shared-types/src/template.ts",
+        "packages/shared-types/src/layout-engine.ts",
+        "apps/web/src/components/style-editor/PropertiesPanel.tsx",
+        "apps/web/src/lib/template-store.ts"
+      ],
+      "passes": true
+    },
+    {
+      "id": "UX-001",
+      "category": "UX",
+      "title": "Unsaved Changes Warning System",
+      "description": "Implement 'unsaved changes' warnings throughout the app to prevent users from accidentally losing work when navigating away from pages with unsaved changes. Create a reusable hook and dialog component that can be applied to Calendar page, Invoice Form, Profile Settings, and Client Manager.",
+      "acceptance_criteria": [
+        "useUnsavedChanges hook created with beforeunload handler and navigation guard",
+        "UnsavedChangesDialog component created with Save, Discard, and Cancel actions",
+        "Browser refresh/close shows native browser warning when changes exist",
+        "In-app navigation shows custom dialog when changes exist",
+        "Dialog Save button saves changes then navigates",
+        "Dialog Discard button navigates without saving",
+        "Dialog Cancel button stays on current page",
+        "Invoice store has savedFingerprint, markAsSaved(), and hasUnsavedChanges()",
+        "Calendar page integrated with unsaved changes protection",
+        "Invoice Form integrated with unsaved changes protection",
+        "Profile Settings page integrated with unsaved changes protection",
+        "Client Manager modal close warns about unsaved form data"
+      ],
+      "steps_to_verify": [
+        "Open Calendar page, modify work hours, try to navigate away - verify dialog appears",
+        "On dialog, click Cancel - verify stay on page with changes intact",
+        "On dialog, click Discard - verify navigation occurs without saving",
+        "On dialog, click Save - verify changes saved then navigation occurs",
+        "Modify work hours, refresh browser - verify browser warning appears",
+        "Open Invoice Form, make changes, navigate away - verify dialog appears",
+        "Open Profile Settings, modify fields, navigate away - verify dialog appears",
+        "Open Client Manager, edit a client, close modal without saving - verify warning",
+        "Make changes, save successfully, navigate away - verify no warning (no unsaved changes)"
+      ],
+      "files_to_modify": [
+        "apps/web/src/lib/fingerprint.ts (new)",
+        "apps/web/src/hooks/use-unsaved-changes.ts (new)",
+        "apps/web/src/components/ui/unsaved-changes-dialog.tsx (new)",
+        "apps/web/src/lib/store.ts",
+        "apps/web/src/components/invoice/InvoiceCalendarPage.tsx",
+        "apps/web/src/components/invoice/InvoiceForm.tsx",
+        "apps/web/src/app/profile/page.tsx",
+        "apps/web/src/components/clients/ClientManager.tsx"
+      ],
+      "passes": true
+    },
+    {
+      "id": "INV-001",
+      "category": "Invoice Manager",
+      "title": "Quick Toggle for Detailed Hours in Invoice List",
+      "description": "Add a quick action in the invoice list dropdown menu to toggle the 'Show detailed per-day hours breakdown in PDF' setting without navigating to the Calendar page. Users currently must open the Calendar page just to change this PDF display setting.",
+      "acceptance_criteria": [
+        "New menu item added to invoice row DropdownMenu",
+        "Menu item label shows current state: 'Show detailed hours in PDF' or 'Hide detailed hours in PDF'",
+        "Menu item has appropriate icon (ListTodo/FileText)",
+        "Clicking menu item toggles showDetailedHours field on the invoice",
+        "Toast notification confirms the toggle action",
+        "Change persists to Convex database immediately",
+        "PDF export reflects the updated setting",
+        "No page navigation required to change setting"
+      ],
+      "steps_to_verify": [
+        "Open invoice list at root or folder view",
+        "Click dropdown menu (three dots) on any invoice row",
+        "Verify new menu item appears: 'Show detailed hours in PDF' or 'Hide detailed hours in PDF'",
+        "Click the menu item - verify toast notification appears",
+        "Export PDF of that invoice - verify detailed hours setting applied correctly",
+        "Open dropdown again - verify menu item label toggled to opposite state",
+        "Click menu item again - verify toggle works in reverse",
+        "Refresh page - verify setting persisted correctly"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/invoice/InvoiceManagerPage.tsx"
+      ],
+      "passes": false
     }
   ]
 }

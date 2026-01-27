@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import {
   format,
@@ -55,6 +56,8 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog'
 import { useInvoiceStore } from '@/lib/store'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplates, useDefaultTemplate } from '@/hooks/use-templates'
@@ -104,6 +107,7 @@ interface ValidationErrors {
 
 export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: InvoiceCalendarPageProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [isExporting, setIsExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -116,6 +120,9 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
   const [isSavingToCloud, setIsSavingToCloud] = useState(false)
   const [hasAppliedProfile, setHasAppliedProfile] = useState(false)
   const [hasLoadedInvoice, setHasLoadedInvoice] = useState(false)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
+  const initialInvoiceRef = useRef<Partial<typeof currentInvoice> | null>(null)
 
   // Get Convex hooks for cloud sync
   const { data: profileData, user: authUser, profile: userProfile } = useUserProfile()
@@ -274,7 +281,54 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
     saveInvoice,
     resetCurrentInvoice,
     setCurrentInvoice,
+    markAsSaved,
   } = useInvoiceStore()
+
+  // Track initial state for unsaved changes detection
+  // We set this after the invoice is loaded (either new or existing)
+  useEffect(() => {
+    if (initialInvoiceRef.current === null && hasLoadedInvoice) {
+      initialInvoiceRef.current = JSON.parse(JSON.stringify(currentInvoice))
+    }
+  }, [hasLoadedInvoice, currentInvoice])
+
+  // For new invoices, set initial state after profile is applied
+  useEffect(() => {
+    if (initialInvoiceRef.current === null && !invoiceId && hasAppliedProfile) {
+      initialInvoiceRef.current = JSON.parse(JSON.stringify(currentInvoice))
+    }
+  }, [hasAppliedProfile, invoiceId, currentInvoice])
+
+  // Unsaved changes detection
+  const { hasUnsavedChanges, markAsSaved: markHookAsSaved } = useUnsavedChanges({
+    currentState: currentInvoice,
+    initialState: initialInvoiceRef.current || currentInvoice,
+    enableBeforeUnload: true,
+  })
+
+  // Handle navigation with unsaved changes
+  const handleNavigationAttempt = useCallback((destination: string) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(destination)
+      setShowUnsavedDialog(true)
+      return true // Blocked
+    }
+    return false // Allowed
+  }, [hasUnsavedChanges])
+
+  // Navigation handlers for unsaved changes dialog
+  const handleUnsavedDiscard = useCallback(() => {
+    setShowUnsavedDialog(false)
+    if (pendingNavigation) {
+      router.push(pendingNavigation)
+    }
+    setPendingNavigation(null)
+  }, [pendingNavigation, router])
+
+  const handleUnsavedCancel = useCallback(() => {
+    setShowUnsavedDialog(false)
+    setPendingNavigation(null)
+  }, [])
 
   // Load invoice from URL param (for editing existing invoice)
   useEffect(() => {
@@ -750,6 +804,10 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
           invoiceId: invoiceId as Id<'invoices'>,
           ...invoiceData,
         })
+        // Mark as saved to clear unsaved changes tracking
+        markAsSaved()
+        markHookAsSaved()
+        initialInvoiceRef.current = JSON.parse(JSON.stringify(currentInvoice))
         toast({
           title: 'Invoice updated',
           description: `Invoice #${currentInvoice.invoiceNumber} has been updated.`,
@@ -762,6 +820,10 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
         if (currentInvoice.to?.name) {
           await saveClientFromInvoice(currentInvoice.to)
         }
+        // Mark as saved to clear unsaved changes tracking
+        markAsSaved()
+        markHookAsSaved()
+        initialInvoiceRef.current = JSON.parse(JSON.stringify(currentInvoice))
         toast({
           title: 'Invoice saved to cloud',
           description: `Invoice #${currentInvoice.invoiceNumber} has been saved.`,
@@ -786,8 +848,20 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
     createInvoice,
     updateInvoice,
     saveClientFromInvoice,
+    markAsSaved,
+    markHookAsSaved,
     toast,
   ])
+
+  // Handle save action from unsaved changes dialog
+  const handleUnsavedSave = useCallback(async () => {
+    await handleSaveToCloud()
+    setShowUnsavedDialog(false)
+    if (pendingNavigation) {
+      router.push(pendingNavigation)
+    }
+    setPendingNavigation(null)
+  }, [handleSaveToCloud, pendingNavigation, router])
 
   const handlePreview = useCallback(() => {
     if (!validateInvoice()) {
@@ -878,11 +952,21 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0 ml-2 sm:ml-4" asChild>
-                  <Link href={folderId ? `/folders/${folderId}` : '/'}>
-                    <ArrowLeft className="h-5 w-5" />
-                    <span className="sr-only">Back to invoices</span>
-                  </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 ml-2 sm:ml-4"
+                  onClick={(e) => {
+                    const destination = folderId ? `/folders/${folderId}` : '/'
+                    if (handleNavigationAttempt(destination)) {
+                      e.preventDefault()
+                    } else {
+                      router.push(destination)
+                    }
+                  }}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  <span className="sr-only">Back to invoices</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Back to invoices</TooltipContent>
@@ -1839,6 +1923,16 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onOpenChange={setShowUnsavedDialog}
+        onSave={handleUnsavedSave}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
+        isSaving={isSavingToCloud}
+      />
     </div>
   )
 }

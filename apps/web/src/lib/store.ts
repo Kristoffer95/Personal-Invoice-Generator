@@ -13,10 +13,14 @@ import type {
   BankDetails,
 } from '@invoice-generator/shared-types'
 import { calculateInvoiceTotals } from '@invoice-generator/shared-types'
+import { createFingerprint } from '@/lib/fingerprint'
 
 interface InvoiceState {
   // Current invoice being edited
   currentInvoice: Partial<Invoice>
+
+  // Fingerprint of the last saved state (for unsaved changes detection)
+  savedFingerprint: string
 
   // Schedule settings (persisted separately for reuse)
   scheduleConfig: ScheduleConfig
@@ -30,6 +34,10 @@ interface InvoiceState {
   // Saved company profiles for quick fill
   savedFromProfiles: PartyInfo[]
   savedToProfiles: PartyInfo[]
+
+  // Unsaved changes detection
+  markAsSaved: () => void
+  hasUnsavedChanges: () => boolean
 
   // Actions
   setCurrentInvoice: (invoice: Partial<Invoice>) => void
@@ -146,11 +154,22 @@ export const useInvoiceStore = create<InvoiceState>()(
   persist(
     (set, get) => ({
       currentInvoice: { ...defaultInvoice },
+      savedFingerprint: createFingerprint(defaultInvoice),
       scheduleConfig: { ...defaultScheduleConfig },
       backgroundDesigns: defaultBackgroundDesigns,
       savedInvoices: [],
       savedFromProfiles: [],
       savedToProfiles: [],
+
+      markAsSaved: () =>
+        set((state) => ({
+          savedFingerprint: createFingerprint(state.currentInvoice),
+        })),
+
+      hasUnsavedChanges: () => {
+        const state = get()
+        return createFingerprint(state.currentInvoice) !== state.savedFingerprint
+      },
 
       setCurrentInvoice: (invoice) => set({ currentInvoice: invoice }),
 

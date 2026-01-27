@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { ArrowLeft, Save, Building2, FileText } from "lucide-react";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { UnsavedChangesDialog } from "@/components/ui/unsaved-changes-dialog";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
@@ -32,6 +34,9 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const { user, profile, isLoading, upsertProfile } = useUserProfile();
   const [isSaving, setIsSaving] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const initialFormDataRef = useRef<ProfileFormData | null>(null);
 
   const [formData, setFormData] = useState<ProfileFormData>({
     displayName: "",
@@ -50,7 +55,7 @@ export default function ProfilePage() {
   // Load existing profile data
   useEffect(() => {
     if (user && profile) {
-      setFormData({
+      const loadedData = {
         displayName: profile.displayName ?? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
         businessName: profile.businessName ?? "",
         address: profile.address ?? "",
@@ -62,22 +67,70 @@ export default function ProfilePage() {
         phone: profile.phone ?? "",
         taxId: profile.taxId ?? "",
         invoicePrefix: profile.invoicePrefix ?? "",
-      });
+      };
+      setFormData(loadedData);
+      // Store initial state for unsaved changes detection
+      if (initialFormDataRef.current === null) {
+        initialFormDataRef.current = loadedData;
+      }
     } else if (user && !profile) {
       // Initialize from Clerk user data
-      setFormData((prev) => ({
-        ...prev,
+      const initialData = {
         displayName: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+        businessName: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
         email: user.email ?? "",
-      }));
+        phone: "",
+        taxId: "",
+        invoicePrefix: "",
+      };
+      setFormData(initialData);
+      // Store initial state for unsaved changes detection
+      if (initialFormDataRef.current === null) {
+        initialFormDataRef.current = initialData;
+      }
     }
   }, [user, profile]);
+
+  // Unsaved changes detection
+  const { hasUnsavedChanges, markAsSaved } = useUnsavedChanges({
+    currentState: formData,
+    initialState: initialFormDataRef.current || formData,
+    enableBeforeUnload: true,
+  });
+
+  // Handle navigation with unsaved changes
+  const handleNavigationAttempt = useCallback((destination: string) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(destination);
+      setShowUnsavedDialog(true);
+      return true; // Blocked
+    }
+    return false; // Allowed
+  }, [hasUnsavedChanges]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    setShowUnsavedDialog(false);
+    if (pendingNavigation) {
+      router.push(pendingNavigation);
+    }
+    setPendingNavigation(null);
+  }, [pendingNavigation, router]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setPendingNavigation(null);
+  }, []);
 
   const handleChange = (field: keyof ProfileFormData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       await upsertProfile({
@@ -94,6 +147,10 @@ export default function ProfilePage() {
         invoicePrefix: formData.invoicePrefix || undefined,
       });
 
+      // Mark as saved to clear unsaved changes tracking
+      markAsSaved();
+      initialFormDataRef.current = formData;
+
       toast({
         title: "Profile saved",
         description: "Your profile has been updated successfully.",
@@ -107,7 +164,17 @@ export default function ProfilePage() {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [formData, upsertProfile, markAsSaved, toast]);
+
+  // Handle save from unsaved changes dialog
+  const handleUnsavedSave = useCallback(async () => {
+    await handleSave();
+    setShowUnsavedDialog(false);
+    if (pendingNavigation) {
+      router.push(pendingNavigation);
+    }
+    setPendingNavigation(null);
+  }, [handleSave, pendingNavigation, router]);
 
   if (isLoading) {
     return (
@@ -123,7 +190,15 @@ export default function ProfilePage() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (!handleNavigationAttempt("/")) {
+                  router.push("/");
+                }
+              }}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="font-semibold">Profile Settings</h1>
@@ -310,6 +385,16 @@ export default function ProfilePage() {
           </Button>
         </div>
       </main>
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onOpenChange={setShowUnsavedDialog}
+        onSave={handleUnsavedSave}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
+        isSaving={isSaving}
+      />
     </div>
   );
 }

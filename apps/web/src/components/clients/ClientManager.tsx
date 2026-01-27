@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -35,6 +35,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { UnsavedChangesDialog } from "@/components/ui/unsaved-changes-dialog";
+import { createFingerprint } from "@/lib/fingerprint";
 import { useClientProfiles, useClientMutations } from "@/hooks/use-client-profiles";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
 
@@ -76,10 +78,17 @@ export function ClientManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [editingClient, setEditingClient] = useState<Id<"clientProfiles"> | null>(null);
   const [clientToDelete, setClientToDelete] = useState<Id<"clientProfiles"> | null>(null);
   const [formData, setFormData] = useState<ClientFormData>(emptyFormData);
   const [isSaving, setIsSaving] = useState(false);
+  const initialFormDataRef = useRef<ClientFormData>(emptyFormData);
+
+  // Check for unsaved changes in form
+  const hasUnsavedChanges = useMemo(() => {
+    return createFingerprint(formData) !== createFingerprint(initialFormDataRef.current);
+  }, [formData]);
 
   // Filter clients by search query
   const filteredClients = clients.filter((client) => {
@@ -97,7 +106,7 @@ export function ClientManager() {
       const client = clients.find((c) => c._id === clientId);
       if (client) {
         setEditingClient(clientId);
-        setFormData({
+        const loadedData = {
           name: client.name,
           companyName: client.companyName ?? "",
           address: client.address ?? "",
@@ -110,22 +119,47 @@ export function ClientManager() {
           website: client.website ?? "",
           taxId: client.taxId ?? "",
           notes: client.notes ?? "",
-        });
+        };
+        setFormData(loadedData);
+        initialFormDataRef.current = loadedData;
       }
     } else {
       setEditingClient(null);
       setFormData(emptyFormData);
+      initialFormDataRef.current = emptyFormData;
     }
     setDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
     setDialogOpen(false);
     setEditingClient(null);
     setFormData(emptyFormData);
-  };
+    initialFormDataRef.current = emptyFormData;
+  }, []);
 
-  const handleSave = async () => {
+  // Handle dialog close attempt with unsaved changes check
+  const handleDialogOpenChange = useCallback((open: boolean) => {
+    if (!open && hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+    if (!open) {
+      handleCloseDialog();
+    }
+  }, [hasUnsavedChanges, handleCloseDialog]);
+
+  // Unsaved changes dialog handlers
+  const handleUnsavedDiscard = useCallback(() => {
+    setShowUnsavedDialog(false);
+    handleCloseDialog();
+  }, [handleCloseDialog]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setShowUnsavedDialog(false);
+  }, []);
+
+  const handleSave = useCallback(async () => {
     if (!formData.name.trim()) {
       toast({
         title: "Name required",
@@ -181,7 +215,13 @@ export function ClientManager() {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [formData, editingClient, updateClient, createClient, handleCloseDialog, toast]);
+
+  // Save from unsaved changes dialog then close
+  const handleUnsavedSave = useCallback(async () => {
+    await handleSave();
+    setShowUnsavedDialog(false);
+  }, [handleSave]);
 
   const handleDelete = async () => {
     if (!clientToDelete) return;
@@ -341,7 +381,7 @@ export function ClientManager() {
       )}
 
       {/* Add/Edit Client Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingClient ? "Edit Client" : "Add New Client"}</DialogTitle>
@@ -526,6 +566,17 @@ export function ClientManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onOpenChange={setShowUnsavedDialog}
+        onSave={handleUnsavedSave}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
+        isSaving={isSaving}
+        description="You have unsaved changes to this client. What would you like to do?"
+      />
     </div>
   );
 }

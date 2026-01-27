@@ -127,3 +127,67 @@ Verification:
 - Build passes: npm run build
 - Tests pass: 830 tests (web), shared-types, pdf-generator
 - Lint passes: only pre-existing warnings
+
+---
+
+STYLE-006: Add Canvas Sizing Mode and Auto-Create Root Container - COMPLETED
+
+Added 'canvas' sizing mode for containers that auto-calculates to page size minus margins. Also auto-creates root Column container with canvas sizing when creating new styles.
+
+Changes:
+- sizingModeSchema and heightModeSchema: added 'canvas' option
+- calculateEffectiveWidth/Height in layout-engine.ts: compute canvas = page - margins
+- PropertiesPanel.tsx: Canvas option in Width/Height mode selectors for containers
+- template-store.ts createNewTemplate: auto-creates root Column container with canvas sizing
+- Convex schema.ts/templates.ts: updated validators for 'canvas' mode
+- template-store.test.ts: updated tests to account for auto-created root container
+
+Files changed:
+- packages/shared-types/src/template.ts
+- packages/shared-types/src/layout-engine.ts
+- apps/web/src/components/style-editor/PropertiesPanel.tsx
+- apps/web/src/lib/template-store.ts
+- apps/web/src/lib/template-store.test.ts
+- packages/backend/convex/schema.ts
+- packages/backend/convex/templates.ts
+
+Verification:
+- Build passes: npm run build
+- Tests pass: 830 tests (web), shared-types, pdf-generator
+- Lint passes: only pre-existing warnings
+
+---
+
+UX-001: Unsaved Changes Warning System - COMPLETED
+
+Implemented unsaved changes detection and warning dialogs for Calendar page, Profile page, and Client Manager modal. Browser beforeunload events warn on refresh/close.
+
+Core utilities created:
+- fingerprint.ts: createFingerprint(), areEqual(), createSnapshot() for state comparison
+- use-unsaved-changes.ts: useUnsavedChanges hook with beforeunload, useFormUnsavedChanges simplified hook
+- unsaved-changes-dialog.tsx: UnsavedChangesDialog component with Save/Discard/Cancel actions
+
+Invoice store updates:
+- Added savedFingerprint state field
+- Added markAsSaved() action to update baseline
+- Added hasUnsavedChanges() getter for state comparison
+
+Integration points:
+- InvoiceCalendarPage: Back button checks unsaved, dialog on navigation, beforeunload on browser close
+- Profile page: Back button checks unsaved, beforeunload, Save button updates baseline
+- ClientManager: Dialog close checks unsaved, warns before discarding edits
+- InvoiceForm: Not actively used in app (only tests), skipped integration
+
+Files changed:
+- apps/web/src/lib/fingerprint.ts (new)
+- apps/web/src/hooks/use-unsaved-changes.ts (new)
+- apps/web/src/components/ui/unsaved-changes-dialog.tsx (new)
+- apps/web/src/lib/store.ts (added savedFingerprint, markAsSaved, hasUnsavedChanges)
+- apps/web/src/components/invoice/InvoiceCalendarPage.tsx
+- apps/web/src/app/profile/page.tsx
+- apps/web/src/components/clients/ClientManager.tsx
+
+Verification:
+- Build passes: npm run build
+- Tests pass: 830 tests (web), 61 (shared-types), 9 (pdf-generator)
+- Lint passes: only pre-existing warnings
