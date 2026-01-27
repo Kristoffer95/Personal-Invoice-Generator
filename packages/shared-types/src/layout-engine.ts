@@ -341,11 +341,12 @@ function calculateEffectiveHeight(
   parentHeight?: number,
   availableHeight?: number,
   tableContent?: TableContentData,
-  visibilityContext?: VisibilityContext
+  visibilityContext?: VisibilityContext,
+  margins?: Margin
 ): number {
   let height: number
 
-  // For layout containers, use heightMode (now supports fixed, auto, percentage, fill)
+  // For layout containers, use heightMode (now supports fixed, auto, percentage, fill, canvas)
   if (element.type === 'layout_container') {
     const heightMode = element.heightMode ?? 'fixed'
 
@@ -365,6 +366,15 @@ function calculateEffectiveHeight(
         // Fill available height in parent container
         if (availableHeight !== undefined) {
           height = Math.max(10, availableHeight)
+        } else {
+          height = element.position.height
+        }
+        break
+      }
+      case 'canvas': {
+        // Canvas height = pageHeight - topMargin - bottomMargin
+        if (margins) {
+          height = Math.max(10, pageHeight - margins.top - margins.bottom)
         } else {
           height = element.position.height
         }
@@ -402,6 +412,15 @@ function calculateEffectiveHeight(
         }
         break
       }
+      case 'canvas': {
+        // Canvas height = pageHeight - topMargin - bottomMargin
+        if (margins) {
+          height = Math.max(10, pageHeight - margins.top - margins.bottom)
+        } else {
+          height = element.position.height
+        }
+        break
+      }
       case 'fixed':
       default:
         height = element.position.height
@@ -420,7 +439,8 @@ function calculateEffectiveWidth(
   element: TemplateElement,
   pageWidth: number,
   parentWidth?: number,
-  availableWidth?: number
+  availableWidth?: number,
+  margins?: Margin
 ): number {
   const sizingMode: SizingMode = element.widthMode ?? 'fixed'
 
@@ -438,6 +458,13 @@ function calculateEffectiveWidth(
       // Fill available width in parent container
       if (availableWidth !== undefined) {
         return Math.max(10, availableWidth)
+      }
+      return element.position.width
+    }
+    case 'canvas': {
+      // Canvas width = pageWidth - leftMargin - rightMargin
+      if (margins) {
+        return Math.max(10, pageWidth - margins.left - margins.right)
       }
       return element.position.width
     }
@@ -1142,7 +1169,7 @@ export function calculateElementPositions(
     if (element.positionMode === 'relative' && element.parentId) continue
 
     // Calculate effective dimensions based on sizing modes
-    const effectiveWidth = calculateEffectiveWidth(element, pageWidth)
+    const effectiveWidth = calculateEffectiveWidth(element, pageWidth, undefined, undefined, margins)
     const effectiveHeight = calculateEffectiveHeight(
       element,
       elements,
@@ -1150,7 +1177,8 @@ export function calculateElementPositions(
       undefined,
       undefined,
       tableContent,
-      visibilityContext
+      visibilityContext,
+      margins
     )
 
     const position: CalculatedPosition = {

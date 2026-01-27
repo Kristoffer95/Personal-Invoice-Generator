@@ -41,14 +41,19 @@ describe('useTemplateStore', () => {
   })
 
   describe('createNewTemplate', () => {
-    it('creates a new template with default settings', () => {
+    it('creates a new template with default settings and root container', () => {
       const { createNewTemplate } = useTemplateStore.getState()
 
       const template = createNewTemplate('My Template')
 
       expect(template.name).toBe('My Template')
       expect(template.pageSize).toBe('A4')
-      expect(template.elements).toEqual([])
+      // New templates now include a root container with canvas sizing
+      expect(template.elements).toHaveLength(1)
+      expect(template.elements[0].type).toBe('layout_container')
+      expect(template.elements[0].name).toBe('Root Container')
+      expect(template.elements[0].widthMode).toBe('canvas')
+      expect(template.elements[0].heightMode).toBe('canvas')
 
       const state = useTemplateStore.getState()
       expect(state.currentTemplate).toEqual(template)
@@ -96,9 +101,10 @@ describe('useTemplateStore', () => {
       }))
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements).toHaveLength(1)
-      expect(state.currentTemplate?.elements[0].id).toBe(elementId)
-      expect(state.currentTemplate?.elements[0].name).toBe('Title')
+      // 2 elements: root container + added element
+      expect(state.currentTemplate?.elements).toHaveLength(2)
+      expect(state.currentTemplate?.elements[1].id).toBe(elementId)
+      expect(state.currentTemplate?.elements[1].name).toBe('Title')
     })
 
     it('selects the newly added element', () => {
@@ -126,8 +132,10 @@ describe('useTemplateStore', () => {
       addElement(createTestElement({ type: 'text', name: 'Second' }))
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].zIndex).toBe(0)
-      expect(state.currentTemplate?.elements[1].zIndex).toBe(1)
+      // elements[0] is root container (zIndex 0), elements[1] is First (zIndex 1), elements[2] is Second (zIndex 2)
+      expect(state.currentTemplate?.elements[0].zIndex).toBe(0) // root container
+      expect(state.currentTemplate?.elements[1].zIndex).toBe(1) // First
+      expect(state.currentTemplate?.elements[2].zIndex).toBe(2) // Second
     })
   })
 
@@ -146,7 +154,8 @@ describe('useTemplateStore', () => {
       updateElement(elementId, { content: 'New Content' })
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].content).toBe('New Content')
+      // elements[1] is the added element (elements[0] is root container)
+      expect(state.currentTemplate?.elements[1].content).toBe('New Content')
     })
   })
 
@@ -163,7 +172,8 @@ describe('useTemplateStore', () => {
       removeElement(elementId)
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements).toHaveLength(0)
+      // 1 element remaining: root container
+      expect(state.currentTemplate?.elements).toHaveLength(1)
     })
 
     it('clears selection when removing selected element', () => {
@@ -199,10 +209,12 @@ describe('useTemplateStore', () => {
       const newId = duplicateElement(originalId)
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements).toHaveLength(2)
+      // 3 elements: root container + original + duplicate
+      expect(state.currentTemplate?.elements).toHaveLength(3)
       expect(newId).not.toBe(originalId)
 
-      const duplicate = state.currentTemplate?.elements[1]
+      // elements[2] is the duplicate (elements[0] is root container, elements[1] is original)
+      const duplicate = state.currentTemplate?.elements[2]
       expect(duplicate?.name).toBe('Original (Copy)')
       expect(duplicate?.position.x).toBe(50) // 40 + 10 offset
       expect(duplicate?.position.y).toBe(50) // 40 + 10 offset
@@ -238,8 +250,9 @@ describe('useTemplateStore', () => {
       moveElement(elementId, { x: 100, y: 100 })
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].position.x).toBe(100)
-      expect(state.currentTemplate?.elements[0].position.y).toBe(100)
+      // elements[1] is the added element (elements[0] is root container)
+      expect(state.currentTemplate?.elements[1].position.x).toBe(100)
+      expect(state.currentTemplate?.elements[1].position.y).toBe(100)
     })
 
     it('snaps to grid when enabled', () => {
@@ -258,8 +271,9 @@ describe('useTemplateStore', () => {
       moveElement(elementId, { x: 43, y: 47 })
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].position.x).toBe(40) // Snapped
-      expect(state.currentTemplate?.elements[0].position.y).toBe(50) // Snapped
+      // elements[1] is the added element (elements[0] is root container)
+      expect(state.currentTemplate?.elements[1].position.x).toBe(40) // Snapped
+      expect(state.currentTemplate?.elements[1].position.y).toBe(50) // Snapped
     })
 
     it('does not move locked elements', () => {
@@ -277,8 +291,9 @@ describe('useTemplateStore', () => {
       moveElement(elementId, { x: 100, y: 100 })
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].position.x).toBe(40)
-      expect(state.currentTemplate?.elements[0].position.y).toBe(40)
+      // elements[1] is the added element (elements[0] is root container)
+      expect(state.currentTemplate?.elements[1].position.x).toBe(40)
+      expect(state.currentTemplate?.elements[1].position.y).toBe(40)
     })
   })
 
@@ -296,8 +311,9 @@ describe('useTemplateStore', () => {
       resizeElement(elementId, { width: 200, height: 100 })
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].position.width).toBe(200)
-      expect(state.currentTemplate?.elements[0].position.height).toBe(100)
+      // elements[1] is the added element (elements[0] is root container)
+      expect(state.currentTemplate?.elements[1].position.width).toBe(200)
+      expect(state.currentTemplate?.elements[1].position.height).toBe(100)
     })
 
     it('enforces minimum size', () => {
@@ -313,8 +329,9 @@ describe('useTemplateStore', () => {
       resizeElement(elementId, { width: 5, height: 5 })
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements[0].position.width).toBe(10) // Minimum
-      expect(state.currentTemplate?.elements[0].position.height).toBe(10) // Minimum
+      // elements[1] is the added element (elements[0] is root container)
+      expect(state.currentTemplate?.elements[1].position.width).toBe(10) // Minimum
+      expect(state.currentTemplate?.elements[1].position.height).toBe(10) // Minimum
     })
   })
 
@@ -330,7 +347,8 @@ describe('useTemplateStore', () => {
 
       const state = useTemplateStore.getState()
       const first = state.currentTemplate?.elements.find((el) => el.id === firstId)
-      expect(first?.zIndex).toBe(2) // Higher than second (which was 1)
+      // root container has zIndex 0, First had 1, Second had 2, after bringToFront First has 3
+      expect(first?.zIndex).toBe(3)
     })
 
     it('sends element to back', () => {
@@ -365,7 +383,8 @@ describe('useTemplateStore', () => {
       const pastedId = pasteElement()
 
       const state = useTemplateStore.getState()
-      expect(state.currentTemplate?.elements).toHaveLength(2)
+      // 3 elements: root container + original + pasted copy
+      expect(state.currentTemplate?.elements).toHaveLength(3)
       expect(pastedId).not.toBe(originalId)
 
       const pasted = state.currentTemplate?.elements.find((el) => el.id === pastedId)
@@ -387,13 +406,15 @@ describe('useTemplateStore', () => {
       cutElement(originalId)
 
       const state1 = useTemplateStore.getState()
-      expect(state1.currentTemplate?.elements).toHaveLength(0)
+      // 1 element: root container (original cut element removed)
+      expect(state1.currentTemplate?.elements).toHaveLength(1)
       expect(state1.clipboard).not.toBeNull()
 
       pasteElement()
 
       const state2 = useTemplateStore.getState()
-      expect(state2.currentTemplate?.elements).toHaveLength(1)
+      // 2 elements: root container + pasted element
+      expect(state2.currentTemplate?.elements).toHaveLength(2)
     })
   })
 
@@ -463,10 +484,11 @@ describe('useTemplateStore', () => {
       }))
 
       lockElement(elementId, true)
-      expect(useTemplateStore.getState().currentTemplate?.elements[0].locked).toBe(true)
+      // elements[1] is the added element (elements[0] is root container)
+      expect(useTemplateStore.getState().currentTemplate?.elements[1].locked).toBe(true)
 
       lockElement(elementId, false)
-      expect(useTemplateStore.getState().currentTemplate?.elements[0].locked).toBe(false)
+      expect(useTemplateStore.getState().currentTemplate?.elements[1].locked).toBe(false)
     })
   })
 
@@ -482,10 +504,11 @@ describe('useTemplateStore', () => {
       }))
 
       toggleElementVisibility(elementId)
-      expect(useTemplateStore.getState().currentTemplate?.elements[0].visible).toBe(false)
+      // elements[1] is the added element (elements[0] is root container)
+      expect(useTemplateStore.getState().currentTemplate?.elements[1].visible).toBe(false)
 
       toggleElementVisibility(elementId)
-      expect(useTemplateStore.getState().currentTemplate?.elements[0].visible).toBe(true)
+      expect(useTemplateStore.getState().currentTemplate?.elements[1].visible).toBe(true)
     })
   })
 

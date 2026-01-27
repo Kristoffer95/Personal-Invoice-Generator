@@ -177,11 +177,46 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
 
   createNewTemplate: (name, pageSize = 'A4') => {
     const now = new Date().toISOString()
+    const rootContainerId = generateId()
+
+    // Create root Column container with canvas sizing
+    const rootContainer: TemplateElement = {
+      id: rootContainerId,
+      type: 'layout_container',
+      name: 'Root Container',
+      position: {
+        x: 0,
+        y: 0,
+        width: 515, // Default, will be overridden by canvas mode
+        height: 742, // Default, will be overridden by canvas mode
+      },
+      positionMode: 'absolute',
+      layoutConfig: {
+        direction: 'column',
+        gap: 8,
+        align: 'stretch',
+        justify: 'start',
+        wrap: false,
+      },
+      widthMode: 'canvas',
+      heightMode: 'canvas',
+      padding: 0,
+      opacity: 1,
+      zIndex: 0,
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
+      locked: false,
+      visible: true,
+      content: '',
+    }
+
     const template: InvoiceTemplate = {
       ...defaultTemplate,
       id: generateId(),
       name,
       pageSize: pageSize as InvoiceTemplate['pageSize'],
+      elements: [rootContainer],
       createdAt: now,
       updatedAt: now,
     }

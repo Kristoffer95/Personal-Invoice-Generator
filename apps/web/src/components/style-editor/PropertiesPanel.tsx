@@ -253,7 +253,7 @@ export function PropertiesPanel() {
                       value={element.widthMode ?? 'fixed'}
                       onValueChange={(value) =>
                         updateElement(element.id, {
-                          widthMode: value as 'fixed' | 'auto' | 'percentage' | 'fill',
+                          widthMode: value as 'fixed' | 'auto' | 'percentage' | 'fill' | 'canvas',
                           ...(value !== 'percentage' && { widthPercent: undefined }),
                           ...(value === 'percentage' && !element.widthPercent && { widthPercent: 50 }),
                         })
@@ -267,6 +267,7 @@ export function PropertiesPanel() {
                         <SelectItem value="auto">Auto</SelectItem>
                         <SelectItem value="percentage">Percent</SelectItem>
                         <SelectItem value="fill">Fill</SelectItem>
+                        <SelectItem value="canvas">Canvas</SelectItem>
                       </SelectContent>
                     </Select>
                     {(element.widthMode ?? 'fixed') === 'fixed' && (
@@ -305,6 +306,11 @@ export function PropertiesPanel() {
                     {element.widthMode === 'fill' && (
                       <span className="text-xs text-muted-foreground self-center flex-1">
                         Fill parent
+                      </span>
+                    )}
+                    {element.widthMode === 'canvas' && (
+                      <span className="text-xs text-muted-foreground self-center flex-1">
+                        Full content width
                       </span>
                     )}
                   </div>
@@ -383,7 +389,7 @@ export function PropertiesPanel() {
                       value={element.heightMode ?? 'fixed'}
                       onValueChange={(value) =>
                         updateElement(element.id, {
-                          heightMode: value as 'fixed' | 'auto' | 'percentage' | 'fill',
+                          heightMode: value as 'fixed' | 'auto' | 'percentage' | 'fill' | 'canvas',
                           ...(value !== 'percentage' && { heightPercent: undefined }),
                           ...(value === 'percentage' && !element.heightPercent && { heightPercent: 50 }),
                         })
@@ -397,6 +403,7 @@ export function PropertiesPanel() {
                         <SelectItem value="auto">Auto</SelectItem>
                         <SelectItem value="percentage">Percent</SelectItem>
                         <SelectItem value="fill">Fill</SelectItem>
+                        <SelectItem value="canvas">Canvas</SelectItem>
                       </SelectContent>
                     </Select>
                     {(element.heightMode ?? 'fixed') === 'fixed' && (
@@ -436,6 +443,11 @@ export function PropertiesPanel() {
                     {element.heightMode === 'fill' && (
                       <span className="text-xs text-muted-foreground self-center flex-1">
                         Fill parent
+                      </span>
+                    )}
+                    {element.heightMode === 'canvas' && (
+                      <span className="text-xs text-muted-foreground self-center flex-1">
+                        Full content height
                       </span>
                     )}
                   </div>
