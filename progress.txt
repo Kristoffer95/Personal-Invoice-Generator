@@ -100,3 +100,30 @@ Verification:
 - Build passes: pnpm run build --filter=@invoice-generator/web
 - Lint passes: only pre-existing warnings
 - Tests pass: shared-types (61), pdf-generator (9)
+
+---
+
+STYLE-005: Add Full Sizing Modes to Row/Column Containers - COMPLETED
+
+Added all 4 sizing modes (fixed, auto, percentage, fill) to container Width and Height properties. Previously containers had limited sizing: Width was fixed-only, Height had 3 modes (missing fill).
+
+Changes:
+- heightModeSchema in template.ts: added 'fill' option
+- calculateEffectiveWidth() in layout-engine.ts: now supports widthMode for containers
+- calculateEffectiveHeight() in layout-engine.ts: added 'fill' mode case for containers
+- PropertiesPanel.tsx: container Width now has mode selector (Fixed/Auto/Percent/Fill), container Height added 'Fill' option
+- predefined-elements.ts: Row/Column containers now have default widthMode/heightMode: 'fixed'
+- Convex schema.ts and templates.ts: updated heightModeValidator to include 'fill'
+
+Files changed:
+- packages/shared-types/src/template.ts
+- packages/shared-types/src/layout-engine.ts
+- apps/web/src/components/style-editor/PropertiesPanel.tsx
+- apps/web/src/components/style-editor/predefined-elements.ts
+- packages/backend/convex/schema.ts
+- packages/backend/convex/templates.ts
+
+Verification:
+- Build passes: npm run build
+- Tests pass: 830 tests (web), shared-types, pdf-generator
+- Lint passes: only pre-existing warnings

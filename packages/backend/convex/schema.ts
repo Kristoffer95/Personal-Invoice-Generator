@@ -112,11 +112,12 @@ const justifyValidator = v.union(
   v.literal("space-evenly")
 );
 
-// Height mode for layout containers
+// Height mode for layout containers (fixed, auto, percentage, fill)
 const heightModeValidator = v.union(
   v.literal("fixed"),
   v.literal("auto"),
-  v.literal("percentage")
+  v.literal("percentage"),
+  v.literal("fill")
 );
 
 // Sizing mode for general elements (width and height)

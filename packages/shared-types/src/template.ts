@@ -85,8 +85,8 @@ export type Alignment = z.infer<typeof alignmentSchema>
 export const justifySchema = z.enum(['start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'])
 export type Justify = z.infer<typeof justifySchema>
 
-// Height mode for layout containers
-export const heightModeSchema = z.enum(['fixed', 'auto', 'percentage'])
+// Height mode for layout containers (fixed, auto, percentage, fill)
+export const heightModeSchema = z.enum(['fixed', 'auto', 'percentage', 'fill'])
 export type HeightMode = z.infer<typeof heightModeSchema>
 
 // Min height mode for all elements

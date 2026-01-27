@@ -244,19 +244,70 @@ export function PropertiesPanel() {
                   className="h-8"
                 />
               </div>
-              {/* Width with mode selector for non-container elements */}
+              {/* Width with mode selector for all elements including containers */}
               {element.type === 'layout_container' ? (
-                <div className="space-y-1">
-                  <Label htmlFor="pos-w" className="text-xs">Width</Label>
-                  <Input
-                    id="pos-w"
-                    type="number"
-                    value={Math.round(element.position.width)}
-                    onChange={(e) =>
-                      handlePositionChange('width', Number(e.target.value))
-                    }
-                    className="h-8"
-                  />
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Width</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={element.widthMode ?? 'fixed'}
+                      onValueChange={(value) =>
+                        updateElement(element.id, {
+                          widthMode: value as 'fixed' | 'auto' | 'percentage' | 'fill',
+                          ...(value !== 'percentage' && { widthPercent: undefined }),
+                          ...(value === 'percentage' && !element.widthPercent && { widthPercent: 50 }),
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-[90px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                        <SelectItem value="auto">Auto</SelectItem>
+                        <SelectItem value="percentage">Percent</SelectItem>
+                        <SelectItem value="fill">Fill</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(element.widthMode ?? 'fixed') === 'fixed' && (
+                      <Input
+                        id="pos-w"
+                        type="number"
+                        value={Math.round(element.position.width)}
+                        onChange={(e) =>
+                          handlePositionChange('width', Number(e.target.value))
+                        }
+                        className="h-8 flex-1"
+                      />
+                    )}
+                    {element.widthMode === 'percentage' && (
+                      <div className="flex items-center gap-1 flex-1">
+                        <Input
+                          type="number"
+                          value={element.widthPercent ?? 50}
+                          onChange={(e) =>
+                            updateElement(element.id, {
+                              widthPercent: Math.min(100, Math.max(0, Number(e.target.value))),
+                            })
+                          }
+                          className="h-8 flex-1"
+                          min={0}
+                          max={100}
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                    )}
+                    {element.widthMode === 'auto' && (
+                      <span className="text-xs text-muted-foreground self-center flex-1">
+                        Fits content
+                      </span>
+                    )}
+                    {element.widthMode === 'fill' && (
+                      <span className="text-xs text-muted-foreground self-center flex-1">
+                        Fill parent
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-1 col-span-2">
@@ -332,19 +383,20 @@ export function PropertiesPanel() {
                       value={element.heightMode ?? 'fixed'}
                       onValueChange={(value) =>
                         updateElement(element.id, {
-                          heightMode: value as 'fixed' | 'auto' | 'percentage',
+                          heightMode: value as 'fixed' | 'auto' | 'percentage' | 'fill',
                           ...(value !== 'percentage' && { heightPercent: undefined }),
                           ...(value === 'percentage' && !element.heightPercent && { heightPercent: 50 }),
                         })
                       }
                     >
-                      <SelectTrigger className="h-8 w-[100px]">
+                      <SelectTrigger className="h-8 w-[90px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="fixed">Fixed</SelectItem>
                         <SelectItem value="auto">Auto</SelectItem>
                         <SelectItem value="percentage">Percent</SelectItem>
+                        <SelectItem value="fill">Fill</SelectItem>
                       </SelectContent>
                     </Select>
                     {(element.heightMode ?? 'fixed') === 'fixed' && (
@@ -379,6 +431,11 @@ export function PropertiesPanel() {
                     {element.heightMode === 'auto' && (
                       <span className="text-xs text-muted-foreground self-center flex-1">
                         Fits content
+                      </span>
+                    )}
+                    {element.heightMode === 'fill' && (
+                      <span className="text-xs text-muted-foreground self-center flex-1">
+                        Fill parent
                       </span>
                     )}
                   </div>

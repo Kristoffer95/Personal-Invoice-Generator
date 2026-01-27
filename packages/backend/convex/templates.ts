@@ -118,11 +118,12 @@ const justifyValidator = v.union(
 // Layout direction
 const layoutDirectionValidator = v.union(v.literal("column"), v.literal("row"));
 
-// Height mode for layout containers
+// Height mode for layout containers (fixed, auto, percentage, fill)
 const heightModeValidator = v.union(
   v.literal("fixed"),
   v.literal("auto"),
-  v.literal("percentage")
+  v.literal("percentage"),
+  v.literal("fill")
 );
 
 // Sizing mode for general elements (width and height)

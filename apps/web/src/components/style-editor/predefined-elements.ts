@@ -424,6 +424,8 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       flexGrow: 0,
       flexShrink: 1,
       showWhenEmpty: false,
+      widthMode: 'fixed',
+      heightMode: 'fixed',
       layoutConfig: {
         direction: 'column',
         gap: 8,
@@ -461,6 +463,8 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       flexGrow: 0,
       flexShrink: 1,
       showWhenEmpty: false,
+      widthMode: 'fixed',
+      heightMode: 'fixed',
       layoutConfig: {
         direction: 'row',
         gap: 8,

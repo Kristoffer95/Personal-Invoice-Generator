@@ -345,7 +345,7 @@ function calculateEffectiveHeight(
 ): number {
   let height: number
 
-  // For layout containers, use the legacy heightMode
+  // For layout containers, use heightMode (now supports fixed, auto, percentage, fill)
   if (element.type === 'layout_container') {
     const heightMode = element.heightMode ?? 'fixed'
 
@@ -359,6 +359,15 @@ function calculateEffectiveHeight(
         const percent = element.heightPercent ?? 100
         const referenceHeight = parentHeight ?? pageHeight
         height = Math.max(10, (referenceHeight * percent) / 100)
+        break
+      }
+      case 'fill': {
+        // Fill available height in parent container
+        if (availableHeight !== undefined) {
+          height = Math.max(10, availableHeight)
+        } else {
+          height = element.position.height
+        }
         break
       }
       case 'fixed':
@@ -405,6 +414,7 @@ function calculateEffectiveHeight(
 
 /**
  * Calculate effective width for an element based on its width mode
+ * Now supports widthMode for layout containers as well
  */
 function calculateEffectiveWidth(
   element: TemplateElement,
@@ -412,11 +422,6 @@ function calculateEffectiveWidth(
   parentWidth?: number,
   availableWidth?: number
 ): number {
-  // Layout containers don't use widthMode - they use their position width
-  if (element.type === 'layout_container') {
-    return element.position.width
-  }
-
   const sizingMode: SizingMode = element.widthMode ?? 'fixed'
 
   switch (sizingMode) {

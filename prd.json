@@ -135,6 +135,47 @@
         "apps/web/src/components/styles/StyleManagerPage.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-005",
+      "category": "Style Editor",
+      "title": "Add Full Sizing Modes to Row/Column Containers",
+      "description": "Add all 4 sizing modes (fixed, auto, percentage, fill) to Row and Column container Width and Height properties in the Properties Panel, matching the options available for non-container elements. Currently containers have limited sizing: Width is fixed-only (no mode selector), and Height supports only 3 modes (missing 'fill').",
+      "acceptance_criteria": [
+        "Container Width has mode selector with all 4 options: Fixed, Auto, Percent, Fill",
+        "Container Height has mode selector with all 4 options: Fixed, Auto, Percent, Fill",
+        "Fixed mode shows numeric input for pixel values",
+        "Auto mode shows 'Fits content' helper text",
+        "Percentage mode shows percentage input (0-100)",
+        "Fill mode shows 'Fill parent' helper text",
+        "heightModeSchema includes 'fill' option in template.ts",
+        "Layout engine calculateEffectiveWidth() supports widthMode for containers",
+        "Layout engine calculateEffectiveHeight() handles 'fill' mode for containers",
+        "Predefined Row/Column containers have default widthMode and heightMode values",
+        "PDF export renders containers correctly with all sizing modes"
+      ],
+      "steps_to_verify": [
+        "Open Style Editor at /style-editor",
+        "Add a Row container to the canvas",
+        "Verify Properties Panel shows Width mode selector with: Fixed, Auto, Percent, Fill",
+        "Verify Properties Panel shows Height mode selector with: Fixed, Auto, Percent, Fill",
+        "Select Width mode 'Fixed' - verify numeric input appears",
+        "Select Width mode 'Auto' - verify 'Fits content' helper text appears",
+        "Select Width mode 'Percent' - verify percentage input (0-100) appears",
+        "Select Width mode 'Fill' - verify 'Fill parent' helper text appears",
+        "Repeat above steps for Height mode",
+        "Add a Column container and verify same behavior",
+        "Export PDF with containers using different sizing modes - verify correct rendering"
+      ],
+      "files_to_modify": [
+        "packages/shared-types/src/template.ts",
+        "packages/shared-types/src/layout-engine.ts",
+        "apps/web/src/components/style-editor/PropertiesPanel.tsx",
+        "apps/web/src/components/style-editor/predefined-elements.ts",
+        "packages/backend/convex/schema.ts",
+        "packages/backend/convex/templates.ts"
+      ],
+      "passes": true
     }
   ]
 }
