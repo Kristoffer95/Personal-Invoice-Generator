@@ -25,3 +25,25 @@ Verification:
 - Build passes (pnpm run build --filter=@invoice-generator/web)
 - Lint passes with only pre-existing warnings (pnpm run lint)
 - All templates maintain their original visual appearance
+
+---
+
+STYLE-002: Restore Original Templates and Add V2 Container-Based Variants - COMPLETED
+
+Restored original 11 templates (absolute positioning) and kept container-based as V2 variants.
+
+Changes:
+- Retrieved original templates from git (before commit 9556561)
+- Current container-based templates renamed with V2 suffix (name + ID)
+- Element IDs/parentIds updated with -v2 suffix to avoid conflicts
+- SYSTEM_TEMPLATE_IDS now contains 22 IDs (11 classic + 11 V2)
+- SYSTEM_TEMPLATES array exports all 22 templates
+- V2 templates marked isDefault: false
+
+Files changed:
+- apps/web/src/lib/system-templates.ts (5440 -> 13005 lines)
+
+Verification:
+- Build passes: pnpm run build --filter=@invoice-generator/web
+- Lint passes: only pre-existing warnings
+- Tests pass: shared-types (61), pdf-generator (9)

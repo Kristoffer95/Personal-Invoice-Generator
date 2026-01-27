@@ -30,6 +30,63 @@
         "apps/web/src/lib/system-templates.ts"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-002",
+      "category": "Style Editor",
+      "title": "Restore Original Templates and Add V2 Container-Based Variants",
+      "description": "The container-based template refactor (STYLE-001) introduced rendering issues where elements stack/overlap instead of displaying correctly. Instead of fixing the broken templates, restore the original 11 working templates (absolute positioning) and keep the new container-based templates as separate 'V2' variants for future iteration.",
+      "acceptance_criteria": [
+        "All 11 original templates (absolute positioning) are restored from before commit 9556561",
+        "Original templates render correctly in style editor (no stacking/overlapping)",
+        "Original templates export to PDF with correct layout",
+        "New container-based templates renamed with 'V2' suffix (e.g., 'Classic Light V2')",
+        "New V2 template IDs use 'v2' suffix (e.g., 'system-classic-light-v2')",
+        "Total of 22 system templates: 11 Classic + 11 V2"
+      ],
+      "steps_to_verify": [
+        "Retrieve original templates from git: git show 9556561~1:apps/web/src/lib/system-templates.ts",
+        "Copy original 11 templates to system-templates.ts",
+        "Rename existing container-based templates with 'V2' suffix in name and ID",
+        "Open each original template in style editor - verify correct rendering",
+        "Export each original template as PDF - verify correct layout",
+        "Verify V2 templates are listed separately from originals"
+      ],
+      "files_to_modify": [
+        "apps/web/src/lib/system-templates.ts"
+      ],
+      "passes": true
+    },
+    {
+      "id": "STYLE-003",
+      "category": "Style Editor",
+      "title": "Implement Template Category/Folder System",
+      "description": "Add a category/folder system to organize system templates into groups. Original templates go into 'Classic' category, new container-based templates go into 'V2 (Beta)' category. This prevents confusion and keeps the two versions separate in the UI.",
+      "acceptance_criteria": [
+        "Template schema includes optional 'templateCategory' field",
+        "Original 11 templates have category: 'classic'",
+        "V2 templates have category: 'v2-containers'",
+        "Style picker dialog groups templates by category (tabs or sections)",
+        "Style manager page groups templates by category",
+        "'Classic' category shown as default/primary",
+        "'V2 (Beta)' category clearly marked as experimental"
+      ],
+      "steps_to_verify": [
+        "Add templateCategory field to InvoiceTemplate schema in template.ts",
+        "Set category on all 22 system templates",
+        "Update StylePickerDialog to show category tabs/groups",
+        "Update StyleManagerPage to group templates by category",
+        "Open style picker - verify Classic and V2 tabs exist",
+        "Select each tab - verify correct templates shown",
+        "Open style manager - verify templates grouped by category"
+      ],
+      "files_to_modify": [
+        "packages/shared-types/src/template.ts",
+        "apps/web/src/lib/system-templates.ts",
+        "apps/web/src/components/export/StylePickerDialog.tsx",
+        "apps/web/src/components/styles/StyleManagerPage.tsx"
+      ],
+      "passes": false
     }
   ]
 }
