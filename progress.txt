@@ -264,3 +264,35 @@ Verification:
 - Build passes: npm run build
 - Tests pass: 830 tests
 - Lint passes: only pre-existing warnings
+
+---
+
+INV-001 Update: Add neon green Switch styling - COMPLETED
+
+Added neon green (#39FF14) color for Switch component checked state per acceptance criteria.
+
+Changes:
+- tailwind.config.ts: Added neon color { DEFAULT: '#39FF14' } to colors
+- switch.tsx: Changed data-[state=checked]:bg-primary to data-[state=checked]:bg-neon
+
+Verification:
+- Build passes
+- Tests pass: 830 tests
+- Lint passes: only warnings
+
+---
+
+UX-001 Update: Enhanced initialization tracking - COMPLETED
+
+Improved unsaved changes baseline capture with isInitializationComplete flag.
+
+Changes:
+- InvoiceCalendarPage.tsx: Added isInitializationComplete state
+- Combined initialization useEffects into single effect
+- Baseline captured only after issueDate, periodStart, periodEnd, dailyWorkHours are populated
+- Prevents false positives from async auto-fill effects
+
+Verification:
+- Build passes
+- Tests pass: 830 tests (web), 61 (shared-types), 9 (pdf-generator)
+- Lint passes: only warnings
