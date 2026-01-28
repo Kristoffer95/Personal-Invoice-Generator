@@ -122,6 +122,7 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
   const [hasLoadedInvoice, setHasLoadedInvoice] = useState(false)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
+  const [isInitializationComplete, setIsInitializationComplete] = useState(false)
   const initialInvoiceRef = useRef<Partial<typeof currentInvoice> | null>(null)
 
   // Get Convex hooks for cloud sync
@@ -292,24 +293,57 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
   })
 
   // Track initial state for unsaved changes detection
-  // We set this after the invoice is loaded (either new or existing)
-  // Also reset the hook's tracking to match the new baseline
+  // Only set baseline AFTER all automatic initialization is complete
+  // This prevents false positives when auto-fill effects (dates, period, work hours) run after baseline
   useEffect(() => {
-    if (initialInvoiceRef.current === null && hasLoadedInvoice) {
-      const snapshot = JSON.parse(JSON.stringify(currentInvoice))
-      initialInvoiceRef.current = snapshot
-      resetTracking(snapshot)
+    // Skip if already initialized
+    if (initialInvoiceRef.current !== null || isInitializationComplete) {
+      return
     }
-  }, [hasLoadedInvoice, currentInvoice, resetTracking])
 
-  // For new invoices, set initial state after profile is applied
-  useEffect(() => {
-    if (initialInvoiceRef.current === null && !invoiceId && hasAppliedProfile) {
-      const snapshot = JSON.parse(JSON.stringify(currentInvoice))
-      initialInvoiceRef.current = snapshot
-      resetTracking(snapshot)
+    // For existing invoices: wait for invoice to load
+    if (invoiceId && !hasLoadedInvoice) {
+      return
     }
-  }, [hasAppliedProfile, invoiceId, currentInvoice, resetTracking])
+
+    // For new invoices: wait for profile to be applied
+    if (!invoiceId && !hasAppliedProfile) {
+      return
+    }
+
+    // Wait for required auto-filled fields:
+    // - issueDate (auto-filled if not present)
+    // - periodStart/periodEnd (auto-detected for new invoices)
+    // - dailyWorkHours (generated after period detection)
+    // For existing invoices (with isManualOverride), skip period/hours checks since they're already set
+    const hasRequiredFields = Boolean(
+      currentInvoice.issueDate &&
+      (invoiceId || isManualOverride || (
+        currentInvoice.periodStart &&
+        currentInvoice.periodEnd &&
+        currentInvoice.dailyWorkHours &&
+        currentInvoice.dailyWorkHours.length > 0
+      ))
+    )
+
+    if (!hasRequiredFields) {
+      return
+    }
+
+    // All initialization complete - set baseline
+    const snapshot = JSON.parse(JSON.stringify(currentInvoice))
+    initialInvoiceRef.current = snapshot
+    resetTracking(snapshot)
+    setIsInitializationComplete(true)
+  }, [
+    invoiceId,
+    hasLoadedInvoice,
+    hasAppliedProfile,
+    isInitializationComplete,
+    isManualOverride,
+    currentInvoice,
+    resetTracking,
+  ])
 
   // Handle navigation with unsaved changes
   const handleNavigationAttempt = useCallback((destination: string) => {

@@ -227,6 +227,8 @@
       "acceptance_criteria": [
         "NO FALSE POSITIVES: Visiting a page and leaving WITHOUT changes must NOT trigger warning",
         "Initialization-aware tracking: dirty state captured AFTER all init effects complete",
+        "Baseline fingerprint captured AFTER all auto-initialization effects complete (dates, period, work hours)",
+        "isInitializationComplete flag tracks when all automatic state updates have finished",
         "useUnsavedChanges hook created with beforeunload handler and navigation guard",
         "UnsavedChangesDialog component created with Save, Discard, and Cancel actions",
         "Browser refresh/close shows native browser warning when changes exist",
@@ -240,9 +242,9 @@
         "Client Manager modal close warns about unsaved form data"
       ],
       "steps_to_verify": [
-        "CRITICAL: Open Calendar page, make NO changes, try to leave - verify NO dialog appears",
+        "CRITICAL: Open Calendar page, make NO changes, wait for full initialization, try to leave - verify NO dialog appears",
         "CRITICAL: Open existing invoice Calendar page, make NO changes, try to leave - verify NO dialog",
-        "Open Calendar page, modify work hours, try to navigate away - verify dialog appears",
+        "Open Calendar page, wait for period/hours to populate, modify work hours, try to navigate away - verify dialog appears",
         "On dialog, click Cancel - verify stay on page with changes intact",
         "On dialog, click Discard - verify navigation occurs without saving",
         "On dialog, click Save - verify changes saved then navigation occurs",
@@ -253,9 +255,9 @@
         "Make changes, save successfully, navigate away - verify no warning (no unsaved changes)"
       ],
       "files_to_modify": [
-        "apps/web/src/lib/fingerprint.ts (new)",
-        "apps/web/src/hooks/use-unsaved-changes.ts (new)",
-        "apps/web/src/components/ui/unsaved-changes-dialog.tsx (new)",
+        "apps/web/src/lib/fingerprint.ts",
+        "apps/web/src/hooks/use-unsaved-changes.ts",
+        "apps/web/src/components/ui/unsaved-changes-dialog.tsx",
         "apps/web/src/lib/store.ts",
         "apps/web/src/components/invoice/InvoiceCalendarPage.tsx",
         "apps/web/src/components/invoice/InvoiceForm.tsx",
@@ -277,21 +279,26 @@
         "Toast notification confirms the toggle action",
         "Change persists to Convex database immediately",
         "PDF export reflects the updated setting",
-        "No page navigation required to change setting"
+        "No page navigation required to change setting",
+        "Switch shows neon green color (#39FF14) when in checked/active state",
+        "Neon green color is defined in Tailwind config for design system consistency"
       ],
       "steps_to_verify": [
         "Open invoice list at root or folder view",
         "Click dropdown menu (three dots) on any invoice row",
         "Verify menu item 'Detailed hours in PDF' with Switch component appears",
+        "Toggle the Switch ON - verify switch turns neon green (#39FF14)",
         "Toggle the Switch ON - verify toast notification appears",
         "Export PDF of that invoice - verify detailed hours breakdown appears",
-        "Open dropdown again - verify Switch shows ON state",
+        "Open dropdown again - verify Switch shows ON state with neon green color",
         "Toggle the Switch OFF - verify toast notification appears",
         "Export PDF - verify only summary hours (no day-by-day breakdown)",
         "Refresh page - verify setting persisted correctly"
       ],
       "files_to_modify": [
-        "apps/web/src/components/invoice/InvoiceManagerPage.tsx"
+        "apps/web/src/components/invoice/InvoiceManagerPage.tsx",
+        "apps/web/tailwind.config.ts",
+        "apps/web/src/components/ui/switch.tsx"
       ],
       "passes": true
     }
