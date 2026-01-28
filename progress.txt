@@ -296,3 +296,25 @@ Verification:
 - Build passes
 - Tests pass: 830 tests (web), 61 (shared-types), 9 (pdf-generator)
 - Lint passes: only warnings
+
+---
+
+UI-001: Fix Status Badge Color Readability Issues - COMPLETED
+
+Fixed status badge colors for better visibility in both light and dark modes. Previous implementation used opaque dark backgrounds (bg-*-900) that blended with pure black theme and dim text colors (text-*-300).
+
+Changes to INVOICE_STATUS_COLORS:
+- Dark mode backgrounds: bg-*-900 → bg-*-500/20 (semi-transparent)
+- Dark mode text: text-*-300 → text-*-400 (brighter)
+- Light mode text: text-*-700 → text-*-800 (darker for better contrast)
+- CANCELLED status: Changed from gray-500 both modes to gray-600/gray-400 for proper contrast
+
+Pattern matches existing Badge component variants (success, warning, info) which already use dark:bg-*-900/30 and dark:text-*-400.
+
+Files changed:
+- packages/shared-types/src/index.ts (INVOICE_STATUS_COLORS object)
+
+Verification:
+- Build passes
+- Tests pass: 830 tests (web)
+- Lint passes: only pre-existing warnings

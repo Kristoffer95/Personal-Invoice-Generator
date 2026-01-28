@@ -301,6 +301,48 @@
         "apps/web/src/components/ui/switch.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "UI-001",
+      "category": "UI",
+      "title": "Fix Status Badge Color Readability Issues",
+      "description": "Fix status badge colors that have poor readability in dark mode. Current implementation uses opaque dark backgrounds (bg-*-900) that blend with the app's pure black theme, and dim text colors (text-*-300) with low contrast. Update to use semi-transparent backgrounds and brighter text colors following the pattern already established in the Badge component variants.",
+      "acceptance_criteria": [
+        "Dark mode: Status badges use semi-transparent backgrounds (e.g., bg-*-500/20) instead of opaque bg-*-900",
+        "Dark mode: Status text uses brighter colors (*-400) instead of dim *-300",
+        "Light mode: Status text uses darker colors (*-800) for better contrast",
+        "DRAFT status is clearly visible in both light and dark modes",
+        "TO_SEND status (yellow/orange) is readable in both modes",
+        "SENT status (blue) is readable in both modes",
+        "PARTIAL_PAYMENT status (amber) is readable in both modes",
+        "PAID status (green) is readable in both modes",
+        "OVERDUE status (red) is readable in both modes",
+        "CANCELLED status has proper contrast (not gray-500 in both modes)",
+        "REFUNDED status (purple) is readable in both modes",
+        "Status badges don't blend with pure black background (#000) in dark mode",
+        "Status badges don't blend with white card backgrounds in light mode",
+        "Status filter tabs in invoice list are readable",
+        "Status dropdown options are readable",
+        "Status badges in invoice cards are readable"
+      ],
+      "steps_to_verify": [
+        "Run dev server: pnpm run dev",
+        "Navigate to invoice list page",
+        "In LIGHT mode: Verify all status badges are clearly visible against white/light backgrounds",
+        "In LIGHT mode: Check status filter tabs - all 8 statuses should be readable",
+        "Switch to DARK mode using theme toggle",
+        "In DARK mode: Verify Draft badges are clearly visible (not blending with black background)",
+        "In DARK mode: Verify Cancelled badges are clearly visible (proper gray contrast)",
+        "In DARK mode: Verify all colored badges (To Send, Sent, Partial Payment, Paid, Overdue, Refunded) have visible tinted backgrounds",
+        "Click status dropdown on any invoice - verify all 8 status options are readable",
+        "Navigate to Status Logs tab - verify status badges in log entries are readable",
+        "Open invoice preview popover - verify status badge is readable",
+        "Test with browser Playwright automation to capture screenshots in both modes"
+      ],
+      "files_to_modify": [
+        "packages/shared-types/src/index.ts"
+      ],
+      "passes": true
     }
   ]
 }

@@ -96,15 +96,17 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 }
 
 // Status colors for UI display
+// Uses semi-transparent backgrounds in dark mode for visibility against black (#000) backgrounds
+// Uses brighter text colors (*-400) in dark mode and darker text (*-800) in light mode for contrast
 export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
-  DRAFT: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300' },
-  TO_SEND: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300' },
-  SENT: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-700 dark:text-blue-300' },
-  PARTIAL_PAYMENT: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-300' },
-  PAID: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
-  OVERDUE: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-300' },
-  CANCELLED: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-500 dark:text-gray-500' },
-  REFUNDED: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-700 dark:text-purple-300' },
+  DRAFT: { bg: 'bg-gray-100 dark:bg-gray-500/20', text: 'text-gray-800 dark:text-gray-400' },
+  TO_SEND: { bg: 'bg-yellow-100 dark:bg-yellow-500/20', text: 'text-yellow-800 dark:text-yellow-400' },
+  SENT: { bg: 'bg-blue-100 dark:bg-blue-500/20', text: 'text-blue-800 dark:text-blue-400' },
+  PARTIAL_PAYMENT: { bg: 'bg-amber-100 dark:bg-amber-500/20', text: 'text-amber-800 dark:text-amber-400' },
+  PAID: { bg: 'bg-green-100 dark:bg-green-500/20', text: 'text-green-800 dark:text-green-400' },
+  OVERDUE: { bg: 'bg-red-100 dark:bg-red-500/20', text: 'text-red-800 dark:text-red-400' },
+  CANCELLED: { bg: 'bg-gray-100 dark:bg-gray-500/20', text: 'text-gray-600 dark:text-gray-400' },
+  REFUNDED: { bg: 'bg-purple-100 dark:bg-purple-500/20', text: 'text-purple-800 dark:text-purple-400' },
 }
 
 export type BackgroundDesign = z.infer<typeof backgroundDesignSchema>
