@@ -318,3 +318,27 @@ Verification:
 - Build passes
 - Tests pass: 830 tests (web)
 - Lint passes: only pre-existing warnings
+
+---
+
+UI-001 Update: Fix gray status badge colors per acceptance criteria - COMPLETED
+
+Previous implementation used bg-gray-500/20 for gray statuses (DRAFT, CANCELLED), but acceptance criteria specifically requires bg-gray-400/30 with text-gray-300 for better visibility on pure black backgrounds.
+
+Changes to INVOICE_STATUS_COLORS:
+- DRAFT: bg-gray-500/20 → bg-gray-400/30, text-gray-400 → text-gray-300
+- CANCELLED: bg-gray-500/20 → bg-gray-400/30, text-gray-400 → text-gray-300
+- All colored statuses remain unchanged (already met acceptance criteria)
+
+Rationale:
+- Gray-400 base is brighter than gray-500
+- 30% opacity is more visible than 20% on pure black
+- Gray-300 text is brighter than gray-400
+
+Files changed:
+- packages/shared-types/src/index.ts (INVOICE_STATUS_COLORS object)
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
