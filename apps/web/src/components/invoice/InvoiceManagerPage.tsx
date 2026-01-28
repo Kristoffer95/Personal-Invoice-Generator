@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { UserButton } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -101,6 +100,12 @@ const StatusLogList = dynamic(
 );
 const ClientManager = dynamic(
   () => import("@/components/clients/ClientManager").then((mod) => mod.ClientManager),
+  { ssr: false }
+);
+
+// Dynamic import for UserButton to prevent hydration mismatch (ssr: false)
+const UserButtonClient = dynamic(
+  () => import("@/components/clerk/UserButtonClient").then((mod) => mod.UserButtonClient),
   { ssr: false }
 );
 import {
@@ -732,7 +737,7 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                 <TooltipContent>Profile settings</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <UserButton afterSignOutUrl="/sign-in" />
+            <UserButtonClient afterSignOutUrl="/sign-in" />
           </div>
         </div>
       </motion.header>

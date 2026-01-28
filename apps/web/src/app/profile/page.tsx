@@ -2,8 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
 import { ArrowLeft, Save, Building2, FileText } from "lucide-react";
+
+// Dynamic import for UserButton to prevent hydration mismatch (ssr: false)
+const UserButtonClient = dynamic(
+  () => import("@/components/clerk/UserButtonClient").then((mod) => mod.UserButtonClient),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,7 +213,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <UserButton afterSignOutUrl="/sign-in" />
+            <UserButtonClient afterSignOutUrl="/sign-in" />
           </div>
         </div>
       </header>

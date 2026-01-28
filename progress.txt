@@ -342,3 +342,31 @@ Verification:
 - Build passes
 - Lint passes: only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+UI-002: Fix Clerk UserButton Hydration Mismatch - COMPLETED
+
+Fixed hydration mismatch error caused by Clerk's UserButton rendering differently on server vs client due to authentication state not being available during SSR.
+
+Solution:
+- Created UserButtonClient.tsx wrapper component in apps/web/src/components/clerk/
+- Wrapper uses "use client" directive and forwards all props to Clerk's UserButton
+- Dynamic import with ssr: false applied in all consuming components
+- Pattern matches existing codebase conventions (see TagManager, AnalyticsDashboard, etc.)
+
+Files changed:
+- apps/web/src/components/clerk/UserButtonClient.tsx (new)
+- apps/web/src/components/invoice/InvoiceManagerPage.tsx
+- apps/web/src/app/profile/page.tsx
+- apps/web/src/components/invoice/InvoiceCalendarPage.tsx
+
+Key decisions:
+- Used ComponentProps<typeof UserButton> to derive props type since UserButtonProps is not exported from @clerk/nextjs
+- Placed wrapper in /components/clerk/ directory for organization
+- Used same dynamic() import pattern as other client-only components in codebase
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

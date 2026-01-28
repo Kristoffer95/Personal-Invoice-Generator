@@ -339,6 +339,40 @@
         "packages/shared-types/src/index.ts"
       ],
       "passes": true
+    },
+    {
+      "id": "UI-002",
+      "category": "UI",
+      "title": "Fix Clerk UserButton Hydration Mismatch",
+      "description": "Fix hydration mismatch error caused by Clerk's UserButton component rendering differently on server vs client. The component depends on client-side authentication state which isn't available during SSR, causing React to report HTML mismatch errors.",
+      "acceptance_criteria": [
+        "No hydration mismatch errors in browser console related to UserButton",
+        "UserButton renders correctly in InvoiceManagerPage header",
+        "UserButton renders correctly in Profile page header",
+        "UserButton renders correctly in InvoiceCalendarPage header",
+        "UserButton functionality works (shows user avatar, sign out works)",
+        "Dynamic import pattern follows existing codebase conventions (ssr: false)",
+        "UserButtonClient wrapper component created in /components/clerk/"
+      ],
+      "steps_to_verify": [
+        "Create UserButtonClient.tsx wrapper component at apps/web/src/components/clerk/UserButtonClient.tsx",
+        "Update InvoiceManagerPage.tsx to use dynamic import with ssr: false",
+        "Update profile/page.tsx to use dynamic import with ssr: false",
+        "Update InvoiceCalendarPage.tsx to use dynamic import with ssr: false",
+        "Run npm run dev and open the app",
+        "Open browser DevTools console",
+        "Navigate to / (InvoiceManagerPage) - verify no hydration errors",
+        "Navigate to /profile - verify no hydration errors",
+        "Navigate to calendar page - verify no hydration errors",
+        "Click UserButton - verify dropdown opens and sign out works"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/clerk/UserButtonClient.tsx (new)",
+        "apps/web/src/components/invoice/InvoiceManagerPage.tsx",
+        "apps/web/src/app/profile/page.tsx",
+        "apps/web/src/components/invoice/InvoiceCalendarPage.tsx"
+      ],
+      "passes": true
     }
   ]
 }

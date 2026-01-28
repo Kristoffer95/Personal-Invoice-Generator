@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
+import dynamic from 'next/dynamic'
 import {
   format,
   parseISO,
@@ -83,6 +83,12 @@ import type { Invoice, PageSizeKey, DailyWorkHours, InvoiceTemplate } from '@inv
 import { CURRENCY_SYMBOLS } from '@invoice-generator/shared-types'
 import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
 import { ExportButton } from '@/components/export'
+
+// Dynamic import for UserButton to prevent hydration mismatch (ssr: false)
+const UserButtonClient = dynamic(
+  () => import('@/components/clerk/UserButtonClient').then((mod) => mod.UserButtonClient),
+  { ssr: false }
+)
 
 interface ExportOptions {
   template?: InvoiceTemplate
@@ -1123,7 +1129,7 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
               <Settings className="h-4 w-4" />
               <span className="sr-only">Settings</span>
             </Button>
-            <UserButton afterSignOutUrl="/sign-in" />
+            <UserButtonClient afterSignOutUrl="/sign-in" />
           </div>
           {/* Mobile header actions - minimal */}
           <div className="flex items-center gap-1 sm:hidden">
@@ -1132,7 +1138,7 @@ export function InvoiceCalendarPage({ folderId, invoiceId, onExportPDF }: Invoic
               <Settings className="h-4 w-4" />
               <span className="sr-only">Settings</span>
             </Button>
-            <UserButton afterSignOutUrl="/sign-in" />
+            <UserButtonClient afterSignOutUrl="/sign-in" />
           </div>
           </div>
         </div>
