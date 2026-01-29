@@ -640,7 +640,7 @@
         "apps/web/src/components/admin/UserDetailPage.tsx (new)",
         "apps/web/src/components/admin/ActivityFeed.tsx (new)"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ADMIN-006",

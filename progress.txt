@@ -678,3 +678,58 @@ Verification:
 - Build passes: npm run build
 - Lint passes: only pre-existing warnings (0 errors, 7 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-005: Admin Users Page with Activity Monitoring - COMPLETED
+
+Created admin-only users page showing all users with their activity stats and drill-down to individual user activity timeline.
+
+Backend implementation (packages/backend/convex/admin.ts):
+- listAllUsers: Admin query returns paginated user list with stats (invoice, folder, template, PDF export counts, last activity)
+- getUserAnalytics: Admin query returns detailed analytics for single user (invoice status breakdown, revenue by currency, activity counts)
+- getUserById: Admin query returns user by ID
+
+Frontend hooks (apps/web/src/hooks/use-admin.ts):
+- useAdminUsers: Fetches all users with stats for admin users list
+- useUserDetail: Fetches detailed analytics and activities for single user
+- useAdminUser: Fetches user by ID
+- useAdminActivities: Fetches all activities with optional filtering
+
+Admin users page (apps/web/src/app/admin/users/page.tsx):
+- Table shows: Avatar, Name, Email, Joined, Last Active, Invoices, Exports
+- Clicking row navigates to user detail page
+- Shows total user count
+
+User detail page (apps/web/src/app/admin/users/[userId]/page.tsx):
+- User info card with email, join date, last active, business name
+- Stats cards: invoices, folders, templates, PDF exports
+- Invoice status breakdown (badge counts)
+- Revenue from paid invoices by currency
+- Activity timeline with recent activities
+
+Components created:
+- UsersTable.tsx: User list table with avatar, name, email, stats, click navigation
+- UserDetailPage.tsx: User profile + stats cards + activity timeline
+- ActivityFeed.tsx: Activity timeline with icons, labels, timestamps, metadata
+
+Key decisions:
+- Used cursor-based pagination (timestamp) for scalability
+- Stats computed per-user by aggregating from invoices, folders, templates, activityLogs tables
+- ActivityFeed component shows event-specific metadata (status changes, template names, folder moves)
+- Avatar images use <img> instead of next/image since they're external Clerk URLs
+
+Files changed:
+- packages/backend/convex/admin.ts (new)
+- apps/web/src/hooks/use-admin.ts (new)
+- apps/web/src/app/admin/users/page.tsx (new)
+- apps/web/src/app/admin/users/[userId]/page.tsx (new)
+- apps/web/src/components/admin/UsersTable.tsx (new)
+- apps/web/src/components/admin/UserDetailPage.tsx (new)
+- apps/web/src/components/admin/ActivityFeed.tsx (new)
+- apps/web/src/app/admin/page.tsx (added users navigation card)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: only pre-existing warnings (0 errors, 9 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

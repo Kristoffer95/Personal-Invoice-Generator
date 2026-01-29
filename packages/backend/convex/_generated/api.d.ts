@@ -9,6 +9,7 @@
  */
 
 import type * as activityLogs from "../activityLogs.js";
+import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
 import type * as clientProfiles from "../clientProfiles.js";
 import type * as http from "../http.js";
@@ -29,6 +30,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activityLogs: typeof activityLogs;
+  admin: typeof admin;
   analytics: typeof analytics;
   clientProfiles: typeof clientProfiles;
   http: typeof http;

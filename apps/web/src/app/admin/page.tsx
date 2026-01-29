@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, Shield, Users, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -34,7 +34,8 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <main className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-6">
+          {/* Welcome Card */}
           <Card>
             <CardHeader>
               <CardTitle>Welcome, Admin</CardTitle>
@@ -44,10 +45,31 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                This is the admin dashboard. More admin features will be added here.
+                Manage users and monitor platform activity from this dashboard.
               </p>
             </CardContent>
           </Card>
+
+          {/* Navigation Cards */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Link href="/admin/users">
+              <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    View all users and their activity stats
+                  </p>
+                  <div className="flex items-center gap-1 mt-2 text-sm text-primary">
+                    <span>View users</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </div>
       </main>
     </div>
