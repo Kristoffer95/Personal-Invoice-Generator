@@ -321,14 +321,17 @@
         "Dark mode: Light/bright badge backgrounds pop against black page background",
         "Light mode: Dark badge backgrounds pop against white page background",
         "Text has high contrast against badge background in both modes",
+        "Status filter tabs always at 100% opacity (no opacity-50 or hover:opacity-75)",
         "Status filter tabs in invoice list are all readable in both modes",
         "Status dropdown options are all readable",
         "Status badges in invoice cards are readable"
       ],
       "steps_to_verify": [
         "Add '../../packages/shared-types/src/**/*.ts' to tailwind.config.ts content array",
+        "Remove opacity-50 hover:opacity-75 from status filter buttons in InvoiceFilters.tsx",
         "Run dev server: pnpm run dev",
         "Navigate to invoice list page",
+        "Verify status filter tabs are always at full opacity (not faded when unselected)",
         "Switch to DARK mode using theme toggle",
         "Verify all badges have light/bright solid backgrounds that pop on black",
         "Verify all badge text is dark colored and readable against light backgrounds",
@@ -340,7 +343,8 @@
       ],
       "files_to_modify": [
         "packages/shared-types/src/index.ts",
-        "apps/web/tailwind.config.ts"
+        "apps/web/tailwind.config.ts",
+        "apps/web/src/components/invoice/InvoiceFilters.tsx"
       ],
       "passes": true
     },

@@ -213,8 +213,8 @@ export function InvoiceFilters({ filters, onChange, onClear }: InvoiceFiltersPro
                   px-2 py-0.5 rounded text-xs font-medium transition-all
                   ${colors.bg} ${colors.text}
                   ${isSelected
-                    ? "opacity-100 ring-2 ring-primary ring-offset-1"
-                    : "opacity-50 hover:opacity-75"
+                    ? "ring-2 ring-primary ring-offset-1"
+                    : ""
                   }
                 `}
               >
@@ -333,9 +333,9 @@ export function InvoiceStatusFilter({
             type="button"
             onClick={() => toggleStatus(status)}
             className={`
-              px-2 py-1 rounded text-xs font-medium transition-opacity
+              px-2 py-1 rounded text-xs font-medium transition-all
               ${colors.bg} ${colors.text}
-              ${isSelected ? "opacity-100 ring-1 ring-primary" : "opacity-50 hover:opacity-75"}
+              ${isSelected ? "ring-1 ring-primary" : ""}
             `}
           >
             {INVOICE_STATUS_LABELS[status]}

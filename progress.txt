@@ -450,3 +450,23 @@ Verification:
 - Build passes
 - Lint passes: only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+UI-001 Final: Remove status filter opacity styling per acceptance criteria - COMPLETED
+
+The acceptance criteria specified "Status filter tabs always at 100% opacity (no opacity-50 or hover:opacity-75)". Previous implementation still had opacity-50/hover:opacity-75 on non-selected status filter buttons.
+
+Changes to InvoiceFilters.tsx:
+- Removed opacity-50 hover:opacity-75 from non-selected status filter buttons in InvoiceFilters component (lines 215-218)
+- Removed opacity-50 hover:opacity-75 from InvoiceStatusFilter component (line 338)
+- Changed transition-opacity to transition-all for consistency
+- Selected state now only shows ring indicator without opacity change
+
+Files changed:
+- apps/web/src/components/invoice/InvoiceFilters.tsx
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
