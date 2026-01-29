@@ -399,3 +399,33 @@ Verification:
 - Build passes
 - Lint passes: only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+UI-001 Correction: Apply inverted color pattern per acceptance criteria - COMPLETED
+
+Previous implementations did NOT follow the acceptance criteria's inverted approach. The criteria specifies:
+- Dark mode: Light/bright backgrounds (dark:*-200) with dark text (dark:*-800) - badges POP on black
+- Light mode: Darker backgrounds (*-600) with light text (*-100) - badges POP on white
+
+This is the OPPOSITE of conventional badge styling, specifically designed for maximum visibility.
+
+Changes to INVOICE_STATUS_COLORS:
+- DRAFT: bg-gray-600 dark:bg-gray-200, text-gray-100 dark:text-gray-800
+- CANCELLED: bg-gray-600 dark:bg-gray-200, text-gray-100 dark:text-gray-800
+- TO_SEND: bg-yellow-600 dark:bg-yellow-200, text-yellow-100 dark:text-yellow-800
+- SENT: bg-blue-600 dark:bg-blue-200, text-blue-100 dark:text-blue-800
+- PARTIAL_PAYMENT: bg-amber-600 dark:bg-amber-200, text-amber-100 dark:text-amber-800
+- PAID: bg-green-600 dark:bg-green-200, text-green-100 dark:text-green-800
+- OVERDUE: bg-red-600 dark:bg-red-200, text-red-100 dark:text-red-800
+- REFUNDED: bg-purple-600 dark:bg-purple-200, text-purple-100 dark:text-purple-800
+
+All solid colors (no semi-transparent overlays) for maximum badge visibility.
+
+Files changed:
+- packages/shared-types/src/index.ts (INVOICE_STATUS_COLORS object)
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific)
