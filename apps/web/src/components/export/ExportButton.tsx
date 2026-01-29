@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { FileDown, ChevronDown, Sun, Moon, Star } from 'lucide-react'
+import { useMutation } from 'convex/react'
+import { api } from '@invoice-generator/backend/convex/_generated/api'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,6 +17,7 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplates, useDefaultTemplate } from '@/hooks/use-templates'
 import { convexToInvoiceTemplate } from '@/lib/template-utils'
 import type { Invoice, InvoiceTemplate, BackgroundDesign } from '@invoice-generator/shared-types'
+import type { Id } from '@invoice-generator/backend/convex/_generated/dataModel'
 
 type BuiltInStyle = 'light' | 'dark'
 
@@ -44,6 +47,9 @@ export function ExportButton({
   const { templates: convexTemplates } = useTemplates()
   const { template: defaultConvexTemplate } = useDefaultTemplate()
 
+  // Mutation to log PDF export activity
+  const logPdfExport = useMutation(api.activityLogs.logPdfExport)
+
   // Convert Convex templates to InvoiceTemplate format
   const userTemplates = useMemo(() => {
     return convexTemplates.map(convexToInvoiceTemplate)
@@ -62,10 +68,26 @@ export function ExportButton({
     setIsExporting(true)
     try {
       await onExportPDF(invoice, options)
+
+      // Log the PDF export activity (only if invoice has a Convex ID)
+      if (invoice.id && isAuthenticated) {
+        try {
+          await logPdfExport({
+            invoiceId: invoice.id as Id<"invoices">,
+            invoiceNumber: invoice.invoiceNumber,
+            templateName: options?.template?.name,
+            templateId: options?.template?.id,
+            theme: options?.theme,
+            pageSize: invoice.pageSize,
+          })
+        } catch {
+          // Silently ignore logging errors - don't disrupt export flow
+        }
+      }
     } finally {
       setIsExporting(false)
     }
-  }, [invoice, onExportPDF, isExporting, disabled])
+  }, [invoice, onExportPDF, isExporting, disabled, isAuthenticated, logPdfExport])
 
   const handleMainExport = useCallback(async () => {
     if (defaultTemplate) {

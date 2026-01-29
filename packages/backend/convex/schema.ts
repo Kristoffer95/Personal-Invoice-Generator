@@ -326,6 +326,46 @@ const editorSettingsValidator = v.object({
 // User role validator
 const userRoleValidator = v.union(v.literal("user"), v.literal("admin"));
 
+// Activity event type validator
+const activityEventTypeValidator = v.union(
+  // PDF exports
+  v.literal("PDF_EXPORT"),
+  // Invoice operations
+  v.literal("INVOICE_CREATE"),
+  v.literal("INVOICE_UPDATE"),
+  v.literal("INVOICE_DELETE"),
+  v.literal("INVOICE_STATUS_CHANGE"),
+  v.literal("INVOICE_ARCHIVE"),
+  v.literal("INVOICE_UNARCHIVE"),
+  v.literal("INVOICE_DUPLICATE"),
+  v.literal("INVOICE_MOVE"),
+  // Folder operations
+  v.literal("FOLDER_CREATE"),
+  v.literal("FOLDER_UPDATE"),
+  v.literal("FOLDER_DELETE"),
+  v.literal("FOLDER_MOVE"),
+  // Template operations
+  v.literal("TEMPLATE_CREATE"),
+  v.literal("TEMPLATE_UPDATE"),
+  v.literal("TEMPLATE_DELETE"),
+  v.literal("TEMPLATE_DUPLICATE"),
+  // Client operations
+  v.literal("CLIENT_CREATE"),
+  v.literal("CLIENT_UPDATE"),
+  v.literal("CLIENT_DELETE"),
+  // User profile operations
+  v.literal("USER_PROFILE_UPDATE")
+);
+
+// Target type validator for activity logs
+const activityTargetTypeValidator = v.union(
+  v.literal("invoice"),
+  v.literal("folder"),
+  v.literal("template"),
+  v.literal("client"),
+  v.literal("user_profile")
+);
+
 export default defineSchema({
   users: defineTable({
     // Core identity (synced from Clerk)
@@ -643,4 +683,32 @@ export default defineSchema({
     .index("by_user_and_changed", ["userId", "changedAt"])
     .index("by_invoice_id", ["invoiceId"])
     .index("by_folder_id", ["userId", "folderId"]),
+
+  // Activity logs for tracking user activities across the application
+  activityLogs: defineTable({
+    userId: v.id("users"),
+
+    // Event type (what action was performed)
+    eventType: activityEventTypeValidator,
+
+    // Target type (what entity was affected)
+    targetType: activityTargetTypeValidator,
+
+    // Target ID (the ID of the affected entity - stored as string for flexibility)
+    targetId: v.optional(v.string()),
+
+    // Target name (human-readable name for display without joins)
+    targetName: v.optional(v.string()),
+
+    // Additional metadata (JSON-serializable object for event-specific details)
+    // Examples: invoice number, template name, old/new status, etc.
+    metadata: v.optional(v.any()),
+
+    // Timestamp
+    timestamp: v.number(), // Unix timestamp
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_and_timestamp", ["userId", "timestamp"])
+    .index("by_event_type", ["eventType"])
+    .index("by_timestamp", ["timestamp"]),
 });

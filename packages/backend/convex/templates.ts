@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getOrCreateUserFromIdentity, getUserFromIdentityOrE2E } from "./users";
 import type { Id } from "./_generated/dataModel";
 
@@ -363,6 +364,22 @@ export const createTemplate = mutation({
       updatedAt: now,
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "TEMPLATE_CREATE",
+      targetType: "template",
+      targetId: templateId,
+      targetName: args.name,
+      metadata: {
+        templateName: args.name,
+        pageSize: args.pageSize,
+        orientation: args.orientation,
+        isDefault: args.isDefault ?? false,
+        elementCount: args.elements.length,
+      },
+    });
+
     return templateId;
   },
 });
@@ -404,6 +421,19 @@ export const updateTemplate = mutation({
     await ctx.db.patch(templateId, {
       ...updates,
       updatedAt: Date.now(),
+    });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "TEMPLATE_UPDATE",
+      targetType: "template",
+      targetId: templateId,
+      targetName: updates.name ?? template.name,
+      metadata: {
+        templateName: template.name,
+        updatedFields: Object.keys(updates).filter((k) => k !== "templateId"),
+      },
     });
 
     return templateId;
@@ -451,6 +481,20 @@ export const duplicateTemplate = mutation({
       isDefault: false, // Duplicates are never default
       createdAt: now,
       updatedAt: now,
+    });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "TEMPLATE_DUPLICATE",
+      targetType: "template",
+      targetId: newTemplateId,
+      targetName: newName,
+      metadata: {
+        newTemplateName: newName,
+        sourceTemplateId: args.templateId,
+        sourceTemplateName: template.name,
+      },
     });
 
     return newTemplateId;
@@ -526,6 +570,20 @@ export const deleteTemplate = mutation({
     await ctx.db.patch(args.templateId, {
       deletedAt: Date.now(),
       isDefault: false, // Clear default status on delete
+    });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "TEMPLATE_DELETE",
+      targetType: "template",
+      targetId: args.templateId,
+      targetName: template.name,
+      metadata: {
+        templateName: template.name,
+        pageSize: template.pageSize,
+        orientation: template.orientation,
+      },
     });
 
     return args.templateId;

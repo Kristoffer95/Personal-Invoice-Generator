@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getOrCreateUserFromIdentity, getUserFromIdentityOrE2E } from "./users";
 
 // List all folders for the current user with filtering
@@ -218,6 +219,20 @@ export const createFolder = mutation({
       updatedAt: now,
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "FOLDER_CREATE",
+      targetType: "folder",
+      targetId: folderId,
+      targetName: args.name,
+      metadata: {
+        folderName: args.name,
+        parentId: args.parentId,
+        color: args.color,
+      },
+    });
+
     return folderId;
   },
 });
@@ -341,6 +356,19 @@ export const updateFolder = mutation({
 
     await ctx.db.patch(folderId, patchData);
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "FOLDER_UPDATE",
+      targetType: "folder",
+      targetId: folderId,
+      targetName: updates.name ?? folder.name,
+      metadata: {
+        folderName: folder.name,
+        updatedFields: Object.keys(updates).filter((k) => k !== "folderId"),
+      },
+    });
+
     return folderId;
   },
 });
@@ -396,6 +424,21 @@ export const removeFolder = mutation({
 
     // Soft delete the folder
     await ctx.db.patch(args.folderId, { deletedAt: now });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "FOLDER_DELETE",
+      targetType: "folder",
+      targetId: args.folderId,
+      targetName: folder.name,
+      metadata: {
+        folderName: folder.name,
+        deleteContents: args.deleteContents ?? false,
+        invoiceCount: invoicesInFolder.length,
+        childFolderCount: childFolders.length,
+      },
+    });
 
     return args.folderId;
   },
@@ -575,10 +618,36 @@ export const moveFolder = mutation({
       }
     }
 
+    const previousParentId = folder.parentId;
+
     await ctx.db.patch(args.folderId, {
       parentId: args.newParentId,
       updatedAt: Date.now(),
     });
+
+    // Log activity (only if parent actually changed)
+    if (args.newParentId !== previousParentId) {
+      // Get new parent name for metadata
+      let newParentName: string | undefined;
+      if (args.newParentId) {
+        const newParent = await ctx.db.get(args.newParentId);
+        newParentName = newParent?.name;
+      }
+
+      await ctx.runMutation(internal.activityLogs.logActivity, {
+        userId: user._id,
+        eventType: "FOLDER_MOVE",
+        targetType: "folder",
+        targetId: args.folderId,
+        targetName: folder.name,
+        metadata: {
+          folderName: folder.name,
+          previousParentId,
+          newParentId: args.newParentId,
+          newParentName,
+        },
+      });
+    }
 
     return args.folderId;
   },

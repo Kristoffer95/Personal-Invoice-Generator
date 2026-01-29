@@ -604,3 +604,77 @@ Verification:
 - Build passes: npm run build --filter=@invoice-generator/web
 - Lint passes: only pre-existing warnings (0 errors, 7 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-004: Activity Logging System - COMPLETED
+
+Implemented comprehensive activity logging system that tracks user activities across the application for admin monitoring.
+
+Schema changes (packages/backend/convex/schema.ts):
+- Added activityEventTypeValidator with 22 event types covering all operations
+- Added activityTargetTypeValidator for 5 entity types (invoice, folder, template, client, user_profile)
+- Created activityLogs table with fields: userId, eventType, targetType, targetId, targetName, metadata, timestamp
+- Added indexes: by_user_id, by_user_and_timestamp, by_event_type, by_timestamp
+
+Backend implementation (packages/backend/convex/activityLogs.ts):
+- logActivity: Internal mutation for other backend modules to log activities
+- logPdfExport: Public mutation for frontend to log PDF export activities
+- listAllActivities: Admin query to list activities with pagination and filtering
+- listUserActivities: Admin query to list activities for a specific user
+- getActivityCounts: Admin query for analytics (counts by event type)
+- Exported TypeScript types for ActivityEventType, ActivityTargetType, LogActivityParams
+
+Invoice logging (packages/backend/convex/invoices.ts):
+- INVOICE_CREATE: Logs invoice number, folder, status, total, currency, client name
+- INVOICE_UPDATE: Logs invoice number and updated field names
+- INVOICE_DELETE: Logs invoice number, folder, total, currency, client name
+- INVOICE_DUPLICATE: Logs new/source invoice numbers, copy settings
+- INVOICE_MOVE: Logs folder changes (previous/new folder)
+- INVOICE_STATUS_CHANGE: Logs previous/new status and notes
+- INVOICE_ARCHIVE/UNARCHIVE: Logs invoice number and folder
+
+Folder logging (packages/backend/convex/invoiceFolders.ts):
+- FOLDER_CREATE: Logs folder name, parent, color
+- FOLDER_UPDATE: Logs folder name and updated field names
+- FOLDER_DELETE: Logs folder name, delete contents flag, invoice/child counts
+- FOLDER_MOVE: Logs previous/new parent folder changes
+
+Template logging (packages/backend/convex/templates.ts):
+- TEMPLATE_CREATE: Logs name, pageSize, orientation, isDefault, element count
+- TEMPLATE_UPDATE: Logs template name and updated field names
+- TEMPLATE_DELETE: Logs template name, pageSize, orientation
+- TEMPLATE_DUPLICATE: Logs new/source template names
+
+Client logging (packages/backend/convex/clientProfiles.ts):
+- CLIENT_CREATE: Logs client name, company name, email
+- CLIENT_UPDATE: Logs client name and updated field names
+- CLIENT_DELETE: Logs client name, company name, email
+
+PDF export logging (apps/web/src/components/export/ExportButton.tsx):
+- Added logPdfExport mutation call after successful PDF export
+- Logs invoice ID/number, template name/ID, theme, page size
+- Silently catches errors to not disrupt export flow
+- Only logs when user is authenticated and invoice has a Convex ID
+
+Key decisions:
+- Internal mutation (logActivity) for backend-to-backend logging to avoid auth overhead
+- Public mutation (logPdfExport) for frontend since it needs to authenticate
+- Metadata stored as v.any() for flexibility in event-specific details
+- Logs created AFTER successful operations (not on failure)
+- Admin queries check isAdmin before returning data
+- Cursor-based pagination for scalable activity listing
+
+Files changed:
+- packages/backend/convex/schema.ts (added activityLogs table + validators)
+- packages/backend/convex/activityLogs.ts (new)
+- packages/backend/convex/invoices.ts (added logging to 8 mutations)
+- packages/backend/convex/invoiceFolders.ts (added logging to 4 mutations)
+- packages/backend/convex/templates.ts (added logging to 4 mutations)
+- packages/backend/convex/clientProfiles.ts (added logging to 3 mutations)
+- apps/web/src/components/export/ExportButton.tsx (added PDF export logging)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: only pre-existing warnings (0 errors, 7 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

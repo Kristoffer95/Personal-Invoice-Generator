@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getOrCreateUserFromIdentity, getUserFromIdentityOrE2E } from "./users";
 
 // Shared validators
@@ -447,6 +448,24 @@ export const createInvoice = mutation({
       changedAtStr: nowStr,
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_CREATE",
+      targetType: "invoice",
+      targetId: invoiceId,
+      targetName: args.invoiceNumber,
+      metadata: {
+        invoiceNumber: args.invoiceNumber,
+        folderId: args.folderId,
+        folderName,
+        status: finalStatus,
+        totalAmount: args.totalAmount,
+        currency: args.currency,
+        clientName: args.to.name,
+      },
+    });
+
     return invoiceId;
   },
 });
@@ -593,6 +612,19 @@ export const updateInvoice = mutation({
 
     await ctx.db.patch(invoiceId, patchData);
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_UPDATE",
+      targetType: "invoice",
+      targetId: invoiceId,
+      targetName: invoice.invoiceNumber,
+      metadata: {
+        invoiceNumber: invoice.invoiceNumber,
+        updatedFields: Object.keys(updates).filter((k) => k !== "invoiceId"),
+      },
+    });
+
     return invoiceId;
   },
 });
@@ -613,6 +645,22 @@ export const removeInvoice = mutation({
     }
 
     await ctx.db.patch(args.invoiceId, { deletedAt: Date.now() });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_DELETE",
+      targetType: "invoice",
+      targetId: args.invoiceId,
+      targetName: invoice.invoiceNumber,
+      metadata: {
+        invoiceNumber: invoice.invoiceNumber,
+        folderId: invoice.folderId,
+        totalAmount: invoice.totalAmount,
+        currency: invoice.currency,
+        clientName: invoice.to.name,
+      },
+    });
 
     return args.invoiceId;
   },
@@ -839,6 +887,23 @@ export const duplicateInvoice = mutation({
       updatedAt: now,
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_DUPLICATE",
+      targetType: "invoice",
+      targetId: newInvoiceId,
+      targetName: invoiceNumber,
+      metadata: {
+        newInvoiceNumber: invoiceNumber,
+        sourceInvoiceId: args.sourceInvoiceId,
+        sourceInvoiceNumber: sourceInvoice.invoiceNumber,
+        folderId: args.folderId ?? sourceInvoice.folderId,
+        copyWorkHours: args.copyWorkHours ?? false,
+        copyTags: args.copyTags ?? false,
+      },
+    });
+
     return { invoiceId: newInvoiceId, invoiceNumber };
   },
 });
@@ -900,10 +965,36 @@ export const moveToFolder = mutation({
       }
     }
 
+    const previousFolderId = invoice.folderId;
+
     await ctx.db.patch(args.invoiceId, {
       folderId: args.folderId,
       updatedAt: Date.now(),
     });
+
+    // Log activity (only if folder actually changed)
+    if (args.folderId !== previousFolderId) {
+      // Get folder name for metadata
+      let newFolderName: string | undefined;
+      if (args.folderId) {
+        const folder = await ctx.db.get(args.folderId);
+        newFolderName = folder?.name;
+      }
+
+      await ctx.runMutation(internal.activityLogs.logActivity, {
+        userId: user._id,
+        eventType: "INVOICE_MOVE",
+        targetType: "invoice",
+        targetId: args.invoiceId,
+        targetName: invoice.invoiceNumber,
+        metadata: {
+          invoiceNumber: invoice.invoiceNumber,
+          previousFolderId,
+          newFolderId: args.folderId,
+          newFolderName,
+        },
+      });
+    }
 
     return args.invoiceId;
   },
@@ -1105,6 +1196,21 @@ export const updateStatus = mutation({
       changedAtStr: nowStr,
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_STATUS_CHANGE",
+      targetType: "invoice",
+      targetId: args.invoiceId,
+      targetName: invoice.invoiceNumber,
+      metadata: {
+        invoiceNumber: invoice.invoiceNumber,
+        previousStatus,
+        newStatus: args.status,
+        notes: args.notes,
+      },
+    });
+
     return args.invoiceId;
   },
 });
@@ -1131,6 +1237,19 @@ export const archiveInvoice = mutation({
       updatedAt: Date.now(),
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_ARCHIVE",
+      targetType: "invoice",
+      targetId: args.invoiceId,
+      targetName: invoice.invoiceNumber,
+      metadata: {
+        invoiceNumber: invoice.invoiceNumber,
+        folderId: invoice.folderId,
+      },
+    });
+
     return args.invoiceId;
   },
 });
@@ -1155,6 +1274,19 @@ export const unarchiveInvoice = mutation({
       isArchived: false,
       archivedAt: undefined,
       updatedAt: Date.now(),
+    });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "INVOICE_UNARCHIVE",
+      targetType: "invoice",
+      targetId: args.invoiceId,
+      targetName: invoice.invoiceNumber,
+      metadata: {
+        invoiceNumber: invoice.invoiceNumber,
+        folderId: invoice.folderId,
+      },
     });
 
     return args.invoiceId;

@@ -593,7 +593,7 @@
         "packages/backend/convex/clientProfiles.ts",
         "apps/web/src/components/export/ExportButton.tsx"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ADMIN-005",

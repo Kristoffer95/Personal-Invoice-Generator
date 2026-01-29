@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getOrCreateUserFromIdentity, getUserFromIdentityOrE2E } from "./users";
 
 // List all client profiles for the current user
@@ -98,6 +99,20 @@ export const createClient = mutation({
       updatedAt: now,
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "CLIENT_CREATE",
+      targetType: "client",
+      targetId: clientId,
+      targetName: args.name,
+      metadata: {
+        clientName: args.name,
+        companyName: args.companyName,
+        email: args.email,
+      },
+    });
+
     return clientId;
   },
 });
@@ -138,6 +153,19 @@ export const updateClient = mutation({
       updatedAt: Date.now(),
     });
 
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "CLIENT_UPDATE",
+      targetType: "client",
+      targetId: clientId,
+      targetName: updates.name ?? client.name,
+      metadata: {
+        clientName: client.name,
+        updatedFields: Object.keys(updates).filter((k) => k !== "clientId"),
+      },
+    });
+
     return clientId;
   },
 });
@@ -158,6 +186,20 @@ export const removeClient = mutation({
     }
 
     await ctx.db.patch(args.clientId, { deletedAt: Date.now() });
+
+    // Log activity
+    await ctx.runMutation(internal.activityLogs.logActivity, {
+      userId: user._id,
+      eventType: "CLIENT_DELETE",
+      targetType: "client",
+      targetId: args.clientId,
+      targetName: client.name,
+      metadata: {
+        clientName: client.name,
+        companyName: client.companyName,
+        email: client.email,
+      },
+    });
 
     return args.clientId;
   },
