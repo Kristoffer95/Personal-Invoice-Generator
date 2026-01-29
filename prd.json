@@ -306,8 +306,9 @@
       "id": "UI-001",
       "category": "UI",
       "title": "Fix Status Badge Color Readability Issues",
-      "description": "Fix status badge colors by using solid backgrounds that contrast with the page background. Dark mode uses light/bright backgrounds with dark text (badges pop on black). Light mode uses darker backgrounds with light text (badges pop on white). This inverted approach ensures badges are always visible regardless of theme.",
+      "description": "Fix status badge colors by using solid backgrounds that contrast with the page background. Dark mode uses light/bright backgrounds with dark text (badges pop on black). Light mode uses darker backgrounds with light text (badges pop on white). Also fix Tailwind content config to scan shared-types package where colors are defined.",
       "acceptance_criteria": [
+        "Tailwind content config includes shared-types package path: '../../packages/shared-types/src/**/*.ts'",
         "DRAFT: Uses bg-gray-600 dark:bg-gray-200, text-gray-100 dark:text-gray-800",
         "CANCELLED: Uses bg-gray-600 dark:bg-gray-200, text-gray-100 dark:text-gray-800",
         "TO_SEND: Uses bg-yellow-600 dark:bg-yellow-200, text-yellow-100 dark:text-yellow-800",
@@ -325,6 +326,7 @@
         "Status badges in invoice cards are readable"
       ],
       "steps_to_verify": [
+        "Add '../../packages/shared-types/src/**/*.ts' to tailwind.config.ts content array",
         "Run dev server: pnpm run dev",
         "Navigate to invoice list page",
         "Switch to DARK mode using theme toggle",
@@ -337,7 +339,8 @@
         "Navigate to Status Logs tab - verify status badges readable in both modes"
       ],
       "files_to_modify": [
-        "packages/shared-types/src/index.ts"
+        "packages/shared-types/src/index.ts",
+        "apps/web/tailwind.config.ts"
       ],
       "passes": true
     },

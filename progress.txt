@@ -429,3 +429,24 @@ Verification:
 - Build passes
 - Lint passes: only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific)
+
+---
+
+UI-001 Final Completion: Add Tailwind content config for shared-types package - COMPLETED
+
+The acceptance criteria required adding the shared-types package path to Tailwind config so that dynamic classes defined in INVOICE_STATUS_COLORS are properly scanned and included in the CSS output.
+
+Root cause: INVOICE_STATUS_COLORS in packages/shared-types/src/index.ts defines Tailwind classes (bg-gray-600, dark:bg-gray-200, etc.) but Tailwind wasn't scanning this file, so classes weren't included in production CSS.
+
+Change:
+- Added '../../packages/shared-types/src/**/*.ts' to tailwind.config.ts content array
+
+The color definitions (already correct per previous work) now work properly because Tailwind scans and includes them.
+
+Files changed:
+- apps/web/tailwind.config.ts (added shared-types to content array)
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
