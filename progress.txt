@@ -470,3 +470,39 @@ Verification:
 - Build passes
 - Lint passes: only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+STYLE-007: Restructure V2 Templates to Follow Column→Row→Element Hierarchy - COMPLETED
+
+Restructured all 11 V2 templates to follow the required Column→Row→Element hierarchy. Previously, elements like Header Divider, Work Hours Table, Line Items Table, Footer Divider, and Footer Text were direct children of the Root Column Container instead of being wrapped in Row Containers.
+
+Solution:
+- Created Node.js transformation script to analyze and modify templates
+- For each element directly under a Column container (not a layout_container):
+  1. Created a new Row container wrapper with direction: 'row'
+  2. Updated element's parentId to point to the new Row container
+  3. Set element's order to 0 (first child of Row)
+  4. Moved spacing from element to the Row container
+  5. Row containers have heightMode: 'auto' to fit content
+
+Elements wrapped across all templates (46 total):
+- Classic Light/Dark: Header Divider, Work Hours, Line Items, Footer Divider, Footer (5 each)
+- Vercel Minimal: Header Divider, Work Hours, Line Items (3)
+- Vercel Professional: Section Divider, Work Hours, Line Items, Footer (4)
+- Vercel Executive: Divider, Work Hours, Line Items, Footer Line, Footer (5)
+- Vercel Modern: Dates, Work Hours, Line Items, Footer (4)
+- Vercel Classic: Section Divider, Work Hours, Line Items, Footer Divider, Footer (5)
+- Dark Noir: Header Divider, Work Hours, Line Items, Footer Divider, Footer (5)
+- Midnight Blue: Header Divider, Work Hours, Line Items, Footer Divider, Footer (5)
+- Carbon Terminal: Divider, Work Hours, Line Items (3)
+- Obsidian Elegance: Work Hours, Line Items (2)
+
+Files changed:
+- apps/web/src/lib/system-templates.ts (~650 lines added for Row containers)
+
+Verification:
+- Build passes: npm run build --filter=@invoice-generator/web
+- Lint passes: only pre-existing warnings (0 errors, 7 warnings)
+- All 11 V2 templates verified: every direct child of root containers is now layout_container type
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

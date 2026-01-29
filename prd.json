@@ -381,6 +381,44 @@
         "apps/web/src/components/invoice/InvoiceCalendarPage.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-007",
+      "category": "Style Editor",
+      "title": "Restructure V2 Templates to Follow Column→Row→Element Hierarchy",
+      "description": "All 11 V2 templates have elements placed directly inside Column Containers, violating the required structure where ALL elements must be inside Row Containers. Currently, elements like Header Divider, Work Hours Table, Line Items Table, Footer Divider, and Footer Text are direct children of the Root Column Container instead of being wrapped in Row Containers.",
+      "acceptance_criteria": [
+        "Every V2 template has a root Column Container",
+        "ALL direct children of any Column Container must be Row Containers (type: layout_container with direction: row)",
+        "No elements (text, divider, table_work_hours, table_line_items, table_summary) exist directly inside Column Containers",
+        "All elements are wrapped in Row Containers following: Column → Row → Element hierarchy",
+        "Header Divider wrapped in Header Divider Row container",
+        "Work Hours Table wrapped in Work Hours Row container",
+        "Line Items Table wrapped in Line Items Row container",
+        "Footer Divider wrapped in Footer Divider Row container",
+        "Footer Text wrapped in Footer Text Row container",
+        "New Row containers have heightMode: auto to fit their content",
+        "Spacing/margins moved from elements to their parent Row containers",
+        "All 11 V2 templates follow identical structure pattern",
+        "Visual output remains identical after restructuring",
+        "PDF export produces identical output"
+      ],
+      "steps_to_verify": [
+        "For each V2 template, identify elements directly under Root Column Container",
+        "Create new Row Container wrappers for: Header Divider, Work Hours Table, Line Items Table, Footer Divider, Footer Text",
+        "Update element parentId to point to new Row Container",
+        "Set element order to 0 (first child in Row)",
+        "Move spacing from element to Row Container",
+        "Renumber zIndex values sequentially",
+        "Repeat for all 11 V2 templates",
+        "Visual test: Open each V2 template in style editor - verify correct rendering",
+        "PDF test: Export each V2 template - verify layout unchanged",
+        "Verify no elements exist directly under any Column Container"
+      ],
+      "files_to_modify": [
+        "apps/web/src/lib/system-templates.ts"
+      ],
+      "passes": true
     }
   ]
 }
