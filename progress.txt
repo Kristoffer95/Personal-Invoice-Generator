@@ -370,3 +370,32 @@ Verification:
 - Build passes
 - Lint passes: only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+UI-001 Final Fix: Replace semi-transparent with solid colors per acceptance criteria - COMPLETED
+
+Previous implementation used semi-transparent backgrounds (bg-*-500/20, bg-*-400/30) which did not match the acceptance criteria requirement for solid colors.
+
+Changes to INVOICE_STATUS_COLORS:
+- DRAFT: bg-gray-200 dark:bg-gray-800, text-gray-700 dark:text-gray-200
+- TO_SEND: bg-yellow-100 dark:bg-yellow-900, text-yellow-800 dark:text-yellow-200
+- SENT: bg-blue-100 dark:bg-blue-900, text-blue-800 dark:text-blue-200
+- PARTIAL_PAYMENT: bg-amber-100 dark:bg-amber-900, text-amber-800 dark:text-amber-200
+- PAID: bg-green-100 dark:bg-green-900, text-green-800 dark:text-green-200
+- OVERDUE: bg-red-100 dark:bg-red-900, text-red-800 dark:text-red-200
+- CANCELLED: bg-gray-200 dark:bg-gray-800, text-gray-700 dark:text-gray-200
+- REFUNDED: bg-purple-100 dark:bg-purple-900, text-purple-800 dark:text-purple-200
+
+Pattern:
+- Light mode: solid light backgrounds (*-100 or *-200) with dark text (*-700 or *-800)
+- Dark mode: solid dark backgrounds (*-800 or *-900) with light text (*-200)
+- No semi-transparent overlays - all solid colors for maximum visibility
+
+Files changed:
+- packages/shared-types/src/index.ts (INVOICE_STATUS_COLORS object)
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

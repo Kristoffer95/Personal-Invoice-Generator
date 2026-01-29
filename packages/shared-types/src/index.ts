@@ -96,18 +96,18 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 }
 
 // Status colors for UI display
-// Uses semi-transparent backgrounds in dark mode for visibility against black (#000) backgrounds
-// Gray/neutral statuses use higher opacity (30%) and brighter text (gray-300) for visibility on pure black
-// Colored statuses use *-500/20 backgrounds with *-400 text in dark mode
+// Light mode: solid light backgrounds (*-100) with dark text (*-700 or *-800)
+// Dark mode: solid dark backgrounds (*-800 or *-900) with light text (*-200)
+// All backgrounds are solid colors (no semi-transparent overlays) for maximum visibility
 export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
-  DRAFT: { bg: 'bg-gray-100 dark:bg-gray-400/30', text: 'text-gray-800 dark:text-gray-300' },
-  TO_SEND: { bg: 'bg-yellow-100 dark:bg-yellow-500/20', text: 'text-yellow-800 dark:text-yellow-400' },
-  SENT: { bg: 'bg-blue-100 dark:bg-blue-500/20', text: 'text-blue-800 dark:text-blue-400' },
-  PARTIAL_PAYMENT: { bg: 'bg-amber-100 dark:bg-amber-500/20', text: 'text-amber-800 dark:text-amber-400' },
-  PAID: { bg: 'bg-green-100 dark:bg-green-500/20', text: 'text-green-800 dark:text-green-400' },
-  OVERDUE: { bg: 'bg-red-100 dark:bg-red-500/20', text: 'text-red-800 dark:text-red-400' },
-  CANCELLED: { bg: 'bg-gray-100 dark:bg-gray-400/30', text: 'text-gray-800 dark:text-gray-300' },
-  REFUNDED: { bg: 'bg-purple-100 dark:bg-purple-500/20', text: 'text-purple-800 dark:text-purple-400' },
+  DRAFT: { bg: 'bg-gray-200 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-200' },
+  TO_SEND: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-800 dark:text-yellow-200' },
+  SENT: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-800 dark:text-blue-200' },
+  PARTIAL_PAYMENT: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-800 dark:text-amber-200' },
+  PAID: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-800 dark:text-green-200' },
+  OVERDUE: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-800 dark:text-red-200' },
+  CANCELLED: { bg: 'bg-gray-200 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-200' },
+  REFUNDED: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-800 dark:text-purple-200' },
 }
 
 export type BackgroundDesign = z.infer<typeof backgroundDesignSchema>
