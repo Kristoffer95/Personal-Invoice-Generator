@@ -239,3 +239,137 @@ export const getUserById = query({
     return user;
   },
 });
+
+/**
+ * Dashboard statistics type
+ */
+export type DashboardStats = {
+  totalUsers: number;
+  activeUsersToday: number;
+  activeUsersWeek: number;
+  activeUsersMonth: number;
+  totalInvoices: number;
+  totalPdfExports: number;
+  totalRevenue: Record<string, number>; // Revenue by currency
+  topUsersByActivity: Array<{
+    userId: string;
+    email: string;
+    name: string;
+    imageUrl: string | null;
+    activityCount: number;
+    lastActivity: number | null;
+  }>;
+};
+
+/**
+ * Get platform-wide dashboard statistics (admin only).
+ * Returns aggregated metrics across all users.
+ */
+export const getDashboardStats = query({
+  args: {},
+  handler: async (ctx): Promise<DashboardStats | null> => {
+    // Check admin access
+    await requireAdmin(ctx);
+
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+    // Get all non-deleted users
+    const allUsers = await ctx.db.query("users").collect();
+    const activeUsers = allUsers.filter((u) => !u.deletedAt);
+    const totalUsers = activeUsers.length;
+
+    // Get all invoices
+    const allInvoices = await ctx.db.query("invoices").collect();
+    const activeInvoices = allInvoices.filter((i) => !i.deletedAt);
+    const totalInvoices = activeInvoices.length;
+
+    // Calculate total revenue from paid invoices by currency
+    const paidInvoices = activeInvoices.filter((i) => i.status === "PAID");
+    const totalRevenue: Record<string, number> = {};
+    for (const inv of paidInvoices) {
+      totalRevenue[inv.currency] = (totalRevenue[inv.currency] || 0) + inv.totalAmount;
+    }
+
+    // Get all activity logs for analytics
+    const allActivities = await ctx.db
+      .query("activityLogs")
+      .withIndex("by_timestamp")
+      .collect();
+
+    // Count PDF exports
+    const totalPdfExports = allActivities.filter(
+      (a) => a.eventType === "PDF_EXPORT"
+    ).length;
+
+    // Get unique users with activity in different time periods
+    const usersWithActivityToday = new Set<string>();
+    const usersWithActivityWeek = new Set<string>();
+    const usersWithActivityMonth = new Set<string>();
+
+    for (const activity of allActivities) {
+      const userIdStr = activity.userId.toString();
+      if (activity.timestamp >= oneDayAgo) {
+        usersWithActivityToday.add(userIdStr);
+      }
+      if (activity.timestamp >= oneWeekAgo) {
+        usersWithActivityWeek.add(userIdStr);
+      }
+      if (activity.timestamp >= oneMonthAgo) {
+        usersWithActivityMonth.add(userIdStr);
+      }
+    }
+
+    // Get top users by activity count
+    const userActivityCounts: Record<string, { count: number; lastActivity: number }> = {};
+    for (const activity of allActivities) {
+      const userIdStr = activity.userId.toString();
+      if (!userActivityCounts[userIdStr]) {
+        userActivityCounts[userIdStr] = { count: 0, lastActivity: 0 };
+      }
+      userActivityCounts[userIdStr].count++;
+      if (activity.timestamp > userActivityCounts[userIdStr].lastActivity) {
+        userActivityCounts[userIdStr].lastActivity = activity.timestamp;
+      }
+    }
+
+    // Sort by activity count and get top 10
+    const sortedUserIds = Object.entries(userActivityCounts)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 10)
+      .map(([userId]) => userId);
+
+    // Fetch user details for top users
+    const topUsersByActivity = await Promise.all(
+      sortedUserIds.map(async (userIdStr) => {
+        const user = activeUsers.find((u) => u._id.toString() === userIdStr);
+        const activityData = userActivityCounts[userIdStr];
+        // Construct display name from firstName/lastName or fall back to email
+        const displayName = user?.firstName && user?.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user?.firstName || user?.lastName || user?.email || "Unknown";
+        return {
+          userId: userIdStr,
+          email: user?.email ?? "Unknown",
+          name: displayName,
+          imageUrl: user?.imageUrl ?? null,
+          activityCount: activityData?.count ?? 0,
+          lastActivity: activityData?.lastActivity ?? null,
+        };
+      })
+    );
+
+    return {
+      totalUsers,
+      activeUsersToday: usersWithActivityToday.size,
+      activeUsersWeek: usersWithActivityWeek.size,
+      activeUsersMonth: usersWithActivityMonth.size,
+      totalInvoices,
+      totalPdfExports,
+      totalRevenue,
+      topUsersByActivity,
+    };
+  },
+});

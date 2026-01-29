@@ -105,3 +105,33 @@ export function useAdminActivities(options?: {
     isLoading: result === undefined,
   };
 }
+
+/**
+ * Hook to fetch platform-wide dashboard statistics (admin only).
+ */
+export function useAdminDashboardStats() {
+  const stats = useQuery(api.admin.getDashboardStats, {});
+
+  return {
+    stats,
+    isLoading: stats === undefined,
+  };
+}
+
+/**
+ * Hook to fetch activity counts by event type (admin only).
+ */
+export function useActivityCounts(options?: {
+  userId?: Id<"users">;
+  since?: number;
+}) {
+  const counts = useQuery(api.activityLogs.getActivityCounts, {
+    userId: options?.userId,
+    since: options?.since,
+  });
+
+  return {
+    counts: counts ?? {},
+    isLoading: counts === undefined,
+  };
+}

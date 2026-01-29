@@ -685,7 +685,7 @@
         "apps/web/src/components/admin/TopUsersTable.tsx (new)",
         "apps/web/src/components/admin/ActivityFeed.tsx"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

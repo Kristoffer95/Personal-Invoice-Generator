@@ -733,3 +733,55 @@ Verification:
 - Build passes: npm run build
 - Lint passes: only pre-existing warnings (0 errors, 9 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-006: Admin Analytics Dashboard - COMPLETED
+
+Created admin dashboard with aggregated analytics across all users showing platform-wide usage metrics and trends.
+
+Backend implementation (packages/backend/convex/admin.ts):
+- getDashboardStats: Admin query returns global platform metrics
+  - totalUsers: Count of all non-deleted users
+  - activeUsersToday/Week/Month: Unique users with activity in time periods
+  - totalInvoices: Count of all non-deleted invoices
+  - totalPdfExports: Count from activityLogs
+  - totalRevenue: Revenue from paid invoices, grouped by currency
+  - topUsersByActivity: Top 10 users by activity count with email, name, avatar
+
+Frontend hooks (apps/web/src/hooks/use-admin.ts):
+- useAdminDashboardStats: Fetches getDashboardStats query
+- useActivityCounts: Fetches activity counts with optional time filter
+
+Components created:
+- StatCard.tsx: Reusable card displaying metric with icon and optional trend
+- TopUsersTable.tsx: Table showing top users by activity with rank, avatar, name, activity count
+- AdminDashboard.tsx: Main dashboard component with:
+  - Summary cards: Total Users, PDF Exports, Total Invoices, Platform Revenue
+  - Active users breakdown: today, this week, this month with icons
+  - Revenue by currency badges (when multiple currencies)
+  - Top users table with click-through to user detail
+  - Activity feed with event type and date range filters
+
+Page updates:
+- /admin/page.tsx updated to include AdminDashboard component
+- Users navigation card retained for easy access
+
+Key decisions:
+- Used firstName/lastName concatenation for user display names (no 'name' field in schema)
+- Activity filtering done client-side for date range, server-side for event type
+- Revenue displayed with Intl.NumberFormat for proper currency formatting
+- Dashboard auto-refreshes via Convex real-time queries
+
+Files changed:
+- packages/backend/convex/admin.ts (added getDashboardStats query)
+- apps/web/src/hooks/use-admin.ts (added useAdminDashboardStats, useActivityCounts hooks)
+- apps/web/src/components/admin/StatCard.tsx (new)
+- apps/web/src/components/admin/TopUsersTable.tsx (new)
+- apps/web/src/components/admin/AdminDashboard.tsx (new)
+- apps/web/src/app/admin/page.tsx (updated to use AdminDashboard)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: only pre-existing warnings (0 errors, 10 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

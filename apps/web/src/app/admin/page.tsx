@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { ArrowLeft, Shield, Users, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useUserRole } from "@/hooks/use-user-role";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
 export default function AdminPage() {
-  const { user } = useUserRole();
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -35,21 +33,6 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
-          {/* Welcome Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Welcome, Admin</CardTitle>
-              <CardDescription>
-                Logged in as {user?.email}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Manage users and monitor platform activity from this dashboard.
-              </p>
-            </CardContent>
-          </Card>
-
           {/* Navigation Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Link href="/admin/users">
@@ -70,6 +53,9 @@ export default function AdminPage() {
               </Card>
             </Link>
           </div>
+
+          {/* Dashboard Analytics */}
+          <AdminDashboard />
         </div>
       </main>
     </div>
