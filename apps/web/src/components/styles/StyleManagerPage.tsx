@@ -44,22 +44,11 @@ export default function StyleManagerPage() {
   // System templates (static, from code)
   const systemTemplates = SYSTEM_TEMPLATES
 
-  // Split system templates into Classic (no -v2 suffix) and V2 (with -v2 suffix)
-  const classicTemplates = useMemo(
-    () => systemTemplates.filter((t) => !t.id.endsWith('-v2')),
-    [systemTemplates]
-  )
-  const v2Templates = useMemo(
-    () => systemTemplates.filter((t) => t.id.endsWith('-v2')),
-    [systemTemplates]
-  )
-
   // Default template ID (from Convex or system template)
   const defaultTemplateId = defaultTemplate?._id ?? null
 
   // Folder dialog state
   const [folderDialogOpen, setFolderDialogOpen] = useState(false)
-  const [selectedFolder, setSelectedFolder] = useState<'classic' | 'v2' | null>(null)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [templateToDelete, setTemplateToDelete] = useState<InvoiceTemplate | null>(null)
@@ -308,18 +297,9 @@ export default function StyleManagerPage() {
   }
 
   // Folder handlers
-  const handleFolderClick = (folder: 'classic' | 'v2') => {
-    setSelectedFolder(folder)
+  const handleFolderClick = () => {
     setFolderDialogOpen(true)
   }
-
-  const selectedFolderTemplates = useMemo(() => {
-    if (selectedFolder === 'classic') return classicTemplates
-    if (selectedFolder === 'v2') return v2Templates
-    return []
-  }, [selectedFolder, classicTemplates, v2Templates])
-
-  const selectedFolderName = selectedFolder === 'classic' ? 'Default Styles Classic' : 'Default Styles V2'
 
   // Get selected template names for delete dialog
   const selectedTemplateNames = useMemo(() => {
@@ -365,14 +345,9 @@ export default function StyleManagerPage() {
           </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             <StyleFolder
-              name="Default Styles Classic"
-              templateCount={classicTemplates.length}
-              onClick={() => handleFolderClick('classic')}
-            />
-            <StyleFolder
-              name="Default Styles V2"
-              templateCount={v2Templates.length}
-              onClick={() => handleFolderClick('v2')}
+              name="Default Styles"
+              templateCount={systemTemplates.length}
+              onClick={handleFolderClick}
             />
           </div>
         </section>
@@ -534,8 +509,8 @@ export default function StyleManagerPage() {
       <StyleManagerFolderDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
-        folderName={selectedFolderName}
-        templates={selectedFolderTemplates}
+        folderName="Default Styles"
+        templates={systemTemplates}
         onEdit={handleEdit}
         onDuplicate={handleDuplicate}
         onSetDefault={handleSetDefault}

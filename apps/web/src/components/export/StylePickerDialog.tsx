@@ -43,7 +43,6 @@ export function StylePickerDialog({
 
   // Folder dialog state
   const [folderDialogOpen, setFolderDialogOpen] = useState(false)
-  const [selectedFolder, setSelectedFolder] = useState<'classic' | 'v2' | null>(null)
 
   // Convex hooks
   const { templates: convexTemplates, isLoading: isTemplatesLoading } = useTemplates()
@@ -53,31 +52,7 @@ export function StylePickerDialog({
   // System templates (static, from code)
   const systemTemplates = SYSTEM_TEMPLATES
 
-  // Split system templates into classic and V2
-  const classicTemplates = useMemo(
-    () => systemTemplates.filter((t) => !t.id.endsWith('-v2')),
-    [systemTemplates]
-  )
-  const v2Templates = useMemo(
-    () => systemTemplates.filter((t) => t.id.endsWith('-v2')),
-    [systemTemplates]
-  )
-
-  // Get templates for currently selected folder
-  const selectedFolderTemplates = useMemo(() => {
-    if (selectedFolder === 'classic') return classicTemplates
-    if (selectedFolder === 'v2') return v2Templates
-    return []
-  }, [selectedFolder, classicTemplates, v2Templates])
-
-  const selectedFolderName = useMemo(() => {
-    if (selectedFolder === 'classic') return 'Default Styles Classic'
-    if (selectedFolder === 'v2') return 'Default Styles V2'
-    return ''
-  }, [selectedFolder])
-
-  const handleOpenFolder = (folder: 'classic' | 'v2') => {
-    setSelectedFolder(folder)
+  const handleOpenFolder = () => {
     setFolderDialogOpen(true)
   }
 
@@ -152,14 +127,9 @@ export function StylePickerDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <StyleFolder
-                      name="Default Styles Classic"
-                      templateCount={classicTemplates.length}
-                      onClick={() => handleOpenFolder('classic')}
-                    />
-                    <StyleFolder
-                      name="Default Styles V2"
-                      templateCount={v2Templates.length}
-                      onClick={() => handleOpenFolder('v2')}
+                      name="Default Styles"
+                      templateCount={systemTemplates.length}
+                      onClick={handleOpenFolder}
                     />
                   </div>
                 </div>
@@ -275,8 +245,8 @@ export function StylePickerDialog({
       <StyleFolderContentsDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
-        folderName={selectedFolderName}
-        templates={selectedFolderTemplates}
+        folderName="Default Styles"
+        templates={systemTemplates}
         onSelectTemplate={handleFolderTemplateSelect}
       />
     </>

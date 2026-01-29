@@ -549,7 +549,7 @@
         "apps/web/src/components/styles/StyleManagerPage.tsx",
         "apps/web/src/components/export/StylePickerDialog.tsx"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ADMIN-004",

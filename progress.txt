@@ -568,3 +568,39 @@ Usage notes:
 - Set ADMIN_EMAILS environment variable in Convex: comma-separated list of admin emails
 - New users with matching email automatically get 'admin' role
 - Existing users can be promoted via promoteToAdminByEmail internal mutation in Convex dashboard
+
+---
+
+ADMIN-003: Remove Default Styles V2 Folder and Templates - COMPLETED
+
+Removed all 11 V2 templates and the V2 folder from the application. Only Classic templates remain.
+
+Changes to system-templates.ts:
+- Removed 12 V2 entries from SYSTEM_TEMPLATE_IDS constant (lines 40-51)
+- Removed all 11 V2 template definitions (~8700 lines)
+- Updated SYSTEM_TEMPLATES array to include only 11 Classic templates
+- Removed V2-related comments
+
+Changes to StyleManagerPage.tsx:
+- Removed classicTemplates and v2Templates useMemo hooks
+- Simplified folder state from 'classic' | 'v2' | null to just boolean
+- Changed handleFolderClick to no longer take a folder parameter
+- Updated single StyleFolder to show "Default Styles" with systemTemplates.length
+- Updated StyleManagerFolderDialog to use systemTemplates directly
+
+Changes to StylePickerDialog.tsx:
+- Removed classicTemplates and v2Templates useMemo hooks
+- Removed selectedFolder state and related logic
+- Simplified handleOpenFolder to no longer take a parameter
+- Updated single StyleFolder to show "Default Styles" with systemTemplates.length
+- Updated StyleFolderContentsDialog to use systemTemplates directly
+
+Files changed:
+- apps/web/src/lib/system-templates.ts (14176 -> 5441 lines)
+- apps/web/src/components/styles/StyleManagerPage.tsx
+- apps/web/src/components/export/StylePickerDialog.tsx
+
+Verification:
+- Build passes: npm run build --filter=@invoice-generator/web
+- Lint passes: only pre-existing warnings (0 errors, 7 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
