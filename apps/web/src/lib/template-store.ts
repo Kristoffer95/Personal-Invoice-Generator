@@ -32,6 +32,9 @@ interface TemplateState {
   // Convex template ID - tracks if current template is from Convex (for save operations)
   convexTemplateId: Id<"templates"> | null
 
+  // Convex system template ID - tracks if current template is a system template from Convex (admin only)
+  convexSystemTemplateId: Id<"systemTemplates"> | null
+
   // Last saved state - used to detect unsaved changes
   lastSavedState: string | null
 
@@ -111,6 +114,9 @@ interface TemplateState {
   setCurrentTemplateFromConvex: (convexTemplate: ConvexTemplate) => void
   setConvexTemplateId: (id: Id<"templates"> | null) => void
   getConvexTemplateId: () => Id<"templates"> | null
+  setConvexSystemTemplateId: (id: Id<"systemTemplates"> | null) => void
+  getConvexSystemTemplateId: () => Id<"systemTemplates"> | null
+  setCurrentTemplateFromConvexSystemTemplate: (convexTemplate: Doc<"systemTemplates">) => void
 
   // Unsaved changes tracking
   markAsSaved: () => void
@@ -168,6 +174,7 @@ function getTemplateFingerprint(template: InvoiceTemplate | null): string | null
 export const useTemplateStore = create<TemplateState>()((set, get) => ({
   currentTemplate: null,
   convexTemplateId: null,
+  convexSystemTemplateId: null,
   lastSavedState: null,
   selectedElementId: null,
   editorSettings: defaultEditorSettings,
@@ -1157,6 +1164,116 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
 
   getConvexTemplateId: () => get().convexTemplateId,
 
+  setConvexSystemTemplateId: (id) => set({ convexSystemTemplateId: id }),
+
+  getConvexSystemTemplateId: () => get().convexSystemTemplateId,
+
+  // Load system template from Convex (for admin editing)
+  setCurrentTemplateFromConvexSystemTemplate: (convexTemplate) =>
+    set(() => {
+      // Convert Convex system template to InvoiceTemplate format
+      // Using the same pattern as systemTemplateToInvoiceTemplate in template-utils.ts
+      const template: InvoiceTemplate = {
+        id: convexTemplate._id,
+        name: convexTemplate.name,
+        description: convexTemplate.description,
+        pageSize: convexTemplate.pageSize,
+        orientation: convexTemplate.orientation,
+        margins: convexTemplate.margins,
+        theme: convexTemplate.theme ? {
+          primary: convexTemplate.theme.primary ?? '#1a1a2e',
+          secondary: convexTemplate.theme.secondary ?? '#16213e',
+          accent: convexTemplate.theme.accent ?? '#0f3460',
+          text: convexTemplate.theme.text ?? '#333333',
+          textLight: convexTemplate.theme.textLight ?? '#666666',
+          background: convexTemplate.theme.background ?? '#ffffff',
+        } : undefined,
+        backgroundColor: convexTemplate.backgroundColor,
+        elements: convexTemplate.elements.map((el) => ({
+          ...el,
+          id: el.id,
+          type: el.type,
+          name: el.name ?? 'Untitled Element',
+          position: el.position,
+          content: el.content ?? '',
+          fontStyle: el.fontStyle ? {
+            fontFamily: el.fontStyle.fontFamily ?? 'Helvetica',
+            fontSize: el.fontStyle.fontSize ?? 12,
+            fontWeight: el.fontStyle.fontWeight ?? 'normal',
+            fontStyle: el.fontStyle.fontStyle ?? 'normal',
+            textAlign: el.fontStyle.textAlign ?? 'left',
+            textDecoration: el.fontStyle.textDecoration ?? 'none',
+            textTransform: el.fontStyle.textTransform ?? 'none',
+            letterSpacing: el.fontStyle.letterSpacing ?? 0,
+            lineHeight: el.fontStyle.lineHeight ?? 1.2,
+            color: el.fontStyle.color ?? '#000000',
+          } : undefined,
+          border: el.border ? {
+            width: el.border.width ?? 0,
+            color: el.border.color ?? '#000000',
+            style: el.border.style ?? 'solid',
+            radius: el.border.radius ?? 0,
+          } : undefined,
+          backgroundColor: el.backgroundColor,
+          padding: el.padding ?? 0,
+          opacity: el.opacity ?? 1,
+          zIndex: el.zIndex ?? 0,
+          locked: el.locked ?? false,
+          visible: el.visible ?? true,
+          tableStyle: el.tableStyle ? {
+            headerBackgroundColor: el.tableStyle.headerBackgroundColor ?? '#1a1a2e',
+            headerTextColor: el.tableStyle.headerTextColor ?? '#ffffff',
+            rowBackgroundColor: el.tableStyle.rowBackgroundColor ?? '#ffffff',
+            alternateRowBackgroundColor: el.tableStyle.alternateRowBackgroundColor ?? '#f8fafc',
+            borderColor: el.tableStyle.borderColor ?? '#e0e0e0',
+            showHeaderBorder: el.tableStyle.showHeaderBorder ?? true,
+            showRowBorders: el.tableStyle.showRowBorders ?? true,
+            columns: el.tableStyle.columns?.map((col) => ({
+              id: col.id,
+              header: col.header,
+              field: col.field,
+              width: col.width,
+              align: col.align ?? 'left',
+            })),
+          } : undefined,
+          logoUrl: el.logoUrl,
+          objectFit: el.objectFit,
+          positionMode: el.positionMode ?? 'absolute',
+          parentId: el.parentId,
+          order: el.order ?? 0,
+          spacing: el.spacing ? {
+            top: el.spacing.top ?? 0,
+            right: el.spacing.right ?? 0,
+            bottom: el.spacing.bottom ?? 0,
+            left: el.spacing.left ?? 0,
+          } : undefined,
+          flexGrow: el.flexGrow ?? 0,
+          flexShrink: el.flexShrink ?? 1,
+          alignSelf: el.alignSelf,
+          layoutConfig: el.layoutConfig ? {
+            direction: el.layoutConfig.direction ?? 'column',
+            gap: el.layoutConfig.gap ?? 8,
+            align: el.layoutConfig.align ?? 'stretch',
+            justify: el.layoutConfig.justify ?? 'start',
+            wrap: el.layoutConfig.wrap ?? false,
+          } : undefined,
+        })),
+        isDefault: convexTemplate.isDefault,
+        isSystem: true, // Mark as system template
+        createdAt: new Date(convexTemplate.createdAt).toISOString(),
+        updatedAt: new Date(convexTemplate.updatedAt).toISOString(),
+      }
+      return {
+        currentTemplate: template,
+        convexTemplateId: null, // Clear user template ID
+        convexSystemTemplateId: convexTemplate._id, // Track system template ID
+        lastSavedState: getTemplateFingerprint(template),
+        selectedElementId: null,
+        history: [],
+        historyIndex: -1,
+      }
+    }),
+
   // System template helpers
   loadSystemTemplate: (id) =>
     set(() => {
@@ -1165,6 +1282,7 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
       return {
         currentTemplate: { ...template },
         convexTemplateId: null, // System templates don't have Convex IDs
+        convexSystemTemplateId: null, // Clear system template ID (this is from hardcoded templates)
         selectedElementId: null,
         history: [],
         historyIndex: -1,
@@ -1189,8 +1307,8 @@ export const useTemplateStore = create<TemplateState>()((set, get) => ({
   hasUnsavedChanges: () => {
     const state = get()
     if (!state.currentTemplate) return false
-    // If no Convex ID and no last saved state, it's a new unsaved template
-    if (!state.convexTemplateId && !state.lastSavedState) return true
+    // If no Convex ID (user or system) and no last saved state, it's a new unsaved template
+    if (!state.convexTemplateId && !state.convexSystemTemplateId && !state.lastSavedState) return true
     // Compare current state with last saved state
     const currentFingerprint = getTemplateFingerprint(state.currentTemplate)
     return currentFingerprint !== state.lastSavedState

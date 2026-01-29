@@ -785,3 +785,111 @@ Verification:
 - Build passes: npm run build
 - Lint passes: only pre-existing warnings (0 errors, 10 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-002: Admin-Managed Default Styles System - COMPLETED
+
+Moved system templates from hardcoded file to Convex database, allowing admins to create, modify, rename, hide default styles and organize them into folders. Regular users see only non-hidden styles.
+
+Schema changes (packages/backend/convex/schema.ts):
+- Added systemTemplateFolders table with name, description, sortOrder, isHidden, timestamps
+- Added systemTemplates table with full template fields plus folderId, sortOrder, isHidden, isDefault, originalSystemId
+- Indexes: by_folder_id, by_sort_order, by_hidden, by_default, by_original_system_id
+
+Backend implementation (packages/backend/convex/systemTemplates.ts):
+- listSystemTemplates: Query returns non-hidden templates for regular users (sorted by sortOrder)
+- listSystemTemplatesAdmin: Query returns all templates including hidden for admins
+- getSystemTemplate: Query returns single template by ID
+- getDefaultSystemTemplate: Query returns the default system template
+- createSystemTemplate: Admin mutation creates new system template
+- updateSystemTemplate: Admin mutation modifies system template
+- toggleSystemTemplateVisibility: Admin mutation hides/shows template
+- setDefaultSystemTemplate: Admin mutation sets template as default
+- deleteSystemTemplate: Admin mutation soft-deletes template
+- listSystemTemplateFolders: Query returns non-hidden folders for users
+- listSystemTemplateFoldersAdmin: Query returns all folders for admins
+- createSystemTemplateFolder: Admin mutation creates folder
+- updateSystemTemplateFolder: Admin mutation modifies folder
+- deleteSystemTemplateFolder: Admin mutation soft-deletes folder
+- toggleSystemTemplateFolderVisibility: Admin mutation hides/shows folder
+- seedSystemTemplate: Internal mutation for migration/seeding
+- seedSystemTemplateFolder: Internal mutation for folder seeding
+
+Migration script (packages/backend/convex/seedSystemTemplates.ts):
+- Contains SYSTEM_TEMPLATES_DATA with 11 Classic template metadata
+- seedAllTemplates: Admin mutation to seed templates (with or without elements)
+- seedDefaultFolder: Admin mutation to seed the default folder
+
+Frontend hook (apps/web/src/hooks/use-system-templates.ts):
+- useSystemTemplates: Fetches non-hidden templates for regular users
+- useSystemTemplatesAdmin: Fetches all templates for admins
+- useSystemTemplate: Fetches single template by ID
+- useDefaultSystemTemplate: Fetches the default system template
+- useSystemTemplateFolders: Fetches folders for users
+- useSystemTemplateFoldersAdmin: Fetches all folders for admins
+- useSystemTemplateMutations: Returns mutation functions for templates and folders
+
+Template utilities (apps/web/src/lib/template-utils.ts):
+- Added systemTemplateToInvoiceTemplate: Converts Convex system template to InvoiceTemplate format
+
+Template store (apps/web/src/lib/template-store.ts):
+- Added convexSystemTemplateId state field
+- Added setConvexSystemTemplateId, getConvexSystemTemplateId actions
+- Added setCurrentTemplateFromConvexSystemTemplate action for loading system templates
+- Updated hasUnsavedChanges to check both convexTemplateId and convexSystemTemplateId
+
+StyleManagerPage updates:
+- Uses Convex system templates with fallback to hardcoded SYSTEM_TEMPLATES
+- Admin sees all templates (including hidden) via useSystemTemplatesAdmin
+- Regular users see only non-hidden templates via useSystemTemplates
+- Admin can toggle visibility via handleToggleVisibility
+- Passes admin props (isAdmin, isHidden, onToggleVisibility) to StyleCard
+
+StyleCard updates:
+- Added admin props: isAdmin, isHidden, onToggleVisibility
+- Shows "Hidden" badge for admins on hidden templates
+- Shows "Edit" option for admins on system templates
+- Shows visibility toggle menu option for admins
+
+StyleEditorHeader updates:
+- Uses useSystemTemplateMutations for saving system templates
+- Admin can save changes to system templates via updateSystemTemplate mutation
+- Shows appropriate toast message for system template saves
+
+StyleEditorContent updates:
+- Uses useSystemTemplate to load system templates from Convex for admins
+- Priority: (1) User Convex template, (2) Admin System template from Convex, (3) Hardcoded system template fallback
+- Sets convexSystemTemplateId when loading system template
+
+StylePickerDialog updates:
+- Uses Convex system templates with fallback to hardcoded SYSTEM_TEMPLATES
+- Loads system templates via useSystemTemplates hook
+
+Files changed:
+- packages/backend/convex/schema.ts (added systemTemplateFolders, systemTemplates tables)
+- packages/backend/convex/systemTemplates.ts (new, ~750 lines)
+- packages/backend/convex/seedSystemTemplates.ts (new, ~320 lines)
+- apps/web/src/hooks/use-system-templates.ts (new, ~180 lines)
+- apps/web/src/lib/template-utils.ts (added systemTemplateToInvoiceTemplate)
+- apps/web/src/lib/template-store.ts (added convexSystemTemplateId tracking)
+- apps/web/src/components/styles/StyleManagerPage.tsx (Convex integration)
+- apps/web/src/components/styles/StyleCard.tsx (admin props)
+- apps/web/src/components/styles/StyleManagerFolderDialog.tsx (admin props passthrough)
+- apps/web/src/components/style-editor/StyleEditorHeader.tsx (admin save support)
+- apps/web/src/components/style-editor/StyleEditorContent.tsx (admin template loading)
+- apps/web/src/components/export/StylePickerDialog.tsx (Convex integration)
+
+Key decisions:
+- Backward compatible: Falls back to hardcoded SYSTEM_TEMPLATES when Convex has no data
+- Admin-only mutations protected with requireAdmin check
+- Regular users see only non-hidden templates
+- System templates tracked separately from user templates (convexSystemTemplateId vs convexTemplateId)
+- Internal mutations for seeding to allow migration without auth overhead
+- originalSystemId field links Convex templates to hardcoded template IDs for migration
+
+Verification:
+- TypeScript type checking passes (no errors in modified files)
+- Lint passes: only pre-existing warnings (0 errors, 11 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+- Build: has pre-existing type errors in other files (AdminDashboard.tsx, not related to this task)

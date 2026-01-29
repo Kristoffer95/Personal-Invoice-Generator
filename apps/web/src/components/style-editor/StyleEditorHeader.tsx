@@ -54,6 +54,8 @@ import { InvoicePreview } from '@/components/invoice/InvoicePreview'
 import { useTemplateStore } from '@/lib/template-store'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplateMutations, useDefaultTemplate } from '@/hooks/use-templates'
+import { useSystemTemplateMutations } from '@/hooks/use-system-templates'
+import { useUserRole } from '@/hooks/use-user-role'
 import { useEditorSettingsMutations } from '@/hooks/use-editor-settings'
 import { useToast } from '@/hooks/use-toast'
 import { isSystemTemplate } from '@/lib/system-templates'
@@ -68,6 +70,7 @@ export function StyleEditorHeader() {
   const {
     currentTemplate,
     convexTemplateId,
+    convexSystemTemplateId,
     updateCurrentTemplate,
     setConvexTemplateId,
     editorSettings,
@@ -82,10 +85,12 @@ export function StyleEditorHeader() {
   const router = useRouter()
   const { toast } = useToast()
   const { isAuthenticated } = useCurrentUser()
+  const { isAdmin } = useUserRole()
 
   // Convex hooks
   const { createTemplate, updateTemplate, setDefaultTemplate, clearDefaultTemplate } = useTemplateMutations()
   const { template: defaultTemplate } = useDefaultTemplate()
+  const { updateSystemTemplate } = useSystemTemplateMutations()
 
   // Editor settings mutations with Convex sync
   const {
@@ -296,8 +301,26 @@ export function StyleEditorHeader() {
         showWhenEmpty: el.showWhenEmpty,
       }))
 
-      if (convexTemplateId) {
-        // Update existing Convex template
+      if (convexSystemTemplateId && isAdmin) {
+        // Admin: Update existing system template in Convex
+        await updateSystemTemplate({
+          templateId: convexSystemTemplateId,
+          name: currentTemplate.name,
+          description: currentTemplate.description,
+          pageSize: currentTemplate.pageSize,
+          orientation: currentTemplate.orientation,
+          margins: currentTemplate.margins,
+          theme: currentTemplate.theme,
+          backgroundColor: currentTemplate.backgroundColor,
+          elements,
+        })
+        markAsSaved()
+        toast({
+          title: 'System template saved',
+          description: `"${currentTemplate.name}" has been updated.`,
+        })
+      } else if (convexTemplateId) {
+        // Update existing Convex user template
         await updateTemplate({
           templateId: convexTemplateId,
           name: currentTemplate.name,

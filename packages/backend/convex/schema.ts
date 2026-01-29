@@ -684,6 +684,54 @@ export default defineSchema({
     .index("by_invoice_id", ["invoiceId"])
     .index("by_folder_id", ["userId", "folderId"]),
 
+  // System template folders for organizing admin-managed templates
+  systemTemplateFolders: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    sortOrder: v.number(), // For ordering folders in UI
+    isHidden: v.boolean(), // Hidden folders are not shown to regular users
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()), // Soft delete
+  })
+    .index("by_sort_order", ["sortOrder"])
+    .index("by_hidden", ["isHidden"]),
+
+  // System templates (admin-managed, available to all users)
+  systemTemplates: defineTable({
+    // Folder organization
+    folderId: v.optional(v.id("systemTemplateFolders")),
+    sortOrder: v.number(), // For ordering templates within folder
+
+    // Template properties (same as user templates)
+    name: v.string(),
+    description: v.optional(v.string()),
+    pageSize: pageSizeValidator,
+    orientation: v.union(v.literal("portrait"), v.literal("landscape")),
+    margins: marginValidator,
+    theme: v.optional(templateThemeValidator),
+    backgroundColor: v.string(),
+    elements: v.array(templateElementValidator),
+
+    // Visibility
+    isHidden: v.boolean(), // Hidden templates are not shown to regular users
+    isDefault: v.boolean(), // The default template for new users
+
+    // Original system template ID (for migration tracking)
+    originalSystemId: v.optional(v.string()),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()), // Soft delete
+  })
+    .index("by_folder_id", ["folderId"])
+    .index("by_sort_order", ["sortOrder"])
+    .index("by_hidden", ["isHidden"])
+    .index("by_default", ["isDefault"]),
+
   // Activity logs for tracking user activities across the application
   activityLogs: defineTable({
     userId: v.id("users"),

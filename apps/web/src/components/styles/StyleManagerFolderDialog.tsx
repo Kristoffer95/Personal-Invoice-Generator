@@ -19,6 +19,10 @@ interface StyleManagerFolderDialogProps {
   onEdit: (template: InvoiceTemplate) => void
   onDuplicate: (template: InvoiceTemplate) => void
   onSetDefault: (template: InvoiceTemplate) => void
+  // Admin-specific props
+  isAdmin?: boolean
+  hiddenTemplateIds?: Set<string>
+  onToggleVisibility?: (templateId: string) => void
 }
 
 export function StyleManagerFolderDialog({
@@ -29,6 +33,9 @@ export function StyleManagerFolderDialog({
   onEdit,
   onDuplicate,
   onSetDefault,
+  isAdmin = false,
+  hiddenTemplateIds = new Set(),
+  onToggleVisibility,
 }: StyleManagerFolderDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -36,7 +43,9 @@ export function StyleManagerFolderDialog({
         <DialogHeader>
           <DialogTitle>{folderName}</DialogTitle>
           <DialogDescription>
-            Duplicate a template to customize it or set it as your default export style.
+            {isAdmin
+              ? 'Edit, hide, duplicate, or set templates as default.'
+              : 'Duplicate a template to customize it or set it as your default export style.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -54,6 +63,13 @@ export function StyleManagerFolderDialog({
                 onSetDefault={() => onSetDefault(template)}
                 onDelete={() => {}}
                 onSelect={() => {}}
+                isAdmin={isAdmin}
+                isHidden={hiddenTemplateIds.has(template.id)}
+                onToggleVisibility={
+                  isAdmin && onToggleVisibility
+                    ? () => onToggleVisibility(template.id)
+                    : undefined
+                }
               />
             ))}
           </div>

@@ -19,8 +19,9 @@ import { StyleFolder } from './StyleFolder'
 import { StyleFolderContentsDialog } from './StyleFolderContentsDialog'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplates, useDefaultTemplate, useTemplateMutations } from '@/hooks/use-templates'
+import { useSystemTemplates } from '@/hooks/use-system-templates'
 import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
-import { convexToInvoiceTemplate } from '@/lib/template-utils'
+import { convexToInvoiceTemplate, systemTemplateToInvoiceTemplate } from '@/lib/template-utils'
 import type { InvoiceTemplate } from '@invoice-generator/shared-types'
 
 // Built-in style options (not actual templates, just theme indicators)
@@ -49,8 +50,16 @@ export function StylePickerDialog({
   const { template: defaultTemplate } = useDefaultTemplate()
   const { setDefaultTemplate, clearDefaultTemplate } = useTemplateMutations()
 
-  // System templates (static, from code)
-  const systemTemplates = SYSTEM_TEMPLATES
+  // System templates from Convex (with fallback to hardcoded)
+  const { templates: convexSystemTemplates, isLoading: isSystemTemplatesLoading } = useSystemTemplates()
+
+  // Use Convex system templates if available, otherwise fall back to hardcoded
+  const systemTemplates = useMemo(() => {
+    if (convexSystemTemplates && convexSystemTemplates.length > 0) {
+      return convexSystemTemplates.map(systemTemplateToInvoiceTemplate)
+    }
+    return SYSTEM_TEMPLATES
+  }, [convexSystemTemplates])
 
   const handleOpenFolder = () => {
     setFolderDialogOpen(true)
@@ -98,7 +107,7 @@ export function StylePickerDialog({
     onOpenChange(false)
   }
 
-  const isLoading = isAuthLoading || (isAuthenticated && isTemplatesLoading)
+  const isLoading = isAuthLoading || isSystemTemplatesLoading || (isAuthenticated && isTemplatesLoading)
 
   return (
     <>

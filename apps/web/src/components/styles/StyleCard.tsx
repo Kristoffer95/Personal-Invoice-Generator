@@ -9,6 +9,8 @@ import {
   Star,
   Trash2,
   Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,6 +35,10 @@ interface StyleCardProps {
   onSetDefault: () => void
   onDelete: () => void
   onSelect?: (selected: boolean) => void
+  // Admin-specific props
+  isAdmin?: boolean
+  isHidden?: boolean
+  onToggleVisibility?: () => void
 }
 
 export function StyleCard({
@@ -45,6 +51,9 @@ export function StyleCard({
   onSetDefault,
   onDelete,
   onSelect,
+  isAdmin = false,
+  isHidden = false,
+  onToggleVisibility,
 }: StyleCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSystem = template.isSystem ?? false
@@ -84,7 +93,7 @@ export function StyleCard({
           <div className="absolute bottom-2 left-2 right-2 h-4 rounded-sm bg-primary/20" />
         </div>
 
-        {/* System & Default Badges */}
+        {/* System, Default & Hidden Badges */}
         <div className="absolute right-2 top-12 flex flex-col gap-1">
           {isSystem && (
             <Badge
@@ -102,6 +111,15 @@ export function StyleCard({
             >
               <Star className="h-3 w-3 fill-current" />
               Default
+            </Badge>
+          )}
+          {isAdmin && isHidden && (
+            <Badge
+              variant="secondary"
+              className="gap-1 bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+            >
+              <EyeOff className="h-3 w-3" />
+              Hidden
             </Badge>
           )}
         </div>
@@ -144,8 +162,17 @@ export function StyleCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {isSystem ? (
-              // System templates: show duplicate option only
+              // System templates: show duplicate option only (plus admin options if admin)
               <>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuItem onClick={onEdit}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={onDuplicate}>
                   <Copy className="mr-2 h-4 w-4" />
                   Duplicate to Customize
@@ -154,6 +181,24 @@ export function StyleCard({
                   <Star className="mr-2 h-4 w-4" />
                   {isDefault ? 'Clear Default' : 'Set as Default'}
                 </DropdownMenuItem>
+                {isAdmin && onToggleVisibility && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onToggleVisibility}>
+                      {isHidden ? (
+                        <>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Show to Users
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="mr-2 h-4 w-4" />
+                          Hide from Users
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </>
             ) : (
               // User templates: show all options

@@ -1,5 +1,6 @@
 import type { InvoiceTemplate, TemplateElement, FontStyle, BorderStyle, TableStyle } from '@invoice-generator/shared-types'
 import type { Template } from '@/hooks/use-templates'
+import type { SystemTemplate } from '@/hooks/use-system-templates'
 
 /**
  * Converts a Convex template document to the InvoiceTemplate format used by the frontend.
@@ -144,4 +145,47 @@ function convertTableStyle(ts: NonNullable<Template['elements'][0]['tableStyle']
       align: col.align ?? 'left',
     })),
   }
+}
+
+/**
+ * Converts a Convex system template document to the InvoiceTemplate format used by the frontend.
+ *
+ * This function handles all the necessary type conversions and provides default values
+ * for optional fields to ensure consistent behavior across the application.
+ *
+ * @param t - The Convex system template document
+ * @returns The converted InvoiceTemplate with isSystem: true
+ */
+export function systemTemplateToInvoiceTemplate(t: SystemTemplate): InvoiceTemplate {
+  return {
+    id: t._id,
+    name: t.name,
+    description: t.description,
+    pageSize: t.pageSize,
+    orientation: t.orientation,
+    margins: t.margins,
+    theme: t.theme ? {
+      primary: t.theme.primary ?? '#1a1a2e',
+      secondary: t.theme.secondary ?? '#16213e',
+      accent: t.theme.accent ?? '#0f3460',
+      text: t.theme.text ?? '#333333',
+      textLight: t.theme.textLight ?? '#666666',
+      background: t.theme.background ?? '#ffffff',
+    } : undefined,
+    backgroundColor: t.backgroundColor,
+    elements: t.elements.map((el) => convertSystemElement(el)),
+    isDefault: t.isDefault,
+    isSystem: true, // System templates are always marked as system
+    createdAt: new Date(t.createdAt).toISOString(),
+    updatedAt: new Date(t.updatedAt).toISOString(),
+  }
+}
+
+/**
+ * Converts a system template element to the TemplateElement format.
+ * Uses the same logic as regular template elements.
+ */
+function convertSystemElement(el: SystemTemplate['elements'][0]): TemplateElement {
+  // System template elements have the same structure, so we can reuse the conversion logic
+  return convertElement(el as Template['elements'][0])
 }

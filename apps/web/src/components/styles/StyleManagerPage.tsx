@@ -8,19 +8,22 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useTemplateStore } from '@/lib/template-store'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplates, useTemplateMutations, useDefaultTemplate } from '@/hooks/use-templates'
+import { useSystemTemplates, useSystemTemplatesAdmin, useSystemTemplateMutations } from '@/hooks/use-system-templates'
+import { useUserRole } from '@/hooks/use-user-role'
 import { useToast } from '@/hooks/use-toast'
 import { StyleCard } from './StyleCard'
 import { DeleteStyleDialog } from './DeleteStyleDialog'
 import { StyleManagerFolderDialog } from './StyleManagerFolderDialog'
 import { StyleFolder } from '@/components/export/StyleFolder'
 import { SYSTEM_TEMPLATES } from '@/lib/system-templates'
-import { convexToInvoiceTemplate } from '@/lib/template-utils'
+import { convexToInvoiceTemplate, systemTemplateToInvoiceTemplate } from '@/lib/template-utils'
 import type { InvoiceTemplate } from '@invoice-generator/shared-types'
 
 export default function StyleManagerPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { isAuthenticated, isLoading: isAuthLoading } = useCurrentUser()
+  const { isAdmin } = useUserRole()
 
   // Local store for creating new templates
   const { createNewTemplate, setCurrentTemplate } = useTemplateStore()
@@ -36,13 +39,36 @@ export default function StyleManagerPage() {
     clearDefaultTemplate: convexClearDefaultTemplate,
   } = useTemplateMutations()
 
+  // System templates from Convex (admins see all, regular users see non-hidden)
+  const { templates: convexSystemTemplates } = useSystemTemplates()
+  const { templates: convexSystemTemplatesAdmin } = useSystemTemplatesAdmin()
+  const { toggleSystemTemplateVisibility } = useSystemTemplateMutations()
+
   // Convert Convex templates to InvoiceTemplate format
   const userTemplates = useMemo(() => {
     return convexTemplates.map(convexToInvoiceTemplate)
   }, [convexTemplates])
 
-  // System templates (static, from code)
-  const systemTemplates = SYSTEM_TEMPLATES
+  // System templates: Use Convex data if available, otherwise fallback to hardcoded templates
+  // Admins see all templates (including hidden), regular users see only non-hidden
+  const systemTemplates = useMemo((): InvoiceTemplate[] => {
+    const convexData = isAdmin ? convexSystemTemplatesAdmin : convexSystemTemplates
+    if (convexData && convexData.length > 0) {
+      return convexData.map(systemTemplateToInvoiceTemplate)
+    }
+    // Fallback to hardcoded templates when database is empty or during migration
+    return SYSTEM_TEMPLATES
+  }, [convexSystemTemplates, convexSystemTemplatesAdmin, isAdmin])
+
+  // Track which system templates are hidden (for admin UI)
+  const hiddenSystemTemplateIds = useMemo(() => {
+    if (!isAdmin || !convexSystemTemplatesAdmin) return new Set<string>()
+    return new Set(
+      convexSystemTemplatesAdmin
+        .filter((t) => t.isHidden)
+        .map((t) => t._id)
+    )
+  }, [isAdmin, convexSystemTemplatesAdmin])
 
   // Default template ID (from Convex or system template)
   const defaultTemplateId = defaultTemplate?._id ?? null
@@ -301,6 +327,26 @@ export default function StyleManagerPage() {
     setFolderDialogOpen(true)
   }
 
+  // Admin: toggle system template visibility
+  const handleToggleVisibility = async (templateId: string) => {
+    if (!isAdmin) return
+
+    try {
+      await toggleSystemTemplateVisibility({ templateId: templateId as any })
+      toast({
+        title: 'Visibility updated',
+        description: 'Template visibility has been toggled.',
+      })
+    } catch (error) {
+      console.error('Failed to toggle visibility:', error)
+      toast({
+        title: 'Failed to update visibility',
+        description: 'An error occurred while updating template visibility.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   // Get selected template names for delete dialog
   const selectedTemplateNames = useMemo(() => {
     return userTemplates
@@ -514,6 +560,9 @@ export default function StyleManagerPage() {
         onEdit={handleEdit}
         onDuplicate={handleDuplicate}
         onSetDefault={handleSetDefault}
+        isAdmin={isAdmin}
+        hiddenTemplateIds={hiddenSystemTemplateIds}
+        onToggleVisibility={handleToggleVisibility}
       />
     </div>
   )
