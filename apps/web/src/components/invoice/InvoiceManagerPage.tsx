@@ -24,6 +24,7 @@ import {
   User,
   Calendar,
   Paintbrush,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -115,6 +116,7 @@ import {
 } from "@invoice-generator/shared-types";
 import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
 import { useClientProfiles } from "@/hooks/use-client-profiles";
+import { useUserRole } from "@/hooks/use-user-role";
 
 type InvoiceItem = {
   _id: Id<"invoices">;
@@ -182,6 +184,7 @@ interface InvoiceManagerPageProps {
 
 export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManagerPageProps) {
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
   const {
     deleteInvoice,
     duplicateInvoice,
@@ -737,6 +740,21 @@ export function InvoiceManagerPage({ folderId: initialFolderId }: InvoiceManager
                 <TooltipContent>Profile settings</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {isAdmin && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" asChild>
+                      <Link href="/admin">
+                        <Shield className="h-4 w-4" />
+                        <span className="sr-only">Admin</span>
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Admin Dashboard</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <UserButtonClient afterSignOutUrl="/sign-in" />
           </div>
         </div>

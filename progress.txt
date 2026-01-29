@@ -506,3 +506,65 @@ Verification:
 - Lint passes: only pre-existing warnings (0 errors, 7 warnings)
 - All 11 V2 templates verified: every direct child of root containers is now layout_container type
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-001: User Roles System - COMPLETED
+
+Added user roles to the application with 'user' (default) and 'admin' roles. Admins have access to admin-only features while regular users have standard access.
+
+Implementation:
+
+Schema changes (packages/backend/convex/schema.ts):
+- Added userRoleValidator: v.union(v.literal("user"), v.literal("admin"))
+- Added role field to users table (optional, defaults to 'user')
+- Added by_role index for querying users by role
+
+Backend helpers (packages/backend/convex/users.ts):
+- getUserRole(user): Returns user's role, defaults to 'user' for null/undefined
+- isAdmin(ctx): Async helper to check if current user has admin role
+- requireAdmin(ctx): Throws error if user is not admin, returns user Doc
+- isAdminEmail(email): Checks if email is in ADMIN_EMAILS env var
+- Updated getOrCreateUserFromIdentity: Auto-assigns 'admin' role if email matches ADMIN_EMAILS
+- Updated upsertFromClerk: Same admin role assignment for webhook-created users
+- Added getCurrentWithRole query: Returns user with role field for frontend
+- Added promoteToAdminByEmail internal mutation: Manual admin promotion via Convex dashboard
+
+Frontend hook (apps/web/src/hooks/use-user-role.ts):
+- useUserRole hook returns { user, role, isAdmin, isLoading, isAuthenticated }
+- Uses getCurrentWithRole query
+
+AdminGuard component (apps/web/src/components/auth/AdminGuard.tsx):
+- Wraps admin routes with authentication/role check
+- Shows loading state while checking auth
+- Redirects non-admins to home page
+
+Admin layout (apps/web/src/app/admin/layout.tsx):
+- Wraps all /admin/* routes with AdminGuard
+
+Admin page (apps/web/src/app/admin/page.tsx):
+- Basic admin dashboard placeholder with welcome card
+
+Header update (apps/web/src/components/invoice/InvoiceManagerPage.tsx):
+- Added Shield icon import from lucide-react
+- Added useUserRole hook call
+- Added conditional admin link button (visible only when isAdmin is true)
+
+Files changed:
+- packages/backend/convex/schema.ts
+- packages/backend/convex/users.ts
+- apps/web/src/hooks/use-user-role.ts (new)
+- apps/web/src/components/auth/AdminGuard.tsx (new)
+- apps/web/src/app/admin/layout.tsx (new)
+- apps/web/src/app/admin/page.tsx (new)
+- apps/web/src/components/invoice/InvoiceManagerPage.tsx
+
+Verification:
+- Build passes
+- Lint passes: only pre-existing warnings (0 errors, 7 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+Usage notes:
+- Set ADMIN_EMAILS environment variable in Convex: comma-separated list of admin emails
+- New users with matching email automatically get 'admin' role
+- Existing users can be promoted via promoteToAdminByEmail internal mutation in Convex dashboard

@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 import { query, internalMutation, mutation } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Id, Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+
+// User role type
+export type UserRole = "user" | "admin";
 
 // E2E Test user constants - only used in development
 const E2E_TEST_CLERK_ID = "e2e_test_user_001";
@@ -130,6 +133,9 @@ export async function getOrCreateUserFromIdentity(
     }
 
     const now = Date.now();
+    // Assign admin role if email is in ADMIN_EMAILS
+    const role = isAdminEmail(email) ? ("admin" as const) : ("user" as const);
+
     const userId = await ctx.db.insert("users", {
       clerkId,
       email,
@@ -137,6 +143,7 @@ export async function getOrCreateUserFromIdentity(
       lastName: identity.familyName ?? undefined,
       username: identity.nickname ?? undefined,
       imageUrl: identity.pictureUrl ?? undefined,
+      role,
       clerkCreatedAt: now,
       clerkUpdatedAt: now,
       syncedAt: now,
@@ -177,6 +184,60 @@ export async function getUserFromIdentityOrE2E(
   }
 
   return { _id: user._id };
+}
+
+/**
+ * Get the user's role, defaulting to 'user' if not set.
+ */
+export function getUserRole(user: Doc<"users"> | null | undefined): UserRole {
+  if (!user) return "user";
+  return user.role ?? "user";
+}
+
+/**
+ * Check if the current user is an admin.
+ * This is for use in query/mutation handlers.
+ */
+export async function isAdmin(ctx: QueryCtx): Promise<boolean> {
+  const userRef = await getUserFromIdentityOrE2E(ctx);
+  if (!userRef) return false;
+
+  const user = await ctx.db.get(userRef._id);
+  return getUserRole(user) === "admin";
+}
+
+/**
+ * Require admin role - throws error if user is not an admin.
+ * Use this in admin-only mutations/queries.
+ */
+export async function requireAdmin(ctx: QueryCtx): Promise<Doc<"users">> {
+  const userRef = await getUserFromIdentityOrE2E(ctx);
+  if (!userRef) {
+    throw new Error("Unauthorized: Not authenticated");
+  }
+
+  const user = await ctx.db.get(userRef._id);
+  if (!user) {
+    throw new Error("Unauthorized: User not found");
+  }
+
+  if (getUserRole(user) !== "admin") {
+    throw new Error("Forbidden: Admin access required");
+  }
+
+  return user;
+}
+
+/**
+ * Check if an email is in the ADMIN_EMAILS environment variable.
+ * ADMIN_EMAILS should be a comma-separated list of email addresses.
+ */
+function isAdminEmail(email: string): boolean {
+  const adminEmails = process.env.ADMIN_EMAILS;
+  if (!adminEmails) return false;
+
+  const emailList = adminEmails.split(",").map((e) => e.trim().toLowerCase());
+  return emailList.includes(email.toLowerCase());
 }
 
 /**
@@ -266,7 +327,10 @@ export const upsertFromClerk = internalMutation({
       return { userId: existing._id, action: "updated" as const };
     }
 
-    const userId = await ctx.db.insert("users", userData);
+    // Assign admin role if email is in ADMIN_EMAILS for new users
+    const role = isAdminEmail(args.email) ? ("admin" as const) : ("user" as const);
+
+    const userId = await ctx.db.insert("users", { ...userData, role });
     return { userId, action: "created" as const };
   },
 });
@@ -291,5 +355,66 @@ export const softDelete = internalMutation({
       syncedAt: Date.now(),
     });
     return { success: true, userId: user._id };
+  },
+});
+
+/**
+ * Get the current authenticated user with role field.
+ * Returns user data including the role field for frontend use.
+ */
+export const getCurrentWithRole = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const clerkId = identity.subject.includes("|")
+      ? identity.subject.split("|")[1] ?? identity.subject
+      : identity.subject;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+      .unique();
+
+    if (user?.deletedAt) return null;
+
+    if (user) {
+      return {
+        ...user,
+        role: getUserRole(user),
+      };
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Promote a user to admin by their email address.
+ * This is an internal mutation for manual admin promotion via Convex dashboard.
+ */
+export const promoteToAdminByEmail = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) {
+      return { success: false, message: "User not found" };
+    }
+
+    if (user.deletedAt) {
+      return { success: false, message: "User is deleted" };
+    }
+
+    if (user.role === "admin") {
+      return { success: true, message: "User is already an admin" };
+    }
+
+    await ctx.db.patch(user._id, { role: "admin" });
+    return { success: true, userId: user._id, message: `User ${args.email} promoted to admin` };
   },
 });

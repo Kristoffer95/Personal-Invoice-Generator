@@ -323,6 +323,9 @@ const editorSettingsValidator = v.object({
   zoomLevel: v.number(),
 });
 
+// User role validator
+const userRoleValidator = v.union(v.literal("user"), v.literal("admin"));
+
 export default defineSchema({
   users: defineTable({
     // Core identity (synced from Clerk)
@@ -333,6 +336,9 @@ export default defineSchema({
     username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
 
+    // User role (defaults to 'user')
+    role: v.optional(userRoleValidator),
+
     // Timestamps
     clerkCreatedAt: v.number(),
     clerkUpdatedAt: v.number(),
@@ -341,7 +347,8 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   })
     .index("by_clerk_id", ["clerkId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_role", ["role"]),
 
   // User profile with editable business details
   userProfiles: defineTable({

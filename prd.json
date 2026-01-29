@@ -419,6 +419,273 @@
         "apps/web/src/lib/system-templates.ts"
       ],
       "passes": true
+    },
+    {
+      "id": "ADMIN-001",
+      "category": "Admin",
+      "title": "User Roles System",
+      "description": "Add user roles to the application with 'user' (default) and 'admin' roles. Admins have access to admin-only features while regular users have standard access. First admin is seeded via environment variable ADMIN_EMAILS.",
+      "acceptance_criteria": [
+        "Users table has role field with values 'user' or 'admin'",
+        "New users default to 'user' role",
+        "ADMIN_EMAILS environment variable accepts comma-separated email list",
+        "Users matching ADMIN_EMAILS get 'admin' role on creation",
+        "getUserRole() helper returns role with 'user' default for null/undefined",
+        "isAdmin(ctx) helper checks if current user has admin role",
+        "requireAdmin(ctx) throws error if user is not admin",
+        "getCurrentWithRole query returns user object with role field",
+        "promoteToAdminByEmail internal mutation allows manual admin promotion",
+        "useUserRole hook returns { user, role, isAdmin, isLoading }",
+        "AdminGuard component redirects non-admins to home page",
+        "Admin layout wraps /admin/* routes with AdminGuard",
+        "Admin link (shield icon) visible in header only for admins"
+      ],
+      "steps_to_verify": [
+        "Add role field and by_role index to users table in schema.ts",
+        "Create role helper functions in users.ts",
+        "Set ADMIN_EMAILS=your-email@example.com in Convex environment",
+        "Create new user account - verify role is 'admin' if email matches",
+        "Create another user without matching email - verify role is 'user'",
+        "Create useUserRole hook in apps/web/src/hooks/use-user-role.ts",
+        "Create AdminGuard component in apps/web/src/components/auth/AdminGuard.tsx",
+        "Create admin layout in apps/web/src/app/admin/layout.tsx",
+        "As non-admin, navigate to /admin - verify redirect to home",
+        "As admin, navigate to /admin - verify access granted",
+        "Verify admin link (shield icon) visible in header for admin users",
+        "Verify admin link NOT visible for regular users"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/schema.ts",
+        "packages/backend/convex/users.ts",
+        "apps/web/src/hooks/use-user-role.ts (new)",
+        "apps/web/src/components/auth/AdminGuard.tsx (new)",
+        "apps/web/src/app/admin/layout.tsx (new)",
+        "apps/web/src/components/invoice/InvoiceManagerPage.tsx"
+      ],
+      "passes": true
+    },
+    {
+      "id": "ADMIN-002",
+      "category": "Admin",
+      "title": "Admin-Managed Default Styles System",
+      "description": "Move system templates from hardcoded file to Convex database, allowing admins to create, modify, rename, hide default styles and organize them into folders. Regular users see only non-hidden styles.",
+      "acceptance_criteria": [
+        "systemTemplateFolders table created with name, description, sortOrder, isHidden, timestamps",
+        "systemTemplates table created with full template fields plus folderId, sortOrder, isHidden",
+        "listSystemTemplates query returns non-hidden templates for regular users",
+        "listSystemTemplatesAdmin query returns all templates (including hidden) for admins",
+        "createSystemTemplate mutation creates new system template (admin only)",
+        "updateSystemTemplate mutation modifies system template (admin only)",
+        "toggleSystemTemplateVisibility mutation hides/shows template (admin only)",
+        "deleteSystemTemplate mutation soft-deletes template (admin only)",
+        "createSystemTemplateFolder mutation creates folder (admin only)",
+        "updateSystemTemplateFolder mutation modifies folder (admin only)",
+        "toggleFolderVisibility mutation hides/shows folder (admin only)",
+        "Migration script seeds 11 Classic templates to database",
+        "useSystemTemplates hook fetches templates from Convex",
+        "StyleManagerPage uses Convex data instead of hardcoded import",
+        "Admin can edit system templates via style editor",
+        "Admin sees edit/hide buttons on system templates",
+        "Hidden templates show visual indicator for admins"
+      ],
+      "steps_to_verify": [
+        "Add systemTemplateFolders and systemTemplates tables to schema.ts",
+        "Create systemTemplates.ts with queries and mutations",
+        "Create migration script to seed 11 Classic templates",
+        "Run migration via Convex dashboard",
+        "Create useSystemTemplates hook",
+        "Update StyleManagerPage to use Convex query",
+        "As admin, open /styles - verify templates load from database",
+        "As admin, click edit on system template - verify style editor opens",
+        "As admin, save changes - verify template updates in database",
+        "As admin, hide a template - verify hidden indicator appears",
+        "As regular user, open /styles - verify hidden template not visible",
+        "As admin, create new folder - verify folder appears",
+        "As admin, create new system template - verify template added"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/schema.ts",
+        "packages/backend/convex/systemTemplates.ts (new)",
+        "packages/backend/convex/migrations/seedSystemTemplates.ts (new)",
+        "apps/web/src/hooks/use-system-templates.ts (new)",
+        "apps/web/src/components/styles/StyleManagerPage.tsx",
+        "apps/web/src/components/style-editor/StyleEditorHeader.tsx",
+        "apps/web/src/components/export/StylePickerDialog.tsx"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-003",
+      "category": "Admin",
+      "title": "Remove Default Styles V2 Folder and Templates",
+      "description": "Remove the 11 V2 templates (IDs ending in -v2) and the 'Default Styles V2' folder from the application. Only Classic templates remain.",
+      "acceptance_criteria": [
+        "11 V2 template definitions removed from system-templates.ts",
+        "V2 entries removed from SYSTEM_TEMPLATE_IDS constant",
+        "SYSTEM_TEMPLATES array contains only 11 Classic templates",
+        "v2Templates memo removed from StyleManagerPage.tsx",
+        "selectedFolder type no longer includes 'v2' option",
+        "'Default Styles V2' folder card not rendered",
+        "V2 folder splitting logic removed from StylePickerDialog.tsx",
+        "Only 'Default Styles Classic' folder (or flat list) shown in UI",
+        "No references to '-v2' suffix remain in template filtering logic",
+        "Migration script does NOT seed V2 templates to database"
+      ],
+      "steps_to_verify": [
+        "Open apps/web/src/lib/system-templates.ts",
+        "Remove all template definitions with IDs ending in '-v2'",
+        "Remove V2 entries from SYSTEM_TEMPLATE_IDS",
+        "Update SYSTEM_TEMPLATES array to exclude V2 templates",
+        "Open StyleManagerPage.tsx - remove v2Templates memo",
+        "Remove V2 folder rendering logic",
+        "Open StylePickerDialog.tsx - remove V2 folder logic",
+        "Run npm run dev",
+        "Navigate to /styles - verify only Classic folder/templates shown",
+        "Click export on invoice - verify only Classic templates in picker",
+        "Verify no TypeScript errors related to V2 references"
+      ],
+      "files_to_modify": [
+        "apps/web/src/lib/system-templates.ts",
+        "apps/web/src/components/styles/StyleManagerPage.tsx",
+        "apps/web/src/components/export/StylePickerDialog.tsx"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-004",
+      "category": "Admin",
+      "title": "Activity Logging System",
+      "description": "Track user activities across the application including PDF exports, invoice/folder/template/client operations. Store activity logs in Convex database for admin monitoring.",
+      "acceptance_criteria": [
+        "activityLogs table created with userId, eventType, targetType, targetId, targetName, metadata, timestamp",
+        "Indexes: by_user_id, by_user_and_timestamp, by_event_type, by_timestamp",
+        "Event types: PDF_EXPORT, INVOICE_CREATE/UPDATE/DELETE/STATUS_CHANGE, FOLDER_CREATE/UPDATE/DELETE, TEMPLATE_CREATE/UPDATE/DELETE, CLIENT_CREATE/UPDATE/DELETE, USER_PROFILE_UPDATE",
+        "logActivity internal mutation logs events with timestamp",
+        "PDF export instrumented in ExportButton.tsx",
+        "Invoice mutations instrumented in invoices.ts",
+        "Folder mutations instrumented in invoiceFolders.ts",
+        "Template mutations instrumented in templates.ts",
+        "Client mutations instrumented in clientProfiles.ts",
+        "Activity logs include relevant metadata (invoice number, template name, etc.)",
+        "Logs are created after successful operations (not on failure)"
+      ],
+      "steps_to_verify": [
+        "Add activityLogs table to schema.ts",
+        "Create activityLogs.ts with logActivity mutation",
+        "Add activity logging to invoices.ts createInvoice mutation",
+        "Add activity logging to invoices.ts updateInvoice mutation",
+        "Add activity logging to invoices.ts removeInvoice mutation",
+        "Add activity logging to ExportButton after successful PDF export",
+        "Add activity logging to folder CRUD operations",
+        "Add activity logging to template CRUD operations",
+        "Add activity logging to client CRUD operations",
+        "Create an invoice - verify activity log created",
+        "Export PDF - verify activity log created",
+        "Update invoice status - verify activity log created",
+        "Query activityLogs in Convex dashboard - verify entries exist"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/schema.ts",
+        "packages/backend/convex/activityLogs.ts (new)",
+        "packages/backend/convex/invoices.ts",
+        "packages/backend/convex/invoiceFolders.ts",
+        "packages/backend/convex/templates.ts",
+        "packages/backend/convex/clientProfiles.ts",
+        "apps/web/src/components/export/ExportButton.tsx"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-005",
+      "category": "Admin",
+      "title": "Admin Users Page with Activity Monitoring",
+      "description": "Create admin-only users page showing all users with their activity stats and drill-down to individual user activity timeline.",
+      "acceptance_criteria": [
+        "listAllUsers admin query returns paginated user list with stats",
+        "User stats include: invoice count, folder count, template count, PDF export count, last activity",
+        "getUserAnalytics admin query returns detailed analytics for single user",
+        "listAllActivities admin query returns paginated activity logs with filters",
+        "Admin users page at /admin/users shows user list table",
+        "Table columns: Avatar, Name, Email, Joined, Last Active, Invoices, Exports, Actions",
+        "Table supports pagination and sorting",
+        "Clicking user row navigates to user detail page",
+        "User detail page at /admin/users/[userId] shows profile and activity",
+        "User detail shows stats cards (invoices, folders, templates, exports)",
+        "User detail shows activity timeline with recent activities",
+        "Activity items show event type, target name, timestamp",
+        "useAdminUsers hook fetches user list with stats",
+        "useUserDetail hook fetches single user analytics and activities"
+      ],
+      "steps_to_verify": [
+        "Create admin.ts with listAllUsers, getUserAnalytics queries",
+        "Add listAllActivities to activityLogs.ts",
+        "Create useAdminUsers and useUserDetail hooks",
+        "Create /admin/users/page.tsx with UsersTable component",
+        "Create /admin/users/[userId]/page.tsx with UserDetailPage component",
+        "As admin, navigate to /admin/users",
+        "Verify user list loads with stats columns",
+        "Verify pagination works",
+        "Click on a user row - verify navigation to detail page",
+        "Verify user detail shows stats cards",
+        "Verify activity timeline shows recent activities",
+        "Perform action as regular user - verify activity appears in admin view"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/admin.ts (new)",
+        "packages/backend/convex/activityLogs.ts",
+        "apps/web/src/hooks/use-admin.ts (new)",
+        "apps/web/src/app/admin/users/page.tsx (new)",
+        "apps/web/src/app/admin/users/[userId]/page.tsx (new)",
+        "apps/web/src/components/admin/UsersTable.tsx (new)",
+        "apps/web/src/components/admin/UserDetailPage.tsx (new)",
+        "apps/web/src/components/admin/ActivityFeed.tsx (new)"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-006",
+      "category": "Admin",
+      "title": "Admin Analytics Dashboard",
+      "description": "Create admin dashboard with aggregated analytics across all users showing platform-wide usage metrics and trends.",
+      "acceptance_criteria": [
+        "getDashboardStats admin query returns global platform metrics",
+        "Metrics: total users, active users (today/week/month), total invoices, total PDF exports, total revenue",
+        "Admin dashboard page at /admin shows analytics overview",
+        "Summary cards display: Total Users, PDF Exports, Total Invoices, Platform Revenue",
+        "Active users breakdown: today, this week, this month",
+        "User growth trend (users by month) displayed as chart or list",
+        "Top users by activity shown in table",
+        "Recent activity feed shows latest activities across all users",
+        "Dashboard auto-refreshes with Convex real-time queries",
+        "useAdminDashboardStats hook fetches dashboard metrics",
+        "Admin can filter activities by event type",
+        "Admin can filter activities by date range"
+      ],
+      "steps_to_verify": [
+        "Add getDashboardStats query to admin.ts",
+        "Create useAdminDashboardStats hook",
+        "Create /admin/page.tsx with AdminDashboard component",
+        "Create summary cards for key metrics",
+        "Create top users table component",
+        "Create activity feed component",
+        "As admin, navigate to /admin",
+        "Verify summary cards show correct totals",
+        "Verify active users breakdown is accurate",
+        "Verify top users table shows users ranked by activity",
+        "Verify activity feed shows recent activities",
+        "Have users perform actions - verify dashboard updates in real-time",
+        "Test activity filter by event type - verify filtering works"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/admin.ts",
+        "apps/web/src/hooks/use-admin.ts",
+        "apps/web/src/app/admin/page.tsx (new)",
+        "apps/web/src/components/admin/AdminDashboard.tsx (new)",
+        "apps/web/src/components/admin/StatCard.tsx (new)",
+        "apps/web/src/components/admin/TopUsersTable.tsx (new)",
+        "apps/web/src/components/admin/ActivityFeed.tsx"
+      ],
+      "passes": false
     }
   ]
 }
