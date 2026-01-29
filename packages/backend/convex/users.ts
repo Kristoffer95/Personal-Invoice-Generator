@@ -2,8 +2,9 @@ import { v } from "convex/values";
 import { query, internalMutation, mutation } from "./_generated/server";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { PERMISSIONS, hasPermission } from "./roles";
 
-// User role type
+// User role type (legacy - for backward compatibility)
 export type UserRole = "user" | "admin";
 
 // E2E Test user constants - only used in development
@@ -134,7 +135,15 @@ export async function getOrCreateUserFromIdentity(
 
     const now = Date.now();
     // Assign admin role if email is in ADMIN_EMAILS
-    const role = isAdminEmail(email) ? ("admin" as const) : ("user" as const);
+    const isAdmin = isAdminEmail(email);
+    const role = isAdmin ? ("admin" as const) : ("user" as const);
+
+    // Try to get roleId from roles table
+    const roleName = isAdmin ? "admin" : "user";
+    const roleDoc = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", roleName))
+      .first();
 
     const userId = await ctx.db.insert("users", {
       clerkId,
@@ -144,6 +153,7 @@ export async function getOrCreateUserFromIdentity(
       username: identity.nickname ?? undefined,
       imageUrl: identity.pictureUrl ?? undefined,
       role,
+      roleId: roleDoc?._id,
       clerkCreatedAt: now,
       clerkUpdatedAt: now,
       syncedAt: now,
@@ -197,18 +207,20 @@ export function getUserRole(user: Doc<"users"> | null | undefined): UserRole {
 /**
  * Check if the current user is an admin.
  * This is for use in query/mutation handlers.
+ * Uses the new permission-based system (admin:system permission).
  */
 export async function isAdmin(ctx: QueryCtx): Promise<boolean> {
   const userRef = await getUserFromIdentityOrE2E(ctx);
   if (!userRef) return false;
 
-  const user = await ctx.db.get(userRef._id);
-  return getUserRole(user) === "admin";
+  // Check permission-based admin access
+  return hasPermission(ctx, userRef._id, PERMISSIONS.ADMIN_SYSTEM);
 }
 
 /**
  * Require admin role - throws error if user is not an admin.
  * Use this in admin-only mutations/queries.
+ * Uses the new permission-based system (admin:system permission).
  */
 export async function requireAdmin(ctx: QueryCtx): Promise<Doc<"users">> {
   const userRef = await getUserFromIdentityOrE2E(ctx);
@@ -221,7 +233,8 @@ export async function requireAdmin(ctx: QueryCtx): Promise<Doc<"users">> {
     throw new Error("Unauthorized: User not found");
   }
 
-  if (getUserRole(user) !== "admin") {
+  const hasAdminPermission = await hasPermission(ctx, userRef._id, PERMISSIONS.ADMIN_SYSTEM);
+  if (!hasAdminPermission) {
     throw new Error("Forbidden: Admin access required");
   }
 
@@ -328,9 +341,17 @@ export const upsertFromClerk = internalMutation({
     }
 
     // Assign admin role if email is in ADMIN_EMAILS for new users
-    const role = isAdminEmail(args.email) ? ("admin" as const) : ("user" as const);
+    const isAdmin = isAdminEmail(args.email);
+    const role = isAdmin ? ("admin" as const) : ("user" as const);
 
-    const userId = await ctx.db.insert("users", { ...userData, role });
+    // Try to get roleId from roles table
+    const roleName = isAdmin ? "admin" : "user";
+    const roleDoc = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", roleName))
+      .first();
+
+    const userId = await ctx.db.insert("users", { ...userData, role, roleId: roleDoc?._id });
     return { userId, action: "created" as const };
   },
 });

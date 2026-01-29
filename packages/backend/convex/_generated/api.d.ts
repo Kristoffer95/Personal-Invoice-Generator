@@ -16,6 +16,8 @@ import type * as http from "../http.js";
 import type * as index from "../index.js";
 import type * as invoiceFolders from "../invoiceFolders.js";
 import type * as invoices from "../invoices.js";
+import type * as roles from "../roles.js";
+import type * as seedRoles from "../seedRoles.js";
 import type * as seedSystemTemplates from "../seedSystemTemplates.js";
 import type * as statusLogs from "../statusLogs.js";
 import type * as systemTemplates from "../systemTemplates.js";
@@ -39,6 +41,8 @@ declare const fullApi: ApiFromModules<{
   index: typeof index;
   invoiceFolders: typeof invoiceFolders;
   invoices: typeof invoices;
+  roles: typeof roles;
+  seedRoles: typeof seedRoles;
   seedSystemTemplates: typeof seedSystemTemplates;
   statusLogs: typeof statusLogs;
   systemTemplates: typeof systemTemplates;

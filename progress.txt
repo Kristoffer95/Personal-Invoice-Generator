@@ -893,3 +893,86 @@ Verification:
 - Lint passes: only pre-existing warnings (0 errors, 11 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
 - Build: has pre-existing type errors in other files (AdminDashboard.tsx, not related to this task)
+
+---
+
+ADMIN-001: Role-Based Access Control (RBAC) System - COMPLETED (Full Implementation)
+
+Previous implementation had a simple role field ('user' | 'admin') directly on users table.
+This update implements the full RBAC system per acceptance criteria with separate roles table and permissions.
+
+Schema changes (packages/backend/convex/schema.ts):
+- Added roles table with: name, displayName, description, permissions array, isSystemRole, isDefault, sortOrder, timestamps
+- Added indexes: by_name, by_default, by_system_role, by_sort_order
+- Added roleId field to users table (foreign key to roles table)
+- Added by_role_id index to users table
+- Added permissionValidator for permission strings
+
+Backend implementation (packages/backend/convex/roles.ts):
+- PERMISSIONS constant with action:resource naming convention:
+  - Invoice: read:invoices, write:invoices, delete:invoices
+  - Template: read:templates, write:templates
+  - Client: read:clients, write:clients
+  - Profile: read:profile, write:profile
+  - Admin: admin:users, admin:roles, admin:templates, admin:system
+- Permission type for type safety
+- getUserRoleDoc(ctx, userId): Returns user's role document
+- hasPermission(ctx, userId, permission): Checks permission with fallback to legacy role field
+- currentUserHasPermission(ctx, permission): Checks current user's permission
+- requirePermission(ctx, permission): Throws if missing permission
+- isAdminByPermission(ctx): Checks admin:system permission
+- requireAdminByPermission(ctx): Requires admin:system permission
+- listRoles query (admin only)
+- getDefaultRole query
+- getRoleByName query
+- getCurrentUserRole query: Returns user, role, permissions, isAdmin for frontend
+
+Seed mutations (packages/backend/convex/seedRoles.ts):
+- SYSTEM_ROLES data for 'user' and 'admin' roles
+- 'user' role: basic permissions, isDefault: true
+- 'admin' role: all user + admin permissions
+- seedAllRoles mutation: idempotent seeding (creates or updates)
+- Special case: allows seeding without admin check if no roles exist yet
+
+Users integration (packages/backend/convex/users.ts):
+- Updated getOrCreateUserFromIdentity: assigns roleId from roles table when creating new users
+- Updated upsertFromClerk: same roleId assignment for webhook-created users
+- Updated isAdmin: uses hasPermission with admin:system
+- Updated requireAdmin: uses hasPermission with admin:system
+- Backward compatible: falls back to legacy role field if roleId not set
+
+Frontend hook (apps/web/src/hooks/use-user-role.ts):
+- PERMISSIONS constant mirroring backend
+- Permission type
+- useUserRole returns: user, role, permissions, isAdmin, hasPermission function, isLoading, isAuthenticated
+- Uses api.roles.getCurrentUserRole query
+- hasPermission(permission): checks permission in permissions array
+
+AdminGuard (apps/web/src/components/auth/AdminGuard.tsx):
+- No changes needed - uses isAdmin from useUserRole which now uses admin:system permission
+
+Files changed:
+- packages/backend/convex/schema.ts (added roles table, roleId to users)
+- packages/backend/convex/roles.ts (new)
+- packages/backend/convex/seedRoles.ts (new)
+- packages/backend/convex/users.ts (updated for roleId)
+- apps/web/src/hooks/use-user-role.ts (updated for permissions)
+
+Key decisions:
+- Backward compatible: legacy role field checked if roleId not set
+- Permission format: action:resource (e.g., read:invoices, admin:system)
+- Idempotent seeding: seedAllRoles can run multiple times safely
+- Admin check: uses admin:system permission
+- Frontend mirrors backend PERMISSIONS constant for type safety
+- Roles table separate from users for flexibility and extensibility
+
+Usage:
+1. Run seedAllRoles mutation to create roles
+2. Set ADMIN_EMAILS env var for auto-admin assignment
+3. New users get roleId assigned on creation
+4. Existing users use legacy role field fallback
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific)

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { isAdmin, requireAdmin, getUserFromIdentityOrE2E } from "./users";
+import { isAdmin, requireAdmin } from "./users";
 import type { Id, Doc } from "./_generated/dataModel";
 
 // Reusable validators (same as schema)

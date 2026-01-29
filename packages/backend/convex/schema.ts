@@ -323,8 +323,12 @@ const editorSettingsValidator = v.object({
   zoomLevel: v.number(),
 });
 
-// User role validator
+// User role validator (legacy - for backward compatibility)
 const userRoleValidator = v.union(v.literal("user"), v.literal("admin"));
+
+// Permission validator - follows action:resource naming convention
+// Examples: read:invoices, write:invoices, delete:invoices, admin:users, admin:system
+const permissionValidator = v.string();
 
 // Activity event type validator
 const activityEventTypeValidator = v.union(
@@ -367,6 +371,32 @@ const activityTargetTypeValidator = v.union(
 );
 
 export default defineSchema({
+  // Roles table for RBAC system
+  roles: defineTable({
+    // Unique slug identifier (e.g., 'user', 'admin')
+    name: v.string(),
+    // Human-readable display name
+    displayName: v.string(),
+    // Description of the role
+    description: v.optional(v.string()),
+    // Array of permissions (action:resource format)
+    permissions: v.array(permissionValidator),
+    // System roles cannot be deleted
+    isSystemRole: v.boolean(),
+    // Default role for new users
+    isDefault: v.boolean(),
+    // For ordering in UI
+    sortOrder: v.number(),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_default", ["isDefault"])
+    .index("by_system_role", ["isSystemRole"])
+    .index("by_sort_order", ["sortOrder"]),
+
   users: defineTable({
     // Core identity (synced from Clerk)
     clerkId: v.string(),
@@ -376,8 +406,11 @@ export default defineSchema({
     username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
 
-    // User role (defaults to 'user')
+    // User role (legacy - for backward compatibility)
     role: v.optional(userRoleValidator),
+
+    // Role reference (foreign key to roles table)
+    roleId: v.optional(v.id("roles")),
 
     // Timestamps
     clerkCreatedAt: v.number(),
@@ -388,7 +421,8 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"])
+    .index("by_role_id", ["roleId"]),
 
   // User profile with editable business details
   userProfiles: defineTable({

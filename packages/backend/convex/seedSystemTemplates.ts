@@ -10,7 +10,7 @@
  * 3. Run with empty args {}
  */
 
-import { internalAction, mutation } from "./_generated/server";
+import { mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./users";
 import { v } from "convex/values";
