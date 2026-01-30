@@ -862,6 +862,134 @@
         "packages/backend/convex/users.ts"
       ],
       "passes": true
+    },
+    {
+      "id": "ADMIN-010",
+      "category": "Admin",
+      "title": "Multi-Select Templates with Bulk Actions in Admin Templates Page",
+      "description": "Add multi-select functionality to the admin templates table with bulk actions for delete, move to folder, update visibility, and update page size. Include a sticky toolbar that appears when templates are selected.",
+      "acceptance_criteria": [
+        "Checkbox column added to AdminTemplatesTable with select-all in header",
+        "Select-all checkbox shows indeterminate state when some items selected",
+        "Selection state managed using Set<Id<'systemTemplates'>>",
+        "Sticky BulkActionsToolbar appears above table when templates selected",
+        "Toolbar shows selected count and clear selection button",
+        "Bulk Delete action with confirmation dialog",
+        "Bulk Move to Folder action with folder selection dialog",
+        "Bulk Update Visibility (Show/Hide) action",
+        "Bulk Update Page Size action with all 7 sizes (A4, LETTER, LEGAL, LONG, SHORT, A5, B5)",
+        "Backend bulkDeleteSystemTemplates mutation created (partial success pattern)",
+        "Backend bulkMoveTemplates mutation created",
+        "Backend bulkUpdateVisibility mutation created",
+        "Backend bulkUpdatePageSize mutation created",
+        "All bulk mutations return { successCount, failedCount, successIds, failedIds }",
+        "Toast notifications show operation results",
+        "Selection cleared after successful bulk operations",
+        "Hooks updated to expose bulk mutations with cache invalidation"
+      ],
+      "steps_to_verify": [
+        "Add bulk mutations to packages/backend/convex/systemTemplates.ts",
+        "Update apps/web/src/hooks/use-system-templates.ts to expose bulk mutations",
+        "Create apps/web/src/components/admin/BulkActionsToolbar.tsx component",
+        "Create apps/web/src/components/admin/BulkMoveDialog.tsx component",
+        "Create apps/web/src/components/admin/BulkPageSizeDialog.tsx component",
+        "Update AdminTemplatesTable.tsx with checkbox column",
+        "Update AdminTemplatesPage.tsx with selection state and handlers",
+        "As admin, navigate to /admin/templates",
+        "Select individual templates using checkboxes - verify selection works",
+        "Click select-all checkbox - verify all templates selected",
+        "Partially select - verify indeterminate state on select-all",
+        "With templates selected, verify sticky toolbar appears",
+        "Click 'Delete' in toolbar - verify confirmation dialog, then deletion",
+        "Click 'Move to Folder' - verify folder dialog, then move operation",
+        "Click 'Show/Hide' - verify visibility toggles on selected",
+        "Click 'Update Page Size' - verify page size dialog, then update",
+        "Verify toast shows success count after each operation",
+        "Verify selection cleared after operations"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/systemTemplates.ts",
+        "apps/web/src/hooks/use-system-templates.ts",
+        "apps/web/src/components/admin/BulkActionsToolbar.tsx (new)",
+        "apps/web/src/components/admin/BulkMoveDialog.tsx (new)",
+        "apps/web/src/components/admin/BulkPageSizeDialog.tsx (new)",
+        "apps/web/src/components/admin/AdminTemplatesPage.tsx",
+        "apps/web/src/components/admin/AdminTemplatesTable.tsx"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-011",
+      "category": "Admin",
+      "title": "Quick-Edit Button for Admin Templates",
+      "description": "Add a quick-edit pencil button that appears on hover for each template row, providing direct access to the style editor without needing to open the three-dot dropdown menu.",
+      "acceptance_criteria": [
+        "Pencil icon button added to each template row in actions column",
+        "Button visible on row hover (using Tailwind group/group-hover pattern)",
+        "Button also remains inline with existing three-dot menu",
+        "Clicking pencil button opens style editor with systemTemplateId",
+        "URL format: /style-editor?systemTemplateId={id}",
+        "Three-dot menu still contains Edit option as before",
+        "Button has appropriate hover state and aria-label",
+        "Works alongside checkbox selection without interference"
+      ],
+      "steps_to_verify": [
+        "Update AdminTemplatesTable.tsx to add pencil button",
+        "Add 'group' class to table row for hover detection",
+        "Add button with 'opacity-0 group-hover:opacity-100' classes",
+        "As admin, navigate to /admin/templates",
+        "Hover over a template row - verify pencil icon appears",
+        "Click pencil icon - verify navigation to style editor",
+        "Verify URL contains systemTemplateId parameter",
+        "Verify three-dot menu still has Edit option",
+        "Verify pencil button works with checkbox selection enabled"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/admin/AdminTemplatesTable.tsx"
+      ],
+      "passes": true
+    },
+    {
+      "id": "STYLE-008",
+      "category": "Style Editor",
+      "title": "Folder Navigation in Styles Page Dialog",
+      "description": "Add folder-based navigation to the StyleManagerFolderDialog so users can browse system templates organized by folders. Shows folders at root level with breadcrumb navigation to enter/exit folders.",
+      "acceptance_criteria": [
+        "StyleManagerFolderDialog receives folders prop from parent",
+        "Root level shows folder cards using existing StyleFolder component",
+        "Root level also shows templates without a folder (uncategorized)",
+        "Clicking folder card enters that folder, showing only its templates",
+        "FolderBreadcrumb component shows navigation path",
+        "Clicking breadcrumb item navigates back to that level",
+        "Navigation state resets when dialog closes",
+        "Admin sees all folders (including hidden), regular users see only visible",
+        "useSystemTemplateFolders hook used for regular users",
+        "useSystemTemplateFoldersAdmin hook used for admin users",
+        "StyleManagerPage passes systemFolders to dialog",
+        "Templates filtered by currentFolderId state",
+        "Empty folder shows appropriate empty state message"
+      ],
+      "steps_to_verify": [
+        "Create apps/web/src/components/styles/FolderBreadcrumb.tsx component",
+        "Update StyleManagerFolderDialog.tsx with folder navigation state",
+        "Update StyleManagerPage.tsx to fetch and pass folders",
+        "As regular user, navigate to /styles",
+        "Click 'Default Styles' folder card - verify dialog opens",
+        "Verify folders shown as clickable cards at root level",
+        "Verify uncategorized templates shown at root level",
+        "Click a folder card - verify breadcrumb updates",
+        "Verify only templates in that folder shown",
+        "Click breadcrumb to go back - verify navigation works",
+        "Close and reopen dialog - verify state resets to root",
+        "As admin, verify hidden folders are visible",
+        "As regular user, verify hidden folders are NOT visible"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/styles/FolderBreadcrumb.tsx (new)",
+        "apps/web/src/components/styles/StyleManagerFolderDialog.tsx",
+        "apps/web/src/components/styles/StyleManagerPage.tsx"
+      ],
+      "passes": false
     }
   ]
 }

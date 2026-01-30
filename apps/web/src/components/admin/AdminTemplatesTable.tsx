@@ -106,7 +106,7 @@ export function AdminTemplatesTable({
             {templates.map((template) => (
               <tr
                 key={template._id}
-                className="border-b transition-colors hover:bg-muted/50"
+                className="group border-b transition-colors hover:bg-muted/50"
               >
                 {/* Name */}
                 <td className="p-4">
@@ -179,7 +179,18 @@ export function AdminTemplatesTable({
 
                 {/* Actions */}
                 <td className="p-4 text-right">
-                  <DropdownMenu>
+                  <div className="flex items-center justify-end gap-1">
+                    {/* Quick-edit button - visible on hover */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => onEdit(template._id)}
+                      aria-label={`Edit ${template.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <MoreVertical className="h-4 w-4" />
@@ -222,6 +233,7 @@ export function AdminTemplatesTable({
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </td>
               </tr>
             ))}

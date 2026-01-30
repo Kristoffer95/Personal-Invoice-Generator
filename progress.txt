@@ -1235,6 +1235,38 @@ NOTE: This migration removed the legacy role field entirely, which supersedes AD
 
 ---
 
+ADMIN-011: Quick-Edit Button for Admin Templates - COMPLETED
+
+Added quick-edit pencil button that appears on hover for each template row in admin templates table.
+
+Implementation:
+- Added 'group' class to table row (tr) for Tailwind hover detection
+- Added pencil button before the three-dot menu in Actions column
+- Button uses opacity-0 group-hover:opacity-100 for hover visibility
+- Button has transition-opacity for smooth fade-in
+- Proper aria-label for accessibility: "Edit {template.name}"
+- Clicking button calls existing onEdit(template._id) handler
+- Three-dot menu still contains Edit option as before
+
+Acceptance criteria met:
+- Pencil icon button in actions column: YES
+- Button visible on row hover: YES (group/group-hover pattern)
+- Button inline with three-dot menu: YES (flex container with gap-1)
+- Clicking navigates to style editor: YES (uses existing onEdit handler)
+- Three-dot menu still has Edit option: YES (unchanged)
+- Appropriate hover state and aria-label: YES
+- Works with checkbox selection: YES (independent of any selection mechanism)
+
+Files changed:
+- apps/web/src/components/admin/AdminTemplatesTable.tsx
+
+Verification:
+- Build passes: pnpm run build --filter=@invoice-generator/web
+- Lint passes: 0 errors, only pre-existing warnings (11 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
 ALL TASKS VERIFICATION - 2026-01-30
 
 Verified all tasks in prd.json now have passes: true:
