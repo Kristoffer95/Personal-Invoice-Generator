@@ -715,8 +715,8 @@
     {
       "id": "ADMIN-007",
       "category": "Admin",
-      "title": "Admin System Templates Management Page - Add Move Template Feature",
-      "description": "The admin templates page at /admin/templates is 95% implemented with all CRUD operations working. The only missing feature is the ability to move templates between folders. Create MoveTemplateDialog component and wire it into AdminTemplatesTable dropdown menu.",
+      "title": "Admin Default Styles Management - Complete CRUD UI",
+      "description": "Complete the admin UI for managing default styles (system templates) and folders. Backend API is fully implemented but admin UI is missing: Create Template button/dialog, Create Folder button/dialog, Move Template to Folder dialog, Delete with confirmation. Enable admins to create new default styles that regular users can duplicate to their Custom Styles.",
       "acceptance_criteria": [
         "Admin templates page at /admin/templates accessible from admin navigation",
         "Navigation link added to /admin dashboard linking to templates management",
@@ -766,14 +766,10 @@
         "As regular user, verify hidden templates/folders not visible in /styles"
       ],
       "files_to_modify": [
-        "apps/web/src/app/admin/templates/page.tsx (new)",
-        "apps/web/src/components/admin/AdminTemplatesPage.tsx (new)",
-        "apps/web/src/components/admin/AdminTemplatesTable.tsx (new)",
-        "apps/web/src/components/admin/CreateTemplateDialog.tsx (new)",
-        "apps/web/src/components/admin/CreateFolderDialog.tsx (new)",
-        "apps/web/src/components/admin/EditFolderDialog.tsx (new)",
-        "apps/web/src/components/admin/AdminDashboard.tsx",
-        "apps/web/src/hooks/use-system-templates.ts"
+        "apps/web/src/components/admin/CreateSystemTemplateDialog.tsx (new)",
+        "apps/web/src/components/admin/MoveTemplateDialog.tsx (new)",
+        "apps/web/src/components/admin/AdminTemplatesPage.tsx",
+        "apps/web/src/components/admin/AdminTemplatesTable.tsx"
       ],
       "passes": true
     },

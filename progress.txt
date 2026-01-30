@@ -1164,6 +1164,8 @@ ADMIN-008: Migrate from Legacy role Column to roleId RBAC System - COMPLETED
 
 Fully migrated from the dual role/roleId system to using only roleId foreign key to roles table. Removed all legacy role field references.
 
+NOTE: This migration removed the legacy role field entirely, which supersedes ADMIN-009's original solution that relied on the legacy role field as fallback. The catch-22 bug is now solved differently: initial seeding is allowed when roles table is empty, and admin permission is required only after roles exist.
+
 Schema changes (packages/backend/convex/schema.ts):
 - Removed userRoleValidator (was: v.union(v.literal("user"), v.literal("admin")))
 - Removed role field from users table
@@ -1228,3 +1230,18 @@ Verification:
 - Build passes: npm run build
 - Lint passes: 0 errors, only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+NOTE: This migration removed the legacy role field entirely, which supersedes ADMIN-009's original solution that relied on the legacy role field as fallback. The catch-22 bug is now solved differently: initial seeding is allowed when roles table is empty, and admin permission is required only after roles exist.
+
+---
+
+ALL TASKS VERIFICATION - 2026-01-30
+
+Verified all tasks in prd.json now have passes: true:
+- STYLE-001 through STYLE-007 (7 style editor tasks)
+- UX-001 (unsaved changes)
+- INV-001 (detailed hours toggle)
+- UI-001, UI-002 (status badges, hydration fix)
+- ADMIN-001 through ADMIN-009 (9 admin tasks)
+
+Total: 20 tasks completed
