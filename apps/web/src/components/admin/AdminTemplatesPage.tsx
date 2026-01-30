@@ -43,6 +43,9 @@ import { CreateTemplateDialog } from "./CreateTemplateDialog";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { EditFolderDialog } from "./EditFolderDialog";
 import { MoveTemplateDialog } from "./MoveTemplateDialog";
+import { BulkActionsToolbar } from "./BulkActionsToolbar";
+import { BulkMoveDialog } from "./BulkMoveDialog";
+import { BulkPageSizeDialog } from "./BulkPageSizeDialog";
 import { DeleteStyleDialog } from "@/components/styles/DeleteStyleDialog";
 import type { Id, Doc } from "@invoice-generator/backend/convex/_generated/dataModel";
 
@@ -68,14 +71,23 @@ export function AdminTemplatesPage() {
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
   const [moveTemplateOpen, setMoveTemplateOpen] = useState(false);
 
-  // Selected items
+  // Bulk action dialog states
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkPageSizeOpen, setBulkPageSizeOpen] = useState(false);
+
+  // Selected items (single)
   const [selectedFolder, setSelectedFolder] = useState<(typeof folders)[number] | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<Id<"systemTemplates"> | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>("");
   const [selectedTemplate, setSelectedTemplate] = useState<SystemTemplate | null>(null);
 
+  // Multi-select state
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<Id<"systemTemplates">>>(new Set());
+
   // Loading states
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const isLoading = templatesLoading || foldersLoading;
 
@@ -195,6 +207,101 @@ export function AdminTemplatesPage() {
   const openDeleteFolderDialog = (folder: (typeof folders)[number]) => {
     setSelectedFolder(folder);
     setDeleteFolderOpen(true);
+  };
+
+  // Bulk action handlers
+  const clearSelection = () => {
+    setSelectedTemplateIds(new Set());
+  };
+
+  const selectedTemplateIdsArray = useMemo(() =>
+    Array.from(selectedTemplateIds) as Id<"systemTemplates">[],
+    [selectedTemplateIds]
+  );
+
+  const selectedTemplateNames = useMemo(() => {
+    return templates
+      .filter(t => selectedTemplateIds.has(t._id))
+      .map(t => t.name);
+  }, [templates, selectedTemplateIds]);
+
+  const handleBulkDelete = async () => {
+    if (selectedTemplateIds.size === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const result = await mutations.bulkDeleteSystemTemplates({
+        templateIds: selectedTemplateIdsArray,
+      });
+
+      if (result.successCount > 0) {
+        toast({
+          title: `Deleted ${result.successCount} ${result.successCount === 1 ? "template" : "templates"}`,
+        });
+      }
+
+      if (result.failedCount > 0) {
+        toast({
+          title: `${result.failedCount} ${result.failedCount === 1 ? "template" : "templates"} failed to delete`,
+          variant: "destructive",
+        });
+      }
+
+      setBulkDeleteOpen(false);
+      clearSelection();
+    } catch {
+      toast({
+        title: "Failed to delete templates",
+        variant: "destructive"
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleBulkShow = async () => {
+    if (selectedTemplateIds.size === 0) return;
+    try {
+      const result = await mutations.bulkUpdateVisibility({
+        templateIds: selectedTemplateIdsArray,
+        isHidden: false,
+      });
+
+      if (result.successCount > 0) {
+        toast({
+          title: `${result.successCount} ${result.successCount === 1 ? "template" : "templates"} shown`,
+        });
+      }
+
+      clearSelection();
+    } catch {
+      toast({
+        title: "Failed to update visibility",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleBulkHide = async () => {
+    if (selectedTemplateIds.size === 0) return;
+    try {
+      const result = await mutations.bulkUpdateVisibility({
+        templateIds: selectedTemplateIdsArray,
+        isHidden: true,
+      });
+
+      if (result.successCount > 0) {
+        toast({
+          title: `${result.successCount} ${result.successCount === 1 ? "template" : "templates"} hidden`,
+        });
+      }
+
+      clearSelection();
+    } catch {
+      toast({
+        title: "Failed to update visibility",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -348,7 +455,18 @@ export function AdminTemplatesPage() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Bulk Actions Toolbar */}
+          <BulkActionsToolbar
+            selectedCount={selectedTemplateIds.size}
+            onClearSelection={clearSelection}
+            onBulkDelete={() => setBulkDeleteOpen(true)}
+            onBulkShow={handleBulkShow}
+            onBulkHide={handleBulkHide}
+            onBulkMove={() => setBulkMoveOpen(true)}
+            onBulkPageSize={() => setBulkPageSizeOpen(true)}
+          />
+
           <AdminTemplatesTable
             templates={filteredTemplates}
             folders={folders}
@@ -358,6 +476,8 @@ export function AdminTemplatesPage() {
             onSetDefault={handleSetDefaultTemplate}
             onDelete={openDeleteTemplateDialog}
             onMoveToFolder={openMoveTemplateDialog}
+            selectedIds={selectedTemplateIds}
+            onSelectionChange={setSelectedTemplateIds}
           />
         </CardContent>
       </Card>
@@ -405,6 +525,33 @@ export function AdminTemplatesPage() {
         onOpenChange={setMoveTemplateOpen}
         template={selectedTemplate}
         folders={folders}
+      />
+
+      {/* Bulk Delete Confirmation */}
+      <DeleteStyleDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        templateNames={selectedTemplateNames}
+        count={selectedTemplateIds.size}
+        onConfirm={handleBulkDelete}
+        isDeleting={isBulkDeleting}
+      />
+
+      {/* Bulk Move Dialog */}
+      <BulkMoveDialog
+        open={bulkMoveOpen}
+        onOpenChange={setBulkMoveOpen}
+        templateIds={selectedTemplateIdsArray}
+        folders={folders}
+        onSuccess={clearSelection}
+      />
+
+      {/* Bulk Page Size Dialog */}
+      <BulkPageSizeDialog
+        open={bulkPageSizeOpen}
+        onOpenChange={setBulkPageSizeOpen}
+        templateIds={selectedTemplateIdsArray}
+        onSuccess={clearSelection}
       />
     </div>
   );

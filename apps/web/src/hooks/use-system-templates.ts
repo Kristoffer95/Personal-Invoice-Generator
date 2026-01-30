@@ -221,6 +221,16 @@ export function useSystemTemplateFoldersAdmin() {
 }
 
 /**
+ * Result type for bulk operations
+ */
+export type BulkOperationResult = {
+  successCount: number;
+  failedCount: number;
+  successIds: Id<"systemTemplates">[];
+  failedIds: Id<"systemTemplates">[];
+};
+
+/**
  * Hook providing mutation functions for system template operations (admin only)
  * All mutations are wrapped to invalidate the cache after successful operations
  */
@@ -231,6 +241,12 @@ export function useSystemTemplateMutations() {
   const toggleSystemTemplateVisibilityMutation = useMutation(api.systemTemplates.toggleSystemTemplateVisibility);
   const deleteSystemTemplateMutation = useMutation(api.systemTemplates.deleteSystemTemplate);
   const setDefaultSystemTemplateMutation = useMutation(api.systemTemplates.setDefaultSystemTemplate);
+
+  // Bulk mutations
+  const bulkDeleteSystemTemplatesMutation = useMutation(api.systemTemplates.bulkDeleteSystemTemplates);
+  const bulkMoveTemplatesMutation = useMutation(api.systemTemplates.bulkMoveTemplates);
+  const bulkUpdateVisibilityMutation = useMutation(api.systemTemplates.bulkUpdateVisibility);
+  const bulkUpdatePageSizeMutation = useMutation(api.systemTemplates.bulkUpdatePageSize);
 
   // Folder mutations
   const createFolderMutation = useMutation(api.systemTemplates.createFolder);
@@ -259,6 +275,12 @@ export function useSystemTemplateMutations() {
     toggleSystemTemplateVisibility: wrapWithCacheInvalidation(toggleSystemTemplateVisibilityMutation),
     deleteSystemTemplate: wrapWithCacheInvalidation(deleteSystemTemplateMutation),
     setDefaultSystemTemplate: wrapWithCacheInvalidation(setDefaultSystemTemplateMutation),
+
+    // Bulk mutations
+    bulkDeleteSystemTemplates: wrapWithCacheInvalidation(bulkDeleteSystemTemplatesMutation),
+    bulkMoveTemplates: wrapWithCacheInvalidation(bulkMoveTemplatesMutation),
+    bulkUpdateVisibility: wrapWithCacheInvalidation(bulkUpdateVisibilityMutation),
+    bulkUpdatePageSize: wrapWithCacheInvalidation(bulkUpdatePageSizeMutation),
 
     // Folder mutations
     createFolder: wrapWithCacheInvalidation(createFolderMutation),

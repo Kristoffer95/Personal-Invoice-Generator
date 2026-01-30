@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,9 @@ interface AdminTemplatesTableProps {
   onSetDefault: (templateId: Id<"systemTemplates">) => void;
   onDelete: (templateId: Id<"systemTemplates">, templateName: string) => void;
   onMoveToFolder: (template: SystemTemplate) => void;
+  // Multi-select props
+  selectedIds?: Set<Id<"systemTemplates">>;
+  onSelectionChange?: (selectedIds: Set<Id<"systemTemplates">>) => void;
 }
 
 export function AdminTemplatesTable({
@@ -46,9 +50,46 @@ export function AdminTemplatesTable({
   onSetDefault,
   onDelete,
   onMoveToFolder,
+  selectedIds = new Set(),
+  onSelectionChange,
 }: AdminTemplatesTableProps) {
   // Create folder lookup map
   const folderMap = new Map(folders.map((f) => [f._id, f]));
+
+  // Selection state helpers
+  const allSelected = templates.length > 0 && templates.every(t => selectedIds.has(t._id));
+  const someSelected = templates.some(t => selectedIds.has(t._id));
+  const isIndeterminate = someSelected && !allSelected;
+
+  // Handle select all checkbox
+  const handleSelectAll = () => {
+    if (!onSelectionChange) return;
+
+    if (allSelected) {
+      // Deselect all visible templates
+      const newSelection = new Set(selectedIds);
+      templates.forEach(t => newSelection.delete(t._id));
+      onSelectionChange(newSelection);
+    } else {
+      // Select all visible templates
+      const newSelection = new Set(selectedIds);
+      templates.forEach(t => newSelection.add(t._id));
+      onSelectionChange(newSelection);
+    }
+  };
+
+  // Handle individual checkbox
+  const handleSelectOne = (templateId: Id<"systemTemplates">) => {
+    if (!onSelectionChange) return;
+
+    const newSelection = new Set(selectedIds);
+    if (newSelection.has(templateId)) {
+      newSelection.delete(templateId);
+    } else {
+      newSelection.add(templateId);
+    }
+    onSelectionChange(newSelection);
+  };
 
   const getFolderName = (folderId: Id<"systemTemplateFolders"> | undefined) => {
     if (!folderId) return "Uncategorized";
@@ -82,6 +123,18 @@ export function AdminTemplatesTable({
         <table className="w-full">
           <thead>
             <tr className="border-b bg-muted/50">
+              {/* Checkbox column */}
+              {onSelectionChange && (
+                <th className="h-11 w-12 px-4 align-middle">
+                  <div className="relative">
+                    <Checkbox
+                      checked={isIndeterminate ? "indeterminate" : allSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all templates"
+                    />
+                  </div>
+                </th>
+              )}
               <th className="h-11 px-4 text-left align-middle text-sm font-medium text-muted-foreground">
                 Name
               </th>
@@ -103,11 +156,23 @@ export function AdminTemplatesTable({
             </tr>
           </thead>
           <tbody>
-            {templates.map((template) => (
+            {templates.map((template) => {
+              const isSelected = selectedIds.has(template._id);
+              return (
               <tr
                 key={template._id}
-                className="group border-b transition-colors hover:bg-muted/50"
+                className={`group border-b transition-colors hover:bg-muted/50 ${isSelected ? "bg-muted/30" : ""}`}
               >
+                {/* Checkbox */}
+                {onSelectionChange && (
+                  <td className="w-12 p-4">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleSelectOne(template._id)}
+                      aria-label={`Select ${template.name}`}
+                    />
+                  </td>
+                )}
                 {/* Name */}
                 <td className="p-4">
                   <div className="flex items-center gap-3">
@@ -236,7 +301,8 @@ export function AdminTemplatesTable({
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

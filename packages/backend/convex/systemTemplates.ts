@@ -801,6 +801,228 @@ async function clearDefaultSystemTemplates(
 }
 
 // ============================================================================
+// BULK MUTATIONS (Admin only)
+// ============================================================================
+
+/**
+ * Result type for bulk operations
+ */
+export type BulkOperationResult = {
+  successCount: number;
+  failedCount: number;
+  successIds: Id<"systemTemplates">[];
+  failedIds: Id<"systemTemplates">[];
+};
+
+/**
+ * Bulk delete system templates (soft delete)
+ */
+export const bulkDeleteSystemTemplates = mutation({
+  args: {
+    templateIds: v.array(v.id("systemTemplates")),
+  },
+  handler: async (ctx, args): Promise<BulkOperationResult> => {
+    await requireAdmin(ctx);
+
+    const result: BulkOperationResult = {
+      successCount: 0,
+      failedCount: 0,
+      successIds: [],
+      failedIds: [],
+    };
+
+    if (args.templateIds.length === 0) {
+      return result;
+    }
+
+    const now = Date.now();
+
+    for (const templateId of args.templateIds) {
+      try {
+        const template = await ctx.db.get(templateId);
+        if (!template || template.deletedAt) {
+          // Template doesn't exist or already deleted
+          result.failedCount++;
+          result.failedIds.push(templateId);
+          continue;
+        }
+
+        await ctx.db.patch(templateId, {
+          deletedAt: now,
+          isDefault: false, // Clear default status on delete
+        });
+
+        result.successCount++;
+        result.successIds.push(templateId);
+      } catch {
+        result.failedCount++;
+        result.failedIds.push(templateId);
+      }
+    }
+
+    return result;
+  },
+});
+
+/**
+ * Bulk move system templates to a folder
+ */
+export const bulkMoveTemplates = mutation({
+  args: {
+    templateIds: v.array(v.id("systemTemplates")),
+    folderId: v.optional(v.id("systemTemplateFolders")),
+  },
+  handler: async (ctx, args): Promise<BulkOperationResult> => {
+    await requireAdmin(ctx);
+
+    const result: BulkOperationResult = {
+      successCount: 0,
+      failedCount: 0,
+      successIds: [],
+      failedIds: [],
+    };
+
+    if (args.templateIds.length === 0) {
+      return result;
+    }
+
+    // Verify target folder exists if specified
+    if (args.folderId) {
+      const folder = await ctx.db.get(args.folderId);
+      if (!folder || folder.deletedAt) {
+        throw new Error("Target folder not found");
+      }
+    }
+
+    const now = Date.now();
+
+    for (const templateId of args.templateIds) {
+      try {
+        const template = await ctx.db.get(templateId);
+        if (!template || template.deletedAt) {
+          result.failedCount++;
+          result.failedIds.push(templateId);
+          continue;
+        }
+
+        await ctx.db.patch(templateId, {
+          folderId: args.folderId,
+          updatedAt: now,
+        });
+
+        result.successCount++;
+        result.successIds.push(templateId);
+      } catch {
+        result.failedCount++;
+        result.failedIds.push(templateId);
+      }
+    }
+
+    return result;
+  },
+});
+
+/**
+ * Bulk update system template visibility
+ */
+export const bulkUpdateVisibility = mutation({
+  args: {
+    templateIds: v.array(v.id("systemTemplates")),
+    isHidden: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<BulkOperationResult> => {
+    await requireAdmin(ctx);
+
+    const result: BulkOperationResult = {
+      successCount: 0,
+      failedCount: 0,
+      successIds: [],
+      failedIds: [],
+    };
+
+    if (args.templateIds.length === 0) {
+      return result;
+    }
+
+    const now = Date.now();
+
+    for (const templateId of args.templateIds) {
+      try {
+        const template = await ctx.db.get(templateId);
+        if (!template || template.deletedAt) {
+          result.failedCount++;
+          result.failedIds.push(templateId);
+          continue;
+        }
+
+        await ctx.db.patch(templateId, {
+          isHidden: args.isHidden,
+          updatedAt: now,
+        });
+
+        result.successCount++;
+        result.successIds.push(templateId);
+      } catch {
+        result.failedCount++;
+        result.failedIds.push(templateId);
+      }
+    }
+
+    return result;
+  },
+});
+
+/**
+ * Bulk update system template page size
+ */
+export const bulkUpdatePageSize = mutation({
+  args: {
+    templateIds: v.array(v.id("systemTemplates")),
+    pageSize: pageSizeValidator,
+  },
+  handler: async (ctx, args): Promise<BulkOperationResult> => {
+    await requireAdmin(ctx);
+
+    const result: BulkOperationResult = {
+      successCount: 0,
+      failedCount: 0,
+      successIds: [],
+      failedIds: [],
+    };
+
+    if (args.templateIds.length === 0) {
+      return result;
+    }
+
+    const now = Date.now();
+
+    for (const templateId of args.templateIds) {
+      try {
+        const template = await ctx.db.get(templateId);
+        if (!template || template.deletedAt) {
+          result.failedCount++;
+          result.failedIds.push(templateId);
+          continue;
+        }
+
+        await ctx.db.patch(templateId, {
+          pageSize: args.pageSize,
+          updatedAt: now,
+        });
+
+        result.successCount++;
+        result.successIds.push(templateId);
+      } catch {
+        result.failedCount++;
+        result.failedIds.push(templateId);
+      }
+    }
+
+    return result;
+  },
+});
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 

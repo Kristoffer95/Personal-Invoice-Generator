@@ -1267,13 +1267,93 @@ Verification:
 
 ---
 
-ALL TASKS VERIFICATION - 2026-01-30
+ADMIN-010: Multi-Select Templates with Bulk Actions in Admin Templates Page - COMPLETED
+
+Added multi-select functionality to admin templates table with bulk actions for delete, move to folder, update visibility, and update page size.
+
+Backend changes (packages/backend/convex/systemTemplates.ts):
+- Added BulkOperationResult type with successCount, failedCount, successIds, failedIds
+- Added bulkDeleteSystemTemplates mutation: soft deletes multiple templates
+- Added bulkMoveTemplates mutation: moves templates to folder (or uncategorized)
+- Added bulkUpdateVisibility mutation: shows/hides multiple templates
+- Added bulkUpdatePageSize mutation: updates page size for multiple templates
+- All bulk mutations return partial success results (some can fail, others succeed)
+- Admin permission required for all bulk mutations
+
+Frontend hook changes (apps/web/src/hooks/use-system-templates.ts):
+- Added BulkOperationResult type export
+- Added bulkDeleteSystemTemplates, bulkMoveTemplates, bulkUpdateVisibility, bulkUpdatePageSize mutations
+- All wrapped with cache invalidation
+
+New components created:
+- BulkActionsToolbar.tsx: Sticky toolbar with selection count, clear button, bulk action buttons
+- BulkMoveDialog.tsx: Dialog for bulk moving templates to folder with dropdown
+- BulkPageSizeDialog.tsx: Dialog for bulk updating page size (A4, LETTER, LEGAL, LONG, SHORT, A5, B5)
+
+AdminTemplatesTable changes:
+- Added checkbox column to table header with select-all functionality
+- Added indeterminate state support (some selected but not all)
+- Individual row checkboxes with selection highlighting
+- Props added: selectedIds (Set), onSelectionChange callback
+
+Checkbox component (components/ui/checkbox.tsx):
+- Added indeterminate state support with Minus icon
+- Added data-[state=indeterminate] styling
+
+AdminTemplatesPage changes:
+- Added selectedTemplateIds state (Set)
+- Added bulk action dialog states: bulkDeleteOpen, bulkMoveOpen, bulkPageSizeOpen
+- Added bulk action handlers: handleBulkDelete, handleBulkShow, handleBulkHide
+- Added selectedTemplateIdsArray and selectedTemplateNames memos for dialogs
+- BulkActionsToolbar renders above table when templates selected
+- DeleteStyleDialog reused for bulk delete confirmation
+- Selection cleared after successful bulk operations
+
+Acceptance criteria met:
+- Checkbox column with select-all in header: YES
+- Indeterminate state when some selected: YES
+- Selection state managed with Set: YES
+- Sticky BulkActionsToolbar: YES
+- Toolbar shows selected count + clear button: YES
+- Bulk Delete action with confirmation: YES
+- Bulk Move to Folder action: YES
+- Bulk Show/Hide actions: YES
+- Bulk Update Page Size action with all 7 sizes: YES
+- Backend mutations return partial success results: YES
+- Toast notifications show operation results: YES
+- Selection cleared after operations: YES
+- Hooks expose bulk mutations: YES
+
+Files created:
+- apps/web/src/components/admin/BulkActionsToolbar.tsx
+- apps/web/src/components/admin/BulkMoveDialog.tsx
+- apps/web/src/components/admin/BulkPageSizeDialog.tsx
+
+Files modified:
+- packages/backend/convex/systemTemplates.ts
+- apps/web/src/hooks/use-system-templates.ts
+- apps/web/src/components/admin/AdminTemplatesTable.tsx
+- apps/web/src/components/admin/AdminTemplatesPage.tsx
+- apps/web/src/components/ui/checkbox.tsx
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings (11 warnings)
+- TypeScript check passes on modified files
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ALL TASKS VERIFICATION - 2026-01-30 (UPDATED)
 
 Verified all tasks in prd.json now have passes: true:
 - STYLE-001 through STYLE-007 (7 style editor tasks)
 - UX-001 (unsaved changes)
 - INV-001 (detailed hours toggle)
 - UI-001, UI-002 (status badges, hydration fix)
-- ADMIN-001 through ADMIN-009 (9 admin tasks)
+- ADMIN-001 through ADMIN-011 (11 admin tasks including ADMIN-010)
 
-Total: 20 tasks completed
+Total: 21 tasks completed
+
+Remaining with passes: false:
+- STYLE-008 (Folder Navigation in Styles Page Dialog)

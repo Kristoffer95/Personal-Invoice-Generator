@@ -916,7 +916,7 @@
         "apps/web/src/components/admin/AdminTemplatesPage.tsx",
         "apps/web/src/components/admin/AdminTemplatesTable.tsx"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ADMIN-011",
