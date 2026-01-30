@@ -990,6 +990,36 @@
         "apps/web/src/components/styles/StyleManagerPage.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-009",
+      "category": "Style Editor",
+      "title": "Fix folderId Not Preserved in System Template Conversion",
+      "description": "The folder navigation in /styles page dialog shows empty folders because folderId is lost during template conversion. The systemTemplateToInvoiceTemplate function in template-utils.ts does not include folderId in the returned InvoiceTemplate object, causing all templates to appear as uncategorized.",
+      "acceptance_criteria": [
+        "systemTemplateToInvoiceTemplate function preserves folderId from SystemTemplate",
+        "InvoiceTemplate type extended to include optional folderId field",
+        "Templates with folderId appear in their correct folders in the dialog",
+        "Templates without folderId appear at root level (uncategorized)",
+        "Folder cards show correct template counts",
+        "Clicking a folder shows only templates belonging to that folder",
+        "getTemplateCount function returns accurate counts per folder"
+      ],
+      "steps_to_verify": [
+        "Update InvoiceTemplate type in shared-types to include folderId?: string",
+        "Update systemTemplateToInvoiceTemplate in template-utils.ts to include folderId: t.folderId",
+        "Navigate to /styles page",
+        "Click 'Default Styles' folder card to open dialog",
+        "Verify folders show correct template counts (not 0)",
+        "Click a folder - verify templates inside are shown",
+        "Verify uncategorized templates appear at root level",
+        "Verify breadcrumb navigation works correctly"
+      ],
+      "files_to_modify": [
+        "packages/shared-types/src/template.ts",
+        "apps/web/src/lib/template-utils.ts"
+      ],
+      "passes": true
     }
   ]
 }

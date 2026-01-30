@@ -178,6 +178,8 @@ export function systemTemplateToInvoiceTemplate(t: SystemTemplate): InvoiceTempl
     isSystem: true, // System templates are always marked as system
     createdAt: new Date(t.createdAt).toISOString(),
     updatedAt: new Date(t.updatedAt).toISOString(),
+    // Preserve folderId for folder-based navigation in styles page
+    folderId: t.folderId,
   }
 }
 

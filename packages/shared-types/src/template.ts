@@ -301,6 +301,8 @@ export const invoiceTemplateSchema = z.object({
   isSystem: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
+  // Optional folder ID for system templates (used for folder-based navigation)
+  folderId: z.string().optional(),
 })
 
 export type InvoiceTemplate = z.infer<typeof invoiceTemplateSchema>
