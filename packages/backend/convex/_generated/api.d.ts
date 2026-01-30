@@ -16,6 +16,7 @@ import type * as http from "../http.js";
 import type * as index from "../index.js";
 import type * as invoiceFolders from "../invoiceFolders.js";
 import type * as invoices from "../invoices.js";
+import type * as migrations_migrateUsersToRoleId from "../migrations/migrateUsersToRoleId.js";
 import type * as roles from "../roles.js";
 import type * as seedRoles from "../seedRoles.js";
 import type * as seedSystemTemplates from "../seedSystemTemplates.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   index: typeof index;
   invoiceFolders: typeof invoiceFolders;
   invoices: typeof invoices;
+  "migrations/migrateUsersToRoleId": typeof migrations_migrateUsersToRoleId;
   roles: typeof roles;
   seedRoles: typeof seedRoles;
   seedSystemTemplates: typeof seedSystemTemplates;
