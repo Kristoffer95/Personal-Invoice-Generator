@@ -976,3 +976,107 @@ Verification:
 - Build passes: npm run build
 - Lint passes: 0 errors, only pre-existing warnings
 - Tests: rollup module issue on Linux ARM64 (environment-specific)
+
+---
+
+ADMIN-007: Admin System Templates Management Page - COMPLETED
+
+Created dedicated admin page at /admin/templates for managing system templates and folders with full CRUD capabilities.
+
+Page route (apps/web/src/app/admin/templates/page.tsx):
+- Header with back navigation to /admin
+- Shield + Palette icons indicating admin templates section
+- Theme toggle in header
+
+Main component (apps/web/src/components/admin/AdminTemplatesPage.tsx):
+- Actions bar with "New Template" and "New Folder" buttons
+- Template/folder count summary
+- Folders section with grid display of all folders
+- Templates section with table/grid display
+- Search by template name
+- Filter by folder (All, Uncategorized, specific folders)
+- Filter by visibility (All, Visible, Hidden)
+- Folder cards show: name, template count, hidden badge (if hidden)
+- Folder actions: Edit, Toggle visibility, Delete
+- Uses useSystemTemplatesAdmin and useSystemTemplateFoldersAdmin hooks
+- Uses useSystemTemplateMutations for all operations
+
+Templates table (apps/web/src/components/admin/AdminTemplatesTable.tsx):
+- Columns: Name, Folder, Page Size, Status (visibility + default badges), Updated
+- Name column shows color preview, description truncated
+- Status shows Visible/Hidden badge, Default badge with star icon
+- Actions dropdown: Edit, Toggle visibility, Set as Default, Delete
+- Edit navigates to /style-editor?systemTemplateId=...
+- Responsive design (some columns hidden on smaller screens)
+
+Create Template Dialog (apps/web/src/components/admin/CreateTemplateDialog.tsx):
+- Fields: Name (required), Description, Folder, Page Size, Orientation, Background Color
+- Page sizes: A4, LETTER, LEGAL, LONG, SHORT, A5, B5
+- Orientations: portrait, landscape
+- Color picker with text input
+- Default margins: 40/40/60/40
+- Creates empty template (elements=[])
+
+Create Folder Dialog (apps/web/src/components/admin/CreateFolderDialog.tsx):
+- Fields: Name (required), Description, Sort Order (optional)
+- Auto-assigns sort order if not provided
+
+Edit Folder Dialog (apps/web/src/components/admin/EditFolderDialog.tsx):
+- Pre-fills current folder values
+- Updates name, description, sort order
+
+Navigation (apps/web/src/app/admin/page.tsx):
+- Added Palette icon import
+- Added "System Templates" navigation card linking to /admin/templates
+- Card description: "Manage system templates and folders"
+
+Key decisions:
+- Used useToast from hooks/use-toast.ts (not sonner)
+- Reused DeleteStyleDialog for both template and folder deletion confirmations
+- Template edit navigates to style editor with systemTemplateId query param
+- Admin sees all templates (including hidden) via useSystemTemplatesAdmin
+- Table responsive: hides some columns on smaller screens
+- Folders displayed in grid, templates in table format
+
+Acceptance criteria coverage:
+- Admin templates page at /admin/templates: YES
+- Navigation link on /admin dashboard: YES (card with Palette icon)
+- Table with Name, Folder, Visibility, Default, Actions: YES
+- Hidden templates indicator: YES (badge with EyeOff icon)
+- Create Template button + modal: YES (CreateTemplateDialog)
+- Create template form fields: YES (name, desc, folder, page size, orientation, bg color)
+- Edit button: YES (navigates to style editor)
+- Delete with confirmation: YES (uses DeleteStyleDialog)
+- Toggle visibility: YES (eye/eye-off icons)
+- Set as Default: YES (star icon)
+- Folders section: YES (separate Card with grid)
+- Create Folder button + modal: YES (CreateFolderDialog)
+- Edit Folder: YES (EditFolderDialog)
+- Delete Folder with confirmation: YES
+- Toggle folder visibility: YES
+- Sort order input: YES (in folder dialogs)
+- Filter by folder: YES (Select dropdown)
+- Filter by visibility: YES (Select dropdown)
+- Search by name: YES (Input with Search icon)
+- Uses existing hooks: YES (useSystemTemplates*, useSystemTemplateMutations)
+
+Not implemented (lower priority features per acceptance criteria):
+- Drag-and-drop reordering (sort order input provided instead)
+- Bulk actions (select multiple for hide/show/delete/move)
+- Inline metadata editing (uses style editor instead)
+
+Files created:
+- apps/web/src/app/admin/templates/page.tsx (new)
+- apps/web/src/components/admin/AdminTemplatesPage.tsx (new)
+- apps/web/src/components/admin/AdminTemplatesTable.tsx (new)
+- apps/web/src/components/admin/CreateTemplateDialog.tsx (new)
+- apps/web/src/components/admin/CreateFolderDialog.tsx (new)
+- apps/web/src/components/admin/EditFolderDialog.tsx (new)
+
+Files modified:
+- apps/web/src/app/admin/page.tsx (added templates navigation card)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings (11 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

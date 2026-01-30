@@ -711,6 +711,71 @@
         "apps/web/src/components/admin/ActivityFeed.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "ADMIN-007",
+      "category": "Admin",
+      "title": "Admin System Templates Management Page",
+      "description": "Create a dedicated admin page at /admin/templates for managing system templates and folders. The backend API (ADMIN-002) is fully implemented but lacks admin UI for creating new system templates from scratch, managing folders (create/edit/delete), and bulk template operations. This page provides full CRUD capabilities for system templates and folder organization.",
+      "acceptance_criteria": [
+        "Admin templates page at /admin/templates accessible from admin navigation",
+        "Navigation link added to /admin dashboard linking to templates management",
+        "Page displays all system templates in a table/grid with columns: Name, Folder, Visibility, Default, Actions",
+        "Table shows hidden templates with visual indicator (eye-off icon, muted styling)",
+        "Create New Template button opens modal/form to create system template from scratch",
+        "Create template form includes: name, description, folder selection, page size, orientation, margins, theme, background color",
+        "Edit button opens full template editor or inline form for metadata",
+        "Delete button with confirmation dialog soft-deletes template",
+        "Toggle visibility button (eye icon) shows/hides template from regular users",
+        "Set as Default button marks template as default (clears other defaults)",
+        "Folders section displays all folders with create/edit/delete actions",
+        "Create Folder button opens modal with name, description, sort order fields",
+        "Edit Folder button allows modifying folder name, description, sort order",
+        "Delete Folder button with confirmation reassigns templates to 'Uncategorized'",
+        "Toggle folder visibility hides/shows entire folder from regular users",
+        "Drag-and-drop or sort order input for reordering templates within folders",
+        "Drag-and-drop or sort order input for reordering folders",
+        "Bulk actions: select multiple templates for hide/show/delete/move to folder",
+        "Filter templates by folder, visibility status",
+        "Search templates by name",
+        "useAdminSystemTemplates hook fetches all templates with admin visibility",
+        "useAdminSystemTemplateFolders hook fetches all folders with admin visibility",
+        "Page uses existing useSystemTemplateMutations hook for all operations"
+      ],
+      "steps_to_verify": [
+        "Create /admin/templates/page.tsx with AdminTemplatesPage component",
+        "Create AdminTemplatesTable.tsx component for template listing",
+        "Create CreateTemplateDialog.tsx for new template creation form",
+        "Create CreateFolderDialog.tsx for new folder creation form",
+        "Create EditFolderDialog.tsx for folder editing",
+        "Add navigation link to /admin/templates in AdminDashboard.tsx",
+        "Update admin navigation/sidebar if exists",
+        "As admin, navigate to /admin - verify 'Manage Templates' link visible",
+        "Click link - verify /admin/templates page loads",
+        "Verify all 11 system templates displayed in table",
+        "Click 'Create New Template' - verify form modal opens",
+        "Fill form and submit - verify new template created in database",
+        "Click 'Create Folder' - verify folder form modal opens",
+        "Create folder named 'Test Folder' - verify folder appears in list",
+        "Move a template to 'Test Folder' - verify template shows new folder",
+        "Toggle template visibility - verify eye icon changes and toast confirms",
+        "Set a template as default - verify default indicator shows",
+        "Delete a template - verify confirmation dialog, then soft-delete",
+        "Edit folder name - verify change persists",
+        "Delete folder - verify templates moved to uncategorized",
+        "As regular user, verify hidden templates/folders not visible in /styles"
+      ],
+      "files_to_modify": [
+        "apps/web/src/app/admin/templates/page.tsx (new)",
+        "apps/web/src/components/admin/AdminTemplatesPage.tsx (new)",
+        "apps/web/src/components/admin/AdminTemplatesTable.tsx (new)",
+        "apps/web/src/components/admin/CreateTemplateDialog.tsx (new)",
+        "apps/web/src/components/admin/CreateFolderDialog.tsx (new)",
+        "apps/web/src/components/admin/EditFolderDialog.tsx (new)",
+        "apps/web/src/components/admin/AdminDashboard.tsx",
+        "apps/web/src/hooks/use-system-templates.ts"
+      ],
+      "passes": true
     }
   ]
 }

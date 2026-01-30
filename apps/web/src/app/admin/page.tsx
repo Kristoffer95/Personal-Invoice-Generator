@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Shield, Users, ChevronRight } from "lucide-react";
+import { ArrowLeft, Shield, Users, ChevronRight, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -47,6 +47,23 @@ export default function AdminPage() {
                   </p>
                   <div className="flex items-center gap-1 mt-2 text-sm text-primary">
                     <span>View users</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/admin/templates">
+              <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">System Templates</CardTitle>
+                  <Palette className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Manage system templates and folders
+                  </p>
+                  <div className="flex items-center gap-1 mt-2 text-sm text-primary">
+                    <span>Manage templates</span>
                     <ChevronRight className="h-4 w-4" />
                   </div>
                 </CardContent>
