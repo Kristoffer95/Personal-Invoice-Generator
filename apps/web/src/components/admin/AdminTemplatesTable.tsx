@@ -10,6 +10,7 @@ import {
   MoreVertical,
   FileText,
   Loader2,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ interface AdminTemplatesTableProps {
   onToggleVisibility: (templateId: Id<"systemTemplates">) => void;
   onSetDefault: (templateId: Id<"systemTemplates">) => void;
   onDelete: (templateId: Id<"systemTemplates">, templateName: string) => void;
+  onMoveToFolder: (template: SystemTemplate) => void;
 }
 
 export function AdminTemplatesTable({
@@ -43,6 +45,7 @@ export function AdminTemplatesTable({
   onToggleVisibility,
   onSetDefault,
   onDelete,
+  onMoveToFolder,
 }: AdminTemplatesTableProps) {
   // Create folder lookup map
   const folderMap = new Map(folders.map((f) => [f._id, f]));
@@ -204,6 +207,10 @@ export function AdminTemplatesTable({
                       <DropdownMenuItem onClick={() => onSetDefault(template._id)}>
                         <Star className="mr-2 h-4 w-4" />
                         {template.isDefault ? "Clear Default" : "Set as Default"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onMoveToFolder(template)}>
+                        <FolderOpen className="mr-2 h-4 w-4" />
+                        Move to Folder
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

@@ -1118,3 +1118,42 @@ Verification:
 - Lint passes: 0 errors, only pre-existing warnings
 - TypeScript check passes on backend package
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-007: Add Move Template Feature to Admin Templates Page - COMPLETED
+
+Added the missing "Move to Folder" feature to the admin templates management page. This completes the 95% implementation.
+
+Implementation:
+- Created MoveTemplateDialog.tsx component with folder selection
+- Dialog shows current folder, allows selecting new folder (including Uncategorized)
+- Uses existing updateSystemTemplate mutation which already supports folderId
+- Validates folder actually changed before mutation
+- Shows toast confirmation with template and folder names
+
+Changes to AdminTemplatesTable.tsx:
+- Added FolderOpen icon import
+- Added onMoveToFolder prop to interface
+- Added "Move to Folder" dropdown menu item between "Set as Default" and separator
+
+Changes to AdminTemplatesPage.tsx:
+- Added MoveTemplateDialog import
+- Added SystemTemplate type for selectedTemplate state
+- Added moveTemplateOpen dialog state
+- Added selectedTemplate state for passing to dialog
+- Added openMoveTemplateDialog handler function
+- Wired onMoveToFolder prop to AdminTemplatesTable
+- Added MoveTemplateDialog at end with other dialogs
+
+Files created:
+- apps/web/src/components/admin/MoveTemplateDialog.tsx (new)
+
+Files modified:
+- apps/web/src/components/admin/AdminTemplatesTable.tsx (added move option to dropdown)
+- apps/web/src/components/admin/AdminTemplatesPage.tsx (wired dialog and state)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings (11 warnings)
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

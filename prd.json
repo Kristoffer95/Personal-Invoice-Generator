@@ -775,7 +775,7 @@
         "apps/web/src/components/admin/AdminDashboard.tsx",
         "apps/web/src/hooks/use-system-templates.ts"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ADMIN-008",

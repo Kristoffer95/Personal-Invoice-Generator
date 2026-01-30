@@ -42,8 +42,11 @@ import { AdminTemplatesTable } from "./AdminTemplatesTable";
 import { CreateTemplateDialog } from "./CreateTemplateDialog";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { EditFolderDialog } from "./EditFolderDialog";
+import { MoveTemplateDialog } from "./MoveTemplateDialog";
 import { DeleteStyleDialog } from "@/components/styles/DeleteStyleDialog";
-import type { Id } from "@invoice-generator/backend/convex/_generated/dataModel";
+import type { Id, Doc } from "@invoice-generator/backend/convex/_generated/dataModel";
+
+type SystemTemplate = Doc<"systemTemplates">;
 
 export function AdminTemplatesPage() {
   const router = useRouter();
@@ -63,11 +66,13 @@ export function AdminTemplatesPage() {
   const [editFolderOpen, setEditFolderOpen] = useState(false);
   const [deleteFolderOpen, setDeleteFolderOpen] = useState(false);
   const [deleteTemplateOpen, setDeleteTemplateOpen] = useState(false);
+  const [moveTemplateOpen, setMoveTemplateOpen] = useState(false);
 
   // Selected items
   const [selectedFolder, setSelectedFolder] = useState<(typeof folders)[number] | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<Id<"systemTemplates"> | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>("");
+  const [selectedTemplate, setSelectedTemplate] = useState<SystemTemplate | null>(null);
 
   // Loading states
   const [isDeleting, setIsDeleting] = useState(false);
@@ -150,6 +155,11 @@ export function AdminTemplatesPage() {
     setSelectedTemplateId(templateId);
     setSelectedTemplateName(templateName);
     setDeleteTemplateOpen(true);
+  };
+
+  const openMoveTemplateDialog = (template: SystemTemplate) => {
+    setSelectedTemplate(template);
+    setMoveTemplateOpen(true);
   };
 
   // Folder handlers
@@ -347,6 +357,7 @@ export function AdminTemplatesPage() {
             onToggleVisibility={handleToggleTemplateVisibility}
             onSetDefault={handleSetDefaultTemplate}
             onDelete={openDeleteTemplateDialog}
+            onMoveToFolder={openMoveTemplateDialog}
           />
         </CardContent>
       </Card>
@@ -386,6 +397,14 @@ export function AdminTemplatesPage() {
         templateName={selectedFolder?.name}
         onConfirm={handleDeleteFolder}
         isDeleting={isDeleting}
+      />
+
+      {/* Move Template Dialog */}
+      <MoveTemplateDialog
+        open={moveTemplateOpen}
+        onOpenChange={setMoveTemplateOpen}
+        template={selectedTemplate}
+        folders={folders}
       />
     </div>
   );
