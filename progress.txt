@@ -1157,3 +1157,74 @@ Verification:
 - Build passes: npm run build
 - Lint passes: 0 errors, only pre-existing warnings (11 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-008: Migrate from Legacy role Column to roleId RBAC System - COMPLETED
+
+Fully migrated from the dual role/roleId system to using only roleId foreign key to roles table. Removed all legacy role field references.
+
+Schema changes (packages/backend/convex/schema.ts):
+- Removed userRoleValidator (was: v.union(v.literal("user"), v.literal("admin")))
+- Removed role field from users table
+- Removed by_role index from users table
+- Kept roleId field and by_role_id index
+
+Backend changes (packages/backend/convex/users.ts):
+- Removed UserRole type export
+- Removed getUserRole() helper function
+- Removed getCurrentWithRole query (was building virtual role from legacy field)
+- Updated getOrCreateUserFromIdentity: only sets roleId, throws if role not found
+- Updated upsertFromClerk: only sets roleId, throws if role not found
+- Updated promoteToAdminByEmail: only updates roleId
+
+Backend changes (packages/backend/convex/roles.ts):
+- hasPermission: removed 3-tier priority system (legacy admin check, roleId, fallback)
+- hasPermission: now only checks roleId-based permissions
+- hasPermission: logs warning if user has no roleId (migration needed)
+- getCurrentUserRole: returns null if roleId missing (was building virtual role)
+
+Backend changes (packages/backend/convex/admin.ts):
+- Added isAdmin field to UserWithStats type
+- listAllUsers: computes isAdmin from role document permissions (admin:system)
+- getUserAnalytics: computes isAdmin from role document permissions
+
+Frontend changes (apps/web/src/hooks/use-user-role.ts):
+- Removed UserRole type export (no longer needed)
+
+Frontend changes (apps/web/src/components/admin/UsersTable.tsx):
+- Added isAdmin to UserWithStats type
+- Changed badge rendering from user.role === "admin" to user.isAdmin
+
+Frontend changes (apps/web/src/components/admin/UserDetailPage.tsx):
+- Added isAdmin derivation from analytics.isAdmin
+- Changed badge rendering from user.role === "admin" to isAdmin
+
+Migration script (packages/backend/convex/migrations/migrateUsersToRoleId.ts):
+- migrateUsersToRoleId: internal mutation to backfill roleId
+- runMigrateUsersToRoleId: public mutation (admin only)
+- dryRunMigrateUsersToRoleId: dry run mutation (admin only)
+- Assigns default 'user' role to users without roleId
+- Admin users must be promoted separately via promoteToAdminByEmail
+
+Key decisions:
+- Migration assigns 'user' role by default (safe choice)
+- Admin promotion is separate step via promoteToAdminByEmail
+- No backward compatibility with legacy role field
+- User creation throws error if roles not seeded (requires seedAllRoles first)
+- Frontend derives isAdmin from backend query result, not from user.role
+
+Files changed:
+- packages/backend/convex/migrations/migrateUsersToRoleId.ts (new)
+- packages/backend/convex/schema.ts (removed role field + index)
+- packages/backend/convex/users.ts (removed legacy functions)
+- packages/backend/convex/roles.ts (removed fallback logic)
+- packages/backend/convex/admin.ts (added isAdmin computation)
+- apps/web/src/hooks/use-user-role.ts (removed UserRole type)
+- apps/web/src/components/admin/UsersTable.tsx (use isAdmin prop)
+- apps/web/src/components/admin/UserDetailPage.tsx (use isAdmin from analytics)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

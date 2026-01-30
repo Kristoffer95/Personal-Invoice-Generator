@@ -323,9 +323,6 @@ const editorSettingsValidator = v.object({
   zoomLevel: v.number(),
 });
 
-// User role validator (legacy - for backward compatibility)
-const userRoleValidator = v.union(v.literal("user"), v.literal("admin"));
-
 // Permission validator - follows action:resource naming convention
 // Examples: read:invoices, write:invoices, delete:invoices, admin:users, admin:system
 const permissionValidator = v.string();
@@ -406,9 +403,6 @@ export default defineSchema({
     username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
 
-    // User role (legacy - for backward compatibility)
-    role: v.optional(userRoleValidator),
-
     // Role reference (foreign key to roles table)
     roleId: v.optional(v.id("roles")),
 
@@ -421,7 +415,6 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_role", ["role"])
     .index("by_role_id", ["roleId"]),
 
   // User profile with editable business details

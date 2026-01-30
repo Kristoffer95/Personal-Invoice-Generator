@@ -16,6 +16,7 @@ interface UserDetailPageProps {
 
 export function UserDetailPage({ userId }: UserDetailPageProps) {
   const { analytics, activities, isLoading } = useUserDetail(userId);
+  const isAdmin = analytics?.isAdmin ?? false;
 
   if (isLoading || !analytics) {
     return (
@@ -74,7 +75,7 @@ export function UserDetailPage({ userId }: UserDetailPageProps) {
                   ? `${user.firstName} ${user.lastName}`
                   : user.firstName || user.email}
               </h1>
-              {user.role === "admin" && (
+              {isAdmin && (
                 <Badge variant="secondary">Admin</Badge>
               )}
             </div>

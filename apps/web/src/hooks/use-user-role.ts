@@ -3,8 +3,6 @@
 import { useQuery } from "convex/react";
 import { api } from "@invoice-generator/backend/convex/_generated/api";
 
-export type UserRole = "user" | "admin";
-
 /**
  * All available permissions in the system.
  * Mirrors the backend PERMISSIONS constant.

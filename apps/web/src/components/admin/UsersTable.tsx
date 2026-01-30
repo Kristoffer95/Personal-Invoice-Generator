@@ -16,6 +16,7 @@ type UserStats = {
 
 type UserWithStats = Doc<"users"> & {
   stats: UserStats;
+  isAdmin: boolean;
 };
 
 interface UsersTableProps {
@@ -103,7 +104,7 @@ export function UsersTable({ users, isLoading }: UsersTableProps) {
                             ? `${user.firstName} ${user.lastName}`
                             : user.firstName || user.email}
                         </span>
-                        {user.role === "admin" && (
+                        {user.isAdmin && (
                           <Badge variant="secondary" className="text-xs">
                             Admin
                           </Badge>

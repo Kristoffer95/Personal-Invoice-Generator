@@ -63,12 +63,10 @@ export async function getUserRoleDoc(
 
 /**
  * Check if a user has a specific permission.
- * Returns false if user has no role or permission is not found.
+ * Returns false if user has no roleId or permission is not found.
  *
- * IMPORTANT: This function checks BOTH roleId-based permissions AND legacy role field.
- * If user has role='admin' in legacy field, they get admin permissions regardless
- * of roleId state. This prevents catch-22 situations where admins with broken
- * roleId permissions cannot fix their own permissions.
+ * Users must have a valid roleId pointing to a role document.
+ * The role document contains the permissions array.
  */
 export async function hasPermission(
   ctx: QueryCtx,
@@ -78,36 +76,18 @@ export async function hasPermission(
   const user = await ctx.db.get(userId);
   if (!user) return false;
 
-  // PRIORITY 1: Check legacy role='admin' field first
-  // This ensures admins with broken roleId permissions can still access admin features
-  if (user.role === "admin") {
-    return true;
-  }
-
-  // PRIORITY 2: Check roleId-based permissions
+  // Get role from roleId
   const role = await getUserRoleDoc(ctx, userId);
-  if (role) {
-    return role.permissions.includes(permission);
+  if (!role) {
+    // User has no roleId set - should not happen for properly migrated users
+    // Log this for debugging but deny permission
+    console.warn(
+      `User ${user.email} has no roleId. Run migrateUsersToRoleId migration.`
+    );
+    return false;
   }
 
-  // PRIORITY 3: Fallback for users with legacy role='user' or no role
-  // Grant basic user permissions
-  if (user.role === "user" || !user.role) {
-    const userPermissions: Permission[] = [
-      PERMISSIONS.READ_INVOICES,
-      PERMISSIONS.WRITE_INVOICES,
-      PERMISSIONS.DELETE_INVOICES,
-      PERMISSIONS.READ_TEMPLATES,
-      PERMISSIONS.WRITE_TEMPLATES,
-      PERMISSIONS.READ_CLIENTS,
-      PERMISSIONS.WRITE_CLIENTS,
-      PERMISSIONS.READ_PROFILE,
-      PERMISSIONS.WRITE_PROFILE,
-    ];
-    return userPermissions.includes(permission);
-  }
-
-  return false;
+  return role.permissions.includes(permission);
 }
 
 /**
@@ -222,6 +202,9 @@ export const getRoleByName = query({
 /**
  * Get a user's role with permissions for the frontend.
  * Returns the role document with full permissions array.
+ *
+ * Users must have a valid roleId pointing to a role document.
+ * Returns null if user has no roleId set (migration required).
  */
 export const getCurrentUserRole = query({
   args: {},
@@ -232,45 +215,20 @@ export const getCurrentUserRole = query({
     const user = await ctx.db.get(userRef._id);
     if (!user) return null;
 
-    // Get role from roleId if available
-    let role: Doc<"roles"> | null = null;
-    if (user.roleId) {
-      role = await ctx.db.get(user.roleId);
+    // Get role from roleId
+    if (!user.roleId) {
+      console.warn(
+        `User ${user.email} has no roleId. Run migrateUsersToRoleId migration.`
+      );
+      return null;
     }
 
-    // If no role from roleId, build a virtual role from legacy role field
+    const role = await ctx.db.get(user.roleId);
     if (!role) {
-      const isAdmin = user.role === "admin";
-      const permissions: string[] = isAdmin
-        ? Object.values(PERMISSIONS)
-        : [
-            PERMISSIONS.READ_INVOICES,
-            PERMISSIONS.WRITE_INVOICES,
-            PERMISSIONS.DELETE_INVOICES,
-            PERMISSIONS.READ_TEMPLATES,
-            PERMISSIONS.WRITE_TEMPLATES,
-            PERMISSIONS.READ_CLIENTS,
-            PERMISSIONS.WRITE_CLIENTS,
-            PERMISSIONS.READ_PROFILE,
-            PERMISSIONS.WRITE_PROFILE,
-          ];
-
-      return {
-        user,
-        role: {
-          name: isAdmin ? "admin" : "user",
-          displayName: isAdmin ? "Administrator" : "User",
-          description: isAdmin
-            ? "Full administrative access"
-            : "Standard user access",
-          permissions,
-          isSystemRole: true,
-          isDefault: !isAdmin,
-          sortOrder: isAdmin ? 1 : 0,
-        },
-        permissions,
-        isAdmin,
-      };
+      console.warn(
+        `Role ${user.roleId} not found for user ${user.email}. Role may have been deleted.`
+      );
+      return null;
     }
 
     return {

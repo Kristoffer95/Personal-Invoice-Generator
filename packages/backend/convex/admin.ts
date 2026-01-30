@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./users";
+import { PERMISSIONS } from "./roles";
 
 /**
  * User stats aggregated from their data
@@ -19,6 +20,7 @@ export type UserStats = {
  */
 export type UserWithStats = Doc<"users"> & {
   stats: UserStats;
+  isAdmin: boolean;
 };
 
 /**
@@ -96,6 +98,15 @@ export const listAllUsers = query({
 
         const lastActivity = activities.length > 0 ? activities[0].timestamp : null;
 
+        // Determine admin status from roleId
+        let isAdmin = false;
+        if (user.roleId) {
+          const role = await ctx.db.get(user.roleId);
+          if (role) {
+            isAdmin = role.permissions.includes(PERMISSIONS.ADMIN_SYSTEM);
+          }
+        }
+
         return {
           ...user,
           stats: {
@@ -105,6 +116,7 @@ export const listAllUsers = query({
             pdfExportCount,
             lastActivity,
           },
+          isAdmin,
         };
       })
     );
@@ -201,6 +213,15 @@ export const getUserAnalytics = query({
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .first();
 
+    // Determine admin status from roleId
+    let isAdmin = false;
+    if (user.roleId) {
+      const role = await ctx.db.get(user.roleId);
+      if (role) {
+        isAdmin = role.permissions.includes(PERMISSIONS.ADMIN_SYSTEM);
+      }
+    }
+
     return {
       user,
       userProfile,
@@ -216,6 +237,7 @@ export const getUserAnalytics = query({
         invoicesByStatus,
       },
       activityCounts,
+      isAdmin,
     };
   },
 });

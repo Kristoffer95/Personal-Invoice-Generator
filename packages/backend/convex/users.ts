@@ -4,8 +4,6 @@ import type { Id, Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { PERMISSIONS, hasPermission } from "./roles";
 
-// User role type (legacy - for backward compatibility)
-export type UserRole = "user" | "admin";
 
 // E2E Test user constants - only used in development
 const E2E_TEST_CLERK_ID = "e2e_test_user_001";
@@ -136,14 +134,19 @@ export async function getOrCreateUserFromIdentity(
     const now = Date.now();
     // Assign admin role if email is in ADMIN_EMAILS
     const isAdmin = isAdminEmail(email);
-    const role = isAdmin ? ("admin" as const) : ("user" as const);
 
-    // Try to get roleId from roles table
+    // Get roleId from roles table (required for new RBAC system)
     const roleName = isAdmin ? "admin" : "user";
     const roleDoc = await ctx.db
       .query("roles")
       .withIndex("by_name", (q) => q.eq("name", roleName))
       .first();
+
+    if (!roleDoc) {
+      throw new Error(
+        `Role '${roleName}' not found. Please run seedAllRoles mutation first.`
+      );
+    }
 
     const userId = await ctx.db.insert("users", {
       clerkId,
@@ -152,8 +155,7 @@ export async function getOrCreateUserFromIdentity(
       lastName: identity.familyName ?? undefined,
       username: identity.nickname ?? undefined,
       imageUrl: identity.pictureUrl ?? undefined,
-      role,
-      roleId: roleDoc?._id,
+      roleId: roleDoc._id,
       clerkCreatedAt: now,
       clerkUpdatedAt: now,
       syncedAt: now,
@@ -196,13 +198,6 @@ export async function getUserFromIdentityOrE2E(
   return { _id: user._id };
 }
 
-/**
- * Get the user's role, defaulting to 'user' if not set.
- */
-export function getUserRole(user: Doc<"users"> | null | undefined): UserRole {
-  if (!user) return "user";
-  return user.role ?? "user";
-}
 
 /**
  * Check if the current user is an admin.
@@ -342,16 +337,21 @@ export const upsertFromClerk = internalMutation({
 
     // Assign admin role if email is in ADMIN_EMAILS for new users
     const isAdmin = isAdminEmail(args.email);
-    const role = isAdmin ? ("admin" as const) : ("user" as const);
 
-    // Try to get roleId from roles table
+    // Get roleId from roles table (required for new RBAC system)
     const roleName = isAdmin ? "admin" : "user";
     const roleDoc = await ctx.db
       .query("roles")
       .withIndex("by_name", (q) => q.eq("name", roleName))
       .first();
 
-    const userId = await ctx.db.insert("users", { ...userData, role, roleId: roleDoc?._id });
+    if (!roleDoc) {
+      throw new Error(
+        `Role '${roleName}' not found. Please run seedAllRoles mutation first.`
+      );
+    }
+
+    const userId = await ctx.db.insert("users", { ...userData, roleId: roleDoc._id });
     return { userId, action: "created" as const };
   },
 });
@@ -380,41 +380,9 @@ export const softDelete = internalMutation({
 });
 
 /**
- * Get the current authenticated user with role field.
- * Returns user data including the role field for frontend use.
- */
-export const getCurrentWithRole = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const clerkId = identity.subject.includes("|")
-      ? identity.subject.split("|")[1] ?? identity.subject
-      : identity.subject;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
-      .unique();
-
-    if (user?.deletedAt) return null;
-
-    if (user) {
-      return {
-        ...user,
-        role: getUserRole(user),
-      };
-    }
-
-    return null;
-  },
-});
-
-/**
  * Promote a user to admin by their email address.
  * This is an internal mutation for manual admin promotion via Convex dashboard.
- * Sets BOTH legacy role field AND roleId for full compatibility.
+ * Updates roleId to point to the admin role document.
  */
 export const promoteToAdminByEmail = internalMutation({
   args: { email: v.string() },
@@ -432,31 +400,33 @@ export const promoteToAdminByEmail = internalMutation({
       return { success: false, message: "User is deleted" };
     }
 
-    // Check if already admin via both roleId and legacy role field
-    if (user.role === "admin" && user.roleId) {
-      const roleDoc = await ctx.db.get(user.roleId);
-      if (roleDoc?.name === "admin") {
-        return { success: true, message: "User is already an admin" };
-      }
-    }
-
     // Get admin role ID from roles table
     const adminRole = await ctx.db
       .query("roles")
       .withIndex("by_name", (q) => q.eq("name", "admin"))
       .first();
 
-    // Patch user with both legacy role and roleId
-    const patchData: { role: "admin"; roleId?: Id<"roles"> } = { role: "admin" };
-    if (adminRole) {
-      patchData.roleId = adminRole._id;
+    if (!adminRole) {
+      return {
+        success: false,
+        message: "Admin role not found. Please run seedAllRoles mutation first.",
+      };
     }
 
-    await ctx.db.patch(user._id, patchData);
+    // Check if already admin via roleId
+    if (user.roleId) {
+      const currentRole = await ctx.db.get(user.roleId);
+      if (currentRole?.name === "admin") {
+        return { success: true, message: "User is already an admin" };
+      }
+    }
+
+    // Update user roleId to admin role
+    await ctx.db.patch(user._id, { roleId: adminRole._id });
     return {
       success: true,
       userId: user._id,
-      message: `User ${args.email} promoted to admin${adminRole ? " (with roleId)" : " (legacy role only - run seedAllRoles to enable roleId)"}`,
+      message: `User ${args.email} promoted to admin`,
     };
   },
 });

@@ -831,7 +831,7 @@
         "apps/web/src/components/admin/UsersTable.tsx",
         "apps/web/src/components/admin/UserDetailPage.tsx"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ADMIN-009",
