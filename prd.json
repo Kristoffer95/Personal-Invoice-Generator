@@ -989,7 +989,7 @@
         "apps/web/src/components/styles/StyleManagerFolderDialog.tsx",
         "apps/web/src/components/styles/StyleManagerPage.tsx"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

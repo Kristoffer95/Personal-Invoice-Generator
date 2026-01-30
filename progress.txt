@@ -1355,5 +1355,80 @@ Verified all tasks in prd.json now have passes: true:
 
 Total: 21 tasks completed
 
-Remaining with passes: false:
-- STYLE-008 (Folder Navigation in Styles Page Dialog)
+STYLE-008: Folder Navigation in Styles Page Dialog - COMPLETED
+
+Added folder-based navigation to the StyleManagerFolderDialog so users can browse system templates organized by folders.
+
+New component (apps/web/src/components/styles/FolderBreadcrumb.tsx):
+- Navigation path display with clickable breadcrumb items
+- Home icon for root level with folder name
+- ChevronRight separators between items
+- Last item is non-clickable (current location)
+- Hidden when at root level (only one item)
+
+StyleManagerFolderDialog changes:
+- Added currentFolderId navigation state (null = root, string = folder ID)
+- State resets when dialog closes
+- Added breadcrumbItems memo building navigation path
+- Added currentTemplates memo filtering templates by currentFolderId
+- Root level: shows templates without folderId (uncategorized)
+- Inside folder: shows templates with matching folderId
+- Added visibleFolders memo (admins see all, regular users see non-hidden)
+- Added getTemplateCount callback for folder badges
+- Added handleFolderClick and handleBreadcrumbNavigate handlers
+- Root level renders StyleFolder cards for each folder
+- Folder cards show template count and hidden badge (admin only)
+- FolderBreadcrumb renders above content when not at root
+- Empty folder shows "This folder is empty" message
+
+StyleManagerPage changes:
+- Added useSystemTemplateFolders and useSystemTemplateFoldersAdmin imports
+- Added convexFolders and convexFoldersAdmin hook calls
+- Added systemFolders memo (admins see all, regular users see non-hidden)
+- Added hiddenFolderIds memo for admin visibility tracking
+- Pass folders and hiddenFolderIds props to StyleManagerFolderDialog
+
+Type fix in StyleManagerFolderDialog:
+- Added explicit type annotation for breadcrumbItems array: { id: string | null; name: string }[]
+- Fixes TypeScript error when pushing folder._id (string) to array initialized with null id
+
+Acceptance criteria met:
+- Dialog receives folders prop from parent: YES
+- Root level shows folder cards: YES
+- Root level shows uncategorized templates: YES
+- Clicking folder enters and shows its templates: YES
+- FolderBreadcrumb shows navigation path: YES
+- Breadcrumb navigation works: YES
+- Navigation resets on dialog close: YES
+- Admin sees all folders (including hidden): YES
+- Regular users see only visible folders: YES
+- useSystemTemplateFolders/Admin hooks used: YES
+- StyleManagerPage passes folders: YES
+- Templates filtered by currentFolderId: YES
+- Empty folder shows message: YES
+
+Files created:
+- apps/web/src/components/styles/FolderBreadcrumb.tsx
+
+Files modified:
+- apps/web/src/components/styles/StyleManagerFolderDialog.tsx
+- apps/web/src/components/styles/StyleManagerPage.tsx
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings (11 warnings)
+- TypeScript check passes on modified files
+- Tests: pre-existing test failures in status-logs tests (unrelated to this task)
+
+---
+
+ALL TASKS COMPLETED - 2026-01-30 (FINAL)
+
+All 22 tasks in prd.json now have passes: true:
+- STYLE-001 through STYLE-008 (8 style editor tasks)
+- UX-001 (unsaved changes)
+- INV-001 (detailed hours toggle)
+- UI-001, UI-002 (status badges, hydration fix)
+- ADMIN-001 through ADMIN-011 (11 admin tasks)
+
+Total: 22 tasks completed

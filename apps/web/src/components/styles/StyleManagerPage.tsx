@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useTemplateStore } from '@/lib/template-store'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useTemplates, useTemplateMutations, useDefaultTemplate } from '@/hooks/use-templates'
-import { useSystemTemplates, useSystemTemplatesAdmin, useSystemTemplateMutations } from '@/hooks/use-system-templates'
+import { useSystemTemplates, useSystemTemplatesAdmin, useSystemTemplateFolders, useSystemTemplateFoldersAdmin, useSystemTemplateMutations } from '@/hooks/use-system-templates'
 import { useUserRole } from '@/hooks/use-user-role'
 import { useToast } from '@/hooks/use-toast'
 import { StyleCard } from './StyleCard'
@@ -44,6 +44,10 @@ export default function StyleManagerPage() {
   const { templates: convexSystemTemplatesAdmin } = useSystemTemplatesAdmin()
   const { toggleSystemTemplateVisibility } = useSystemTemplateMutations()
 
+  // System template folders from Convex
+  const { folders: convexFolders } = useSystemTemplateFolders()
+  const { folders: convexFoldersAdmin } = useSystemTemplateFoldersAdmin()
+
   // Convert Convex templates to InvoiceTemplate format
   const userTemplates = useMemo(() => {
     return convexTemplates.map(convexToInvoiceTemplate)
@@ -69,6 +73,21 @@ export default function StyleManagerPage() {
         .map((t) => t._id)
     )
   }, [isAdmin, convexSystemTemplatesAdmin])
+
+  // System folders: admins see all, regular users see non-hidden
+  const systemFolders = useMemo(() => {
+    return isAdmin ? convexFoldersAdmin : convexFolders
+  }, [convexFolders, convexFoldersAdmin, isAdmin])
+
+  // Track which folders are hidden (for admin UI)
+  const hiddenFolderIds = useMemo(() => {
+    if (!isAdmin || !convexFoldersAdmin) return new Set<string>()
+    return new Set(
+      convexFoldersAdmin
+        .filter((f) => f.isHidden)
+        .map((f) => f._id)
+    )
+  }, [isAdmin, convexFoldersAdmin])
 
   // Default template ID (from Convex or system template)
   const defaultTemplateId = defaultTemplate?._id ?? null
@@ -557,11 +576,13 @@ export default function StyleManagerPage() {
         onOpenChange={setFolderDialogOpen}
         folderName="Default Styles"
         templates={systemTemplates}
+        folders={systemFolders}
         onEdit={handleEdit}
         onDuplicate={handleDuplicate}
         onSetDefault={handleSetDefault}
         isAdmin={isAdmin}
         hiddenTemplateIds={hiddenSystemTemplateIds}
+        hiddenFolderIds={hiddenFolderIds}
         onToggleVisibility={handleToggleVisibility}
       />
     </div>
