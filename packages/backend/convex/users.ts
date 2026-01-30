@@ -414,6 +414,7 @@ export const getCurrentWithRole = query({
 /**
  * Promote a user to admin by their email address.
  * This is an internal mutation for manual admin promotion via Convex dashboard.
+ * Sets BOTH legacy role field AND roleId for full compatibility.
  */
 export const promoteToAdminByEmail = internalMutation({
   args: { email: v.string() },
@@ -431,11 +432,31 @@ export const promoteToAdminByEmail = internalMutation({
       return { success: false, message: "User is deleted" };
     }
 
-    if (user.role === "admin") {
-      return { success: true, message: "User is already an admin" };
+    // Check if already admin via both roleId and legacy role field
+    if (user.role === "admin" && user.roleId) {
+      const roleDoc = await ctx.db.get(user.roleId);
+      if (roleDoc?.name === "admin") {
+        return { success: true, message: "User is already an admin" };
+      }
     }
 
-    await ctx.db.patch(user._id, { role: "admin" });
-    return { success: true, userId: user._id, message: `User ${args.email} promoted to admin` };
+    // Get admin role ID from roles table
+    const adminRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "admin"))
+      .first();
+
+    // Patch user with both legacy role and roleId
+    const patchData: { role: "admin"; roleId?: Id<"roles"> } = { role: "admin" };
+    if (adminRole) {
+      patchData.roleId = adminRole._id;
+    }
+
+    await ctx.db.patch(user._id, patchData);
+    return {
+      success: true,
+      userId: user._id,
+      message: `User ${args.email} promoted to admin${adminRole ? " (with roleId)" : " (legacy role only - run seedAllRoles to enable roleId)"}`,
+    };
   },
 });

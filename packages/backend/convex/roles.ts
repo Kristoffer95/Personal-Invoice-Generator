@@ -64,43 +64,50 @@ export async function getUserRoleDoc(
 /**
  * Check if a user has a specific permission.
  * Returns false if user has no role or permission is not found.
+ *
+ * IMPORTANT: This function checks BOTH roleId-based permissions AND legacy role field.
+ * If user has role='admin' in legacy field, they get admin permissions regardless
+ * of roleId state. This prevents catch-22 situations where admins with broken
+ * roleId permissions cannot fix their own permissions.
  */
 export async function hasPermission(
   ctx: QueryCtx,
   userId: Id<"users">,
   permission: Permission
 ): Promise<boolean> {
-  const role = await getUserRoleDoc(ctx, userId);
-  if (!role) {
-    // Fallback: check legacy role field for backward compatibility
-    const user = await ctx.db.get(userId);
-    if (!user) return false;
+  const user = await ctx.db.get(userId);
+  if (!user) return false;
 
-    // Admin users with legacy role field have all admin permissions
-    if (user.role === "admin") {
-      return true;
-    }
-
-    // Regular users have basic permissions
-    if (user.role === "user" || !user.role) {
-      const userPermissions: Permission[] = [
-        PERMISSIONS.READ_INVOICES,
-        PERMISSIONS.WRITE_INVOICES,
-        PERMISSIONS.DELETE_INVOICES,
-        PERMISSIONS.READ_TEMPLATES,
-        PERMISSIONS.WRITE_TEMPLATES,
-        PERMISSIONS.READ_CLIENTS,
-        PERMISSIONS.WRITE_CLIENTS,
-        PERMISSIONS.READ_PROFILE,
-        PERMISSIONS.WRITE_PROFILE,
-      ];
-      return userPermissions.includes(permission);
-    }
-
-    return false;
+  // PRIORITY 1: Check legacy role='admin' field first
+  // This ensures admins with broken roleId permissions can still access admin features
+  if (user.role === "admin") {
+    return true;
   }
 
-  return role.permissions.includes(permission);
+  // PRIORITY 2: Check roleId-based permissions
+  const role = await getUserRoleDoc(ctx, userId);
+  if (role) {
+    return role.permissions.includes(permission);
+  }
+
+  // PRIORITY 3: Fallback for users with legacy role='user' or no role
+  // Grant basic user permissions
+  if (user.role === "user" || !user.role) {
+    const userPermissions: Permission[] = [
+      PERMISSIONS.READ_INVOICES,
+      PERMISSIONS.WRITE_INVOICES,
+      PERMISSIONS.DELETE_INVOICES,
+      PERMISSIONS.READ_TEMPLATES,
+      PERMISSIONS.WRITE_TEMPLATES,
+      PERMISSIONS.READ_CLIENTS,
+      PERMISSIONS.WRITE_CLIENTS,
+      PERMISSIONS.READ_PROFILE,
+      PERMISSIONS.WRITE_PROFILE,
+    ];
+    return userPermissions.includes(permission);
+  }
+
+  return false;
 }
 
 /**

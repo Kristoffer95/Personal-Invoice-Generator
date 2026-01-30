@@ -1080,3 +1080,41 @@ Verification:
 - Build passes: npm run build
 - Lint passes: 0 errors, only pre-existing warnings (11 warnings)
 - Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)
+
+---
+
+ADMIN-009: Fix Catch-22 Bug in seedAllRoles Admin Check - COMPLETED
+
+Fixed catch-22 bug where admins with broken roleId permissions could not run seedAllRoles to fix their permissions.
+
+Problem:
+- seedAllRoles requires admin permission (admin:system) when roles exist
+- hasPermission checked roleId-based permissions FIRST, then fell back to legacy role field
+- If user had roleId set to a role with corrupted/missing permissions, legacy fallback was never triggered
+- Result: admin with role='admin' but broken roleId couldn't fix their own permissions
+
+Solution:
+- Reordered hasPermission logic in roles.ts to check legacy role='admin' FIRST
+- If user has role='admin' in legacy field, they get all admin permissions regardless of roleId state
+- Then check roleId-based permissions if legacy role isn't 'admin'
+- This ensures admins can always access admin features even with broken roleId
+
+Also updated promoteToAdminByEmail in users.ts:
+- Now sets BOTH legacy role field AND roleId (not just role field)
+- Looks up admin role from roles table and assigns roleId if available
+- More helpful response message indicating whether roleId was set
+
+Key decisions:
+- Priority order: legacy role='admin' > roleId permissions > legacy role='user'/null
+- Maintains backward compatibility with existing users
+- Admins promoted via promoteToAdminByEmail get both fields set for full compatibility
+
+Files changed:
+- packages/backend/convex/roles.ts (hasPermission function reordered)
+- packages/backend/convex/users.ts (promoteToAdminByEmail updated)
+
+Verification:
+- Build passes: npm run build
+- Lint passes: 0 errors, only pre-existing warnings
+- TypeScript check passes on backend package
+- Tests: rollup module issue on Linux ARM64 (environment-specific, not code-related)

@@ -715,8 +715,8 @@
     {
       "id": "ADMIN-007",
       "category": "Admin",
-      "title": "Admin System Templates Management Page",
-      "description": "Create a dedicated admin page at /admin/templates for managing system templates and folders. The backend API (ADMIN-002) is fully implemented but lacks admin UI for creating new system templates from scratch, managing folders (create/edit/delete), and bulk template operations. This page provides full CRUD capabilities for system templates and folder organization.",
+      "title": "Admin System Templates Management Page - Add Move Template Feature",
+      "description": "The admin templates page at /admin/templates is 95% implemented with all CRUD operations working. The only missing feature is the ability to move templates between folders. Create MoveTemplateDialog component and wire it into AdminTemplatesTable dropdown menu.",
       "acceptance_criteria": [
         "Admin templates page at /admin/templates accessible from admin navigation",
         "Navigation link added to /admin dashboard linking to templates management",
@@ -774,6 +774,96 @@
         "apps/web/src/components/admin/EditFolderDialog.tsx (new)",
         "apps/web/src/components/admin/AdminDashboard.tsx",
         "apps/web/src/hooks/use-system-templates.ts"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-008",
+      "category": "Admin",
+      "title": "Migrate from Legacy role Column to roleId RBAC System",
+      "description": "Remove the legacy 'role' string column from the users table and fully adopt the roleId foreign key RBAC system. Currently both systems run in parallel - new users get both 'role' and 'roleId' set, and fallback logic reads from 'role' when 'roleId' is missing. This creates confusion and potential inconsistencies. Migrate all existing users to use roleId exclusively and remove all legacy role field references.",
+      "acceptance_criteria": [
+        "Migration script created to backfill roleId for all users with role but no roleId",
+        "Migration maps role='admin' to admin role document _id",
+        "Migration maps role='user' to user role document _id",
+        "Migration is idempotent (safe to run multiple times)",
+        "User creation (getOrCreateUserFromIdentity) only sets roleId, not role",
+        "promoteToAdminByEmail mutation updates roleId instead of role field",
+        "Fallback logic in roles.ts removed (lines 75-98 checking user.role)",
+        "getCurrentUserRole query reads from roleId only, no virtual role building",
+        "hasPermission function relies solely on roleId lookup",
+        "Frontend useUserRole hook returns role from role document, not user.role string",
+        "UsersTable.tsx reads isAdmin from role document permissions, not user.role",
+        "UserDetailPage.tsx reads isAdmin from role document permissions, not user.role",
+        "Legacy 'role' field removed from users table schema",
+        "Legacy 'by_role' index removed from users table",
+        "userRoleValidator removed if no longer needed",
+        "All TypeScript types updated to remove role?: string from User type",
+        "No references to user.role remain in codebase (except migration script)"
+      ],
+      "steps_to_verify": [
+        "Create migrateUsersToRoleId.ts migration script in packages/backend/convex/migrations/",
+        "Run migration via Convex dashboard - verify all users have roleId set",
+        "Query users table - verify no users have roleId=null",
+        "Update getOrCreateUserFromIdentity to only set roleId",
+        "Remove role field from user insert/patch calls",
+        "Update promoteToAdminByEmail to patch roleId instead of role",
+        "Remove fallback logic in roles.ts hasPermission function",
+        "Update getCurrentUserRole to throw if roleId missing instead of building virtual role",
+        "Update useUserRole hook to derive isAdmin from permissions array",
+        "Update UsersTable.tsx to use isAdmin from hook instead of user.role",
+        "Update UserDetailPage.tsx to use isAdmin from hook instead of user.role",
+        "Remove role field from schema.ts users table",
+        "Remove by_role index from schema.ts users table",
+        "Run npx convex dev - verify schema deploys successfully",
+        "Create new user - verify only roleId is set (no role field)",
+        "Test admin user - verify permissions work correctly",
+        "Test regular user - verify permissions work correctly",
+        "Run grep for 'user.role' - verify no references remain",
+        "Verify admin pages still show correct admin badges"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/migrations/migrateUsersToRoleId.ts (new)",
+        "packages/backend/convex/schema.ts",
+        "packages/backend/convex/users.ts",
+        "packages/backend/convex/roles.ts",
+        "apps/web/src/hooks/use-user-role.ts",
+        "apps/web/src/components/admin/UsersTable.tsx",
+        "apps/web/src/components/admin/UserDetailPage.tsx"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ADMIN-009",
+      "category": "Admin",
+      "title": "Fix Catch-22 Bug in seedAllRoles Admin Check",
+      "description": "The seedAllRoles mutation has a catch-22 bug: it requires admin permission to update roles, but if admin permissions are broken (missing admin:system), no one can run it to fix them. This creates a deadlock where admins with broken permissions cannot fix their own permissions. The mutation should also accept legacy role='admin' field as fallback authentication.",
+      "acceptance_criteria": [
+        "seedAllRoles checks for admin permission using BOTH roleId-based permissions AND legacy role field",
+        "Users with role='admin' but broken roleId permissions can still run seedAllRoles",
+        "Users with valid roleId admin permissions can still run seedAllRoles",
+        "Unauthenticated users cannot run seedAllRoles when roles exist",
+        "Non-admin users cannot run seedAllRoles when roles exist",
+        "Initial seeding (when roles table is empty) still works without admin check",
+        "promoteToAdminByEmail also sets roleId, not just role field",
+        "Admin check uses extractClerkId helper function for consistency"
+      ],
+      "steps_to_verify": [
+        "Open packages/backend/convex/seedRoles.ts",
+        "Modify lines 70-72 to add legacy role field fallback",
+        "Add import for extractClerkId from users.ts if needed",
+        "Test scenario 1: Create admin user with broken permissions (role='admin', no roleId)",
+        "Run seedAllRoles - verify it succeeds and updates permissions",
+        "Test scenario 2: Create admin user with valid roleId permissions",
+        "Run seedAllRoles - verify it succeeds",
+        "Test scenario 3: Create regular user with role='user'",
+        "Run seedAllRoles - verify it fails with permission error",
+        "Test scenario 4: Run seedAllRoles when roles table is empty",
+        "Verify initial seeding still works without authentication"
+      ],
+      "files_to_modify": [
+        "packages/backend/convex/seedRoles.ts",
+        "packages/backend/convex/users.ts"
       ],
       "passes": true
     }
