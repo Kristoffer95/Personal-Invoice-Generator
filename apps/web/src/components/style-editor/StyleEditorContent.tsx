@@ -165,7 +165,9 @@ function CanvasElementPreview({ element }: { element: TemplateElement }) {
 
 export default function StyleEditorContent() {
   const searchParams = useSearchParams()
+  // Separate URL params for user templates vs system templates
   const templateIdParam = searchParams.get('templateId')
+  const systemTemplateIdParam = searchParams.get('systemTemplateId')
   const hasLoadedTemplate = useRef(false)
 
   // Authentication state
@@ -188,18 +190,19 @@ export default function StyleEditorContent() {
     addElementToContainer,
   } = useTemplateStore()
 
-  // Determine if templateIdParam looks like a Convex ID (not a system template and not a local timestamp ID)
-  // Convex IDs are 32 character alphanumeric strings, system templates start with "system-"
-  const isLikelyConvexId = templateIdParam && !isSystemTemplate(templateIdParam) && !/^\d+-/.test(templateIdParam)
+  // Determine if IDs look like Convex IDs (not hardcoded system template IDs and not local timestamp IDs)
+  // Convex IDs are alphanumeric strings, hardcoded system templates start with "system-"
+  const isUserTemplateConvexId = templateIdParam && !isSystemTemplate(templateIdParam) && !/^\d+-/.test(templateIdParam)
+  const isSystemTemplateConvexId = systemTemplateIdParam && !isSystemTemplate(systemTemplateIdParam) && !/^\d+-/.test(systemTemplateIdParam)
 
-  // Query Convex for user template (only when authenticated and ID looks like Convex ID)
+  // Query Convex for user template (only when authenticated and using templateId param)
   const { template: convexTemplate, isLoading: isConvexTemplateLoading } = useTemplate(
-    isAuthenticated && isLikelyConvexId ? templateIdParam as Id<"templates"> : undefined
+    isAuthenticated && isUserTemplateConvexId ? templateIdParam as Id<"templates"> : undefined
   )
 
-  // Query Convex for system template (for admins editing system templates)
+  // Query Convex for system template (for admins editing system templates via systemTemplateId param)
   const { template: convexSystemTemplate, isLoading: isSystemTemplateLoading } = useSystemTemplate(
-    isAuthenticated && isAdmin && isLikelyConvexId ? templateIdParam as Id<"systemTemplates"> : undefined
+    isAuthenticated && isAdmin && isSystemTemplateConvexId ? systemTemplateIdParam as Id<"systemTemplates"> : undefined
   )
 
   // Track the active drag item
@@ -211,39 +214,58 @@ export default function StyleEditorContent() {
     if (hasLoadedTemplate.current) return
     if (isAuthLoading) return // Wait for auth state to be determined
 
-    // If authenticated and looks like a Convex ID, wait for Convex queries to complete
-    if (isAuthenticated && isLikelyConvexId) {
-      // Wait for both user template and system template queries if admin
-      if (isConvexTemplateLoading || (isAdmin && isSystemTemplateLoading)) return
+    // If authenticated, wait for relevant Convex queries to complete
+    if (isAuthenticated) {
+      // Wait for user template query if using templateId param
+      if (isUserTemplateConvexId && isConvexTemplateLoading) return
+      // Wait for system template query if admin using systemTemplateId param
+      if (isAdmin && isSystemTemplateConvexId && isSystemTemplateLoading) return
     }
 
-    if (templateIdParam) {
-      // Priority 1: User's Convex template
-      if (isAuthenticated && convexTemplate) {
-        setCurrentTemplateFromConvex(convexTemplate)
-        hasLoadedTemplate.current = true
-        return
-      }
-
-      // Priority 2: System template from Convex (admin editing)
+    // Priority 1: System template from Convex (admin editing via systemTemplateId)
+    if (systemTemplateIdParam) {
       if (isAuthenticated && isAdmin && convexSystemTemplate) {
         setCurrentTemplateFromConvexSystemTemplate(convexSystemTemplate)
         hasLoadedTemplate.current = true
         return
       }
 
-      // Priority 3: Hardcoded system template (fallback)
+      // Hardcoded system template fallback (for systemTemplateId like "system-xxx")
+      if (isSystemTemplate(systemTemplateIdParam)) {
+        loadSystemTemplate(systemTemplateIdParam)
+        hasLoadedTemplate.current = true
+        return
+      }
+
+      // System template not found - create new template
+      createNewTemplate('My Invoice Template')
+      hasLoadedTemplate.current = true
+      return
+    }
+
+    // Priority 2: User template from Convex (via templateId)
+    if (templateIdParam) {
+      if (isAuthenticated && convexTemplate) {
+        setCurrentTemplateFromConvex(convexTemplate)
+        hasLoadedTemplate.current = true
+        return
+      }
+
+      // Hardcoded system template fallback (for templateId like "system-xxx")
       if (isSystemTemplate(templateIdParam)) {
         loadSystemTemplate(templateIdParam)
         hasLoadedTemplate.current = true
         return
       }
 
-      // Not found anywhere - create new template
+      // Template not found - create new template
       createNewTemplate('My Invoice Template')
       hasLoadedTemplate.current = true
-    } else if (!currentTemplate) {
-      // No param and no current template, create new one
+      return
+    }
+
+    // No param and no current template, create new one
+    if (!currentTemplate) {
       createNewTemplate('My Invoice Template')
       hasLoadedTemplate.current = true
     } else {
@@ -253,12 +275,14 @@ export default function StyleEditorContent() {
     isAuthLoading,
     isAuthenticated,
     isAdmin,
-    isLikelyConvexId,
+    isUserTemplateConvexId,
+    isSystemTemplateConvexId,
     isConvexTemplateLoading,
     isSystemTemplateLoading,
     convexTemplate,
     convexSystemTemplate,
     templateIdParam,
+    systemTemplateIdParam,
     currentTemplate,
     loadSystemTemplate,
     setCurrentTemplateFromConvex,
