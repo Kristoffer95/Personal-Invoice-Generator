@@ -169,6 +169,7 @@ export default function StyleEditorContent() {
   const templateIdParam = searchParams.get('templateId')
   const systemTemplateIdParam = searchParams.get('systemTemplateId')
   const hasLoadedTemplate = useRef(false)
+  const canvasScrollAreaRef = useRef<HTMLDivElement>(null)
 
   // Authentication state
   const { isAuthenticated, isLoading: isAuthLoading } = useCurrentUser()
@@ -186,7 +187,6 @@ export default function StyleEditorContent() {
     addElement,
     moveElement,
     selectElement,
-    selectedElementId,
     addElementToContainer,
   } = useTemplateStore()
 
@@ -414,6 +414,35 @@ export default function StyleEditorContent() {
     ? currentTemplate?.elements.find((el) => el.id === activeId)
     : null
 
+  // Scroll to element callback for Layers panel
+  const handleScrollToElement = useCallback((elementId: string) => {
+    const element = currentTemplate?.elements.find((el) => el.id === elementId)
+    if (!element || !canvasScrollAreaRef.current) return
+
+    // Get the canvas container and the element's position
+    const scrollContainer = canvasScrollAreaRef.current
+    const { zoomLevel } = useTemplateStore.getState().editorSettings
+    const scale = zoomLevel / 100
+
+    // Calculate the element's position on the scaled canvas
+    const elementX = element.position.x * scale
+    const elementY = element.position.y * scale
+    const elementWidth = element.position.width * scale
+    const elementHeight = element.position.height * scale
+
+    // Calculate the scroll position to center the element
+    const containerWidth = scrollContainer.clientWidth
+    const containerHeight = scrollContainer.clientHeight
+    const scrollX = Math.max(0, elementX + elementWidth / 2 - containerWidth / 2)
+    const scrollY = Math.max(0, elementY + elementHeight / 2 - containerHeight / 2)
+
+    scrollContainer.scrollTo({
+      left: scrollX,
+      top: scrollY,
+      behavior: 'smooth',
+    })
+  }, [currentTemplate?.elements])
+
   // Global keyboard shortcuts (Cmd/Ctrl only - arrow keys handled in canvas)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -492,12 +521,12 @@ export default function StyleEditorContent() {
           <ElementsPanel />
 
           {/* Canvas - Center */}
-          <div className="flex-1 overflow-auto bg-muted/30 p-4">
+          <div ref={canvasScrollAreaRef} className="flex-1 overflow-auto bg-muted/30 p-4">
             <StyleEditorCanvas />
           </div>
 
-          {/* Properties Panel - Right */}
-          {selectedElementId && <PropertiesPanel />}
+          {/* Properties Panel - Right (always visible) */}
+          <PropertiesPanel onScrollToElement={handleScrollToElement} />
         </div>
       </div>
 

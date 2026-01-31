@@ -17,6 +17,7 @@ import {
   History,
   RotateCcw,
   RotateCw,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,8 +39,13 @@ import { useTemplateStore } from '@/lib/template-store'
 import { FontPicker } from './FontPicker'
 import { ColorPicker } from './ColorPicker'
 import { TokenInserter } from './TokenInserter'
+import { LayersTab } from './LayersTab'
 
-export function PropertiesPanel() {
+interface PropertiesPanelProps {
+  onScrollToElement?: (elementId: string) => void
+}
+
+export function PropertiesPanel({ onScrollToElement }: PropertiesPanelProps) {
   const {
     currentTemplate,
     selectedElementId,
@@ -65,7 +71,7 @@ export function PropertiesPanel() {
     jumpToHistoryIndex,
   } = useTemplateStore()
 
-  const [activeTab, setActiveTab] = useState<'properties' | 'history'>('properties')
+  const [activeTab, setActiveTab] = useState<'layers' | 'properties' | 'history'>('layers')
 
   const element = currentTemplate?.elements.find(
     (el) => el.id === selectedElementId
@@ -129,9 +135,8 @@ export function PropertiesPanel() {
     [selectedElementId, element, updateElement]
   )
 
-  if (!element) {
-    return null
-  }
+  // Panel always shows - Layers tab is always available
+  // Properties tab content is conditional on element selection
 
   // Generate history descriptions for display
   const getHistoryDescription = (index: number): string => {
@@ -147,44 +152,52 @@ export function PropertiesPanel() {
       {/* Header */}
       <div className="flex items-center justify-between border-b p-3">
         <h3 className="text-sm font-semibold">
-          {activeTab === 'properties' ? 'Properties' : 'History'}
+          {activeTab === 'layers' ? 'Layers' : activeTab === 'properties' ? 'Properties' : 'History'}
         </h3>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleToggleLock}
-          >
-            {element.locked ? (
-              <Lock className="h-4 w-4" />
-            ) : (
-              <Unlock className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleToggleVisibility}
-          >
-            {element.visible ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <EyeOff className="h-4 w-4" />
-            )}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        {element && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleToggleLock}
+            >
+              {element.locked ? (
+                <Lock className="h-4 w-4" />
+              ) : (
+                <Unlock className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleToggleVisibility}
+            >
+              {element.visible ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'properties' | 'history')} className="flex flex-1 flex-col">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'layers' | 'properties' | 'history')} className="flex flex-1 flex-col">
         <div className="border-b px-3 pt-2">
           <TabsList className="w-full">
-            <TabsTrigger value="properties" className="flex-1">Properties</TabsTrigger>
+            <TabsTrigger value="layers" className="flex-1">
+              <Layers className="mr-1 h-3 w-3" />
+              Layers
+            </TabsTrigger>
+            <TabsTrigger value="properties" className="flex-1" disabled={!element}>
+              Properties
+            </TabsTrigger>
             <TabsTrigger value="history" className="flex-1">
               <History className="mr-1 h-3 w-3" />
               History
@@ -192,8 +205,18 @@ export function PropertiesPanel() {
           </TabsList>
         </div>
 
+        {/* Layers Tab */}
+        <TabsContent value="layers" className="mt-0 flex-1 min-h-0">
+          <LayersTab onScrollToElement={onScrollToElement} />
+        </TabsContent>
+
         {/* Properties Tab */}
         <TabsContent value="properties" className="mt-0 flex-1 min-h-0">
+          {!element ? (
+            <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
+              Select an element to edit its properties
+            </div>
+          ) : (
           <ScrollArea className="h-full" viewportClassName="max-h-[calc(100vh-215px)]">
         <div className="space-y-4 p-4">
           {/* Element Name */}
@@ -1432,6 +1455,7 @@ export function PropertiesPanel() {
         </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
+          )}
         </TabsContent>
 
         {/* History Tab */}
@@ -1515,29 +1539,31 @@ export function PropertiesPanel() {
         </TabsContent>
       </Tabs>
 
-      {/* Footer Actions */}
-      <div className="border-t p-3">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={handleDuplicate}
-          >
-            <Copy className="mr-1 h-4 w-4" />
-            Duplicate
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="flex-1"
-            onClick={handleDelete}
-          >
-            <Trash2 className="mr-1 h-4 w-4" />
-            Delete
-          </Button>
+      {/* Footer Actions - only show when element is selected and on Properties tab */}
+      {element && activeTab === 'properties' && (
+        <div className="border-t p-3">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleDuplicate}
+            >
+              <Copy className="mr-1 h-4 w-4" />
+              Duplicate
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="flex-1"
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -31,6 +31,61 @@
         "apps/web/src/app/style-editor/page.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-011",
+      "category": "Style Editor",
+      "title": "Add Layers Tab to Style Editor",
+      "description": "Implement a Layers panel as a new tab in the PropertiesPanel, positioned before the History tab. The layers panel displays a hierarchical tree view of all template elements with expand/collapse functionality, inline lock/visibility toggles, a 3-dot action menu for additional operations, full drag-and-drop reparenting between containers, and click-to-select with automatic canvas scrolling.",
+      "acceptance_criteria": [
+        "Layers tab appears in PropertiesPanel before History tab",
+        "Tab shows Layers icon and 'Layers' label",
+        "Tree displays all template elements with proper hierarchy",
+        "Container elements show expand/collapse chevrons",
+        "Children are nested under their parent containers",
+        "Each element shows type-specific icon (text, table, divider, rectangle, logo, container)",
+        "Element names are displayed and truncated if too long",
+        "Clicking an element selects it on the canvas",
+        "Clicking an element scrolls the canvas to bring it into view",
+        "Lock icon appears on hover, toggles element.locked state",
+        "Eye icon appears on hover, toggles element.visible state",
+        "3-dot menu appears on hover with Duplicate, Delete, Move to Container options",
+        "Duplicate creates a copy of the element",
+        "Delete removes the element",
+        "Move to Container opens dialog to select target container",
+        "Elements can be dragged to reparent into containers",
+        "Dragging to a container updates parentId and positionMode",
+        "Cannot drag a container into itself or its descendants",
+        "Locked elements cannot be dragged",
+        "Container child count badge shown when collapsed"
+      ],
+      "steps_to_verify": [
+        "Navigate to /style-editor and load a template with nested elements",
+        "Click Layers tab in right panel - verify it appears before History",
+        "Verify tree structure matches element hierarchy",
+        "Click chevron on container - verify children expand/collapse",
+        "Click an element in layers - verify it's selected on canvas",
+        "Verify canvas scrolls to show the selected element",
+        "Hover over element - verify lock and eye icons appear",
+        "Click lock icon - verify element becomes locked on canvas",
+        "Click eye icon - verify element visibility toggles",
+        "Click 3-dot menu - verify Duplicate, Delete, Move to Container options",
+        "Click Duplicate - verify new element created",
+        "Click Delete - verify element removed",
+        "Click Move to Container - verify dialog opens with container list",
+        "Select container and confirm - verify element moves into container",
+        "Drag element onto container - verify it becomes child",
+        "Try dragging locked element - verify it doesn't drag",
+        "Try dragging container into itself - verify it's prevented"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/style-editor/LayersTab.tsx (new)",
+        "apps/web/src/components/style-editor/PropertiesPanel.tsx",
+        "apps/web/src/components/style-editor/StyleEditorContent.tsx",
+        "apps/web/src/components/style-editor/TemplateElement.tsx",
+        "apps/web/src/components/style-editor/StyleEditorCanvas.tsx"
+      ],
+      "passes": true
     }
   ]
 }

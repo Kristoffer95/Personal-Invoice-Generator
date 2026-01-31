@@ -19,3 +19,49 @@ Verified:
 - AdminTemplatesPage.tsx:129 uses `systemTemplateId` for system templates
 - StyleManagerPage.tsx:116 uses `templateId` for user templates
 - Build passes, lint passes, typecheck passes
+
+## STYLE-011: Add Layers Tab to Style Editor
+
+Implemented Layers panel as new tab in PropertiesPanel before History tab.
+
+Features:
+- Hierarchical tree view of all template elements
+- Expand/collapse containers with chevron icons
+- Type-specific icons (text, table, divider, rectangle, logo, container)
+- Element names truncated if too long
+- Click-to-select with canvas scroll-into-view
+- Lock/visibility toggles on hover
+- 3-dot action menu: Duplicate, Delete, Move to Container
+- Drag-and-drop reparenting between containers
+- Prevents circular references (container into itself/descendants)
+- Locked elements cannot be dragged
+- Child count badge on collapsed containers
+- Move to Container dialog for non-drag reparenting
+
+Changes:
+- apps/web/src/components/style-editor/LayersTab.tsx (new)
+  - TreeNode structure for hierarchical rendering
+  - buildTree() to convert flat elements to tree
+  - getDescendantIds() for circular reference prevention
+  - LayerItem component with all interactions
+  - Drag-and-drop using native HTML5 API
+  - Move to Container dialog with container selection
+- apps/web/src/components/style-editor/PropertiesPanel.tsx
+  - Added Layers tab before Properties and History
+  - Tab state: 'layers' | 'properties' | 'history'
+  - PropertiesPanel always visible (was conditional on selection)
+  - Header controls conditional on element selection
+  - Footer actions only on Properties tab
+  - onScrollToElement prop for canvas scrolling
+- apps/web/src/components/style-editor/StyleEditorContent.tsx
+  - PropertiesPanel always rendered (not conditional)
+  - handleScrollToElement callback for smooth scrolling
+  - canvasScrollAreaRef for scroll container
+
+Key decisions:
+- Used native HTML5 drag-and-drop for simplicity
+- useMemo for elements to prevent unnecessary re-renders
+- Layers tab default active tab
+- Properties tab disabled when no element selected
+
+Build passes, lint passes (no errors, only pre-existing warnings)
