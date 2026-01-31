@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useMemo } from 'react'
+import { useCallback, useState, useMemo, useEffect, useRef } from 'react'
 import {
   ChevronRight,
   ChevronDown,
@@ -107,6 +107,22 @@ function getDescendantIds(elementId: string, elements: TemplateElement[]): Set<s
 
   collectDescendants(elementId)
   return descendants
+}
+
+// Get all ancestor IDs (parent containers) of an element
+function getAncestorIds(elementId: string, elements: TemplateElement[]): string[] {
+  const elementMap = new Map<string, TemplateElement>()
+  elements.forEach((el) => elementMap.set(el.id, el))
+
+  const ancestors: string[] = []
+  let current = elementMap.get(elementId)
+
+  while (current?.parentId) {
+    ancestors.push(current.parentId)
+    current = elementMap.get(current.parentId)
+  }
+
+  return ancestors
 }
 
 interface LayerItemProps {
@@ -216,6 +232,7 @@ function LayerItem({
   return (
     <>
       <div
+        data-layer-element-id={element.id}
         className={cn(
           'group flex items-center gap-1 rounded-md px-1 py-1 text-sm transition-colors cursor-pointer',
           isSelected && 'bg-primary text-primary-foreground',
@@ -424,10 +441,52 @@ export function LayersTab({ onScrollToElement, expandedIds, setExpandedIds }: La
   const [draggedElementId, setDraggedElementId] = useState<string | null>(null)
   const [dragOverElementId, setDragOverElementId] = useState<string | null>(null)
 
+  // Ref to the scroll container for auto-scroll
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
   const elements = useMemo(
     () => currentTemplate?.elements ?? [],
     [currentTemplate?.elements]
   )
+
+  // Auto-expand parent containers and scroll to selected element when selection changes from canvas
+  useEffect(() => {
+    if (!selectedElementId || elements.length === 0) return
+
+    // Get all ancestor container IDs
+    const ancestorIds = getAncestorIds(selectedElementId, elements)
+
+    // Expand all ancestors if any are not already expanded
+    if (ancestorIds.length > 0) {
+      setExpandedIds((prev) => {
+        const hasAllAncestors = ancestorIds.every((id) => prev.has(id))
+        if (hasAllAncestors) return prev
+
+        const next = new Set(prev)
+        ancestorIds.forEach((id) => next.add(id))
+        return next
+      })
+    }
+
+    // Scroll to the selected element after a short delay to allow DOM to update
+    // (expansion needs to render before we can scroll to nested elements)
+    const scrollTimeout = setTimeout(() => {
+      if (!scrollContainerRef.current) return
+
+      const selectedElement = scrollContainerRef.current.querySelector(
+        `[data-layer-element-id="${selectedElementId}"]`
+      )
+
+      if (selectedElement) {
+        selectedElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        })
+      }
+    }, 50)
+
+    return () => clearTimeout(scrollTimeout)
+  }, [selectedElementId, elements, setExpandedIds])
 
   // Build tree structure
   const tree = useMemo(() => buildTree(elements), [elements])
@@ -572,7 +631,7 @@ export function LayersTab({ onScrollToElement, expandedIds, setExpandedIds }: La
   return (
     <>
       <ScrollArea className="h-full">
-        <div className="p-2 space-y-0.5">
+        <div ref={scrollContainerRef} className="p-2 space-y-0.5">
           {tree.map((node) => (
             <LayerItem
               key={node.element.id}

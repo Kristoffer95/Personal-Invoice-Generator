@@ -87,3 +87,30 @@ Behavior preserved:
 - State resets on new template load (session-only persistence)
 
 Build passes, lint passes (no new warnings)
+
+## STYLE-013: Sync Canvas Selection to Layers Tab (Auto-expand and Auto-scroll)
+
+Problem: Clicking element on canvas only highlights it in Layers tab if already visible. Nested elements in collapsed containers not revealed.
+
+Solution: Added useEffect in LayersTab that watches selectedElementId and:
+1. Auto-expands all parent containers via getAncestorIds helper
+2. Scrolls the layers panel to show selected element
+
+Changes:
+- apps/web/src/components/style-editor/LayersTab.tsx
+  - Added getAncestorIds() helper to walk up parentId chain
+  - Added scrollContainerRef for scroll container
+  - Added data-layer-element-id attribute to LayerItem for DOM targeting
+  - Added useEffect watching selectedElementId:
+    - Expands all ancestor containers via setExpandedIds
+    - Scrolls to element after 50ms delay (allows DOM to update after expansion)
+    - Uses scrollIntoView with behavior: 'smooth', block: 'nearest'
+
+Key decisions:
+- 50ms timeout before scroll to allow React to render expanded containers
+- Uses block: 'nearest' to avoid unnecessary scrolling when already visible
+- Smooth scroll for better UX
+- Only expands ancestors that aren't already expanded (avoids unnecessary state updates)
+- Manual collapse after auto-expand still works (user can toggle back)
+
+Build passes, lint passes (no new warnings)
