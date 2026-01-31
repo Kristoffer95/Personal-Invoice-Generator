@@ -86,6 +86,66 @@
         "apps/web/src/components/style-editor/StyleEditorCanvas.tsx"
       ],
       "passes": true
+    },
+    {
+      "id": "STYLE-012",
+      "category": "Style Editor",
+      "title": "Fix Layers Tab Expanded State Lost on Tab Switch",
+      "description": "The layers tab's expanded/collapsed state for containers resets when switching between tabs (Layers/Properties/History). This happens because expandedIds is stored in LayersTab's local React state, which is destroyed when Radix Tabs unmounts inactive tab content. Solution: Lift expandedIds state from LayersTab to PropertiesPanel (parent component that never unmounts).",
+      "acceptance_criteria": [
+        "Expanded containers remain expanded when switching from Layers to Properties tab",
+        "Expanded containers remain expanded when switching from Layers to History tab",
+        "Expanded containers remain expanded when switching back to Layers tab from any other tab",
+        "Manual expand/collapse still works correctly via chevron clicks",
+        "Drag-drop into container still auto-expands the target container",
+        "State resets correctly when loading a different template (session-only persistence)"
+      ],
+      "steps_to_verify": [
+        "Open style editor with a template containing nested containers",
+        "Expand Container A and Container B in Layers tab",
+        "Switch to Properties tab",
+        "Switch back to Layers tab - verify Container A and B are still expanded",
+        "Switch to History tab",
+        "Switch back to Layers tab - verify containers are still expanded",
+        "Click chevron on expanded container - verify it collapses",
+        "Click chevron again - verify it expands",
+        "Drag an element onto a collapsed container - verify container auto-expands"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/style-editor/PropertiesPanel.tsx",
+        "apps/web/src/components/style-editor/LayersTab.tsx"
+      ],
+      "passes": true
+    },
+    {
+      "id": "STYLE-013",
+      "category": "Style Editor",
+      "title": "Sync Canvas Selection to Layers Tab (Auto-expand and Auto-scroll)",
+      "description": "When a user clicks an element on the canvas, the layers tab should automatically expand all parent containers to reveal the selected element and scroll it into view. Currently, clicking on canvas only highlights the element in layers if it's already visible - nested elements in collapsed containers are not revealed.",
+      "acceptance_criteria": [
+        "Clicking an element on canvas auto-expands all parent containers in layers tab",
+        "Clicking an element on canvas scrolls the layers panel to show the selected element",
+        "Auto-expand works for deeply nested elements (3+ levels)",
+        "Scroll behavior is smooth (not instant jump)",
+        "User can still manually collapse containers after auto-expand",
+        "Selection from layers tab to canvas (existing behavior) continues to work"
+      ],
+      "steps_to_verify": [
+        "Create nested structure: Container A → Container B → Text element",
+        "Collapse both Container A and Container B in Layers tab",
+        "Click the Text element directly on the canvas",
+        "Verify Container A auto-expands in Layers tab",
+        "Verify Container B auto-expands in Layers tab",
+        "Verify Text element is highlighted in Layers tab",
+        "Verify Layers panel scrolled to show the Text element",
+        "Click chevron on Container B - verify it can still be manually collapsed",
+        "Create structure with 4+ nesting levels and verify auto-expand works",
+        "Add many elements so Layers tab scrolls - click element at bottom of canvas - verify scroll to element"
+      ],
+      "files_to_modify": [
+        "apps/web/src/components/style-editor/LayersTab.tsx"
+      ],
+      "passes": false
     }
   ]
 }

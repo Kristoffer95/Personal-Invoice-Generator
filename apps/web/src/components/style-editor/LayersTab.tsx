@@ -399,9 +399,11 @@ function LayerItem({
 
 interface LayersTabProps {
   onScrollToElement?: (elementId: string) => void
+  expandedIds: Set<string>
+  setExpandedIds: React.Dispatch<React.SetStateAction<Set<string>>>
 }
 
-export function LayersTab({ onScrollToElement }: LayersTabProps) {
+export function LayersTab({ onScrollToElement, expandedIds, setExpandedIds }: LayersTabProps) {
   const {
     currentTemplate,
     selectedElementId,
@@ -413,7 +415,6 @@ export function LayersTab({ onScrollToElement }: LayersTabProps) {
     addElementToContainer,
   } = useTemplateStore()
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [moveDialogOpen, setMoveDialogOpen] = useState(false)
   const [elementToMove, setElementToMove] = useState<string | null>(null)
   const [targetContainerId, setTargetContainerId] = useState<string>('')
@@ -455,7 +456,7 @@ export function LayersTab({ onScrollToElement }: LayersTabProps) {
       }
       return next
     })
-  }, [])
+  }, [setExpandedIds])
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -546,7 +547,7 @@ export function LayersTab({ onScrollToElement }: LayersTabProps) {
       setDraggedElementId(null)
       setDragOverElementId(null)
     },
-    [addElementToContainer, invalidDropTargets]
+    [addElementToContainer, invalidDropTargets, setExpandedIds]
   )
 
   // Get available containers for move dialog (excluding current element and its descendants)

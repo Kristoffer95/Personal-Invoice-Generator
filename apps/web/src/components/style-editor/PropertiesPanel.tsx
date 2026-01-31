@@ -73,6 +73,9 @@ export function PropertiesPanel({ onScrollToElement }: PropertiesPanelProps) {
 
   const [activeTab, setActiveTab] = useState<'layers' | 'properties' | 'history'>('layers')
 
+  // Lifted from LayersTab to persist expanded state across tab switches
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
   const element = currentTemplate?.elements.find(
     (el) => el.id === selectedElementId
   )
@@ -207,7 +210,11 @@ export function PropertiesPanel({ onScrollToElement }: PropertiesPanelProps) {
 
         {/* Layers Tab */}
         <TabsContent value="layers" className="mt-0 flex-1 min-h-0">
-          <LayersTab onScrollToElement={onScrollToElement} />
+          <LayersTab
+            onScrollToElement={onScrollToElement}
+            expandedIds={expandedIds}
+            setExpandedIds={setExpandedIds}
+          />
         </TabsContent>
 
         {/* Properties Tab */}

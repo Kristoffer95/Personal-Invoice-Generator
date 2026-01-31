@@ -65,3 +65,25 @@ Key decisions:
 - Properties tab disabled when no element selected
 
 Build passes, lint passes (no errors, only pre-existing warnings)
+
+## STYLE-012: Fix Layers Tab Expanded State Lost on Tab Switch
+
+Problem: expandedIds was stored in LayersTab's local React state, destroyed when Radix Tabs unmounts inactive tab content on tab switch.
+
+Solution: Lifted expandedIds state from LayersTab to PropertiesPanel (parent component that never unmounts).
+
+Changes:
+- apps/web/src/components/style-editor/PropertiesPanel.tsx
+  - Added useState for expandedIds
+  - Pass expandedIds and setExpandedIds as props to LayersTab
+- apps/web/src/components/style-editor/LayersTab.tsx
+  - Updated props interface to accept expandedIds and setExpandedIds
+  - Removed local useState for expandedIds
+  - Added setExpandedIds to dependency arrays in useCallback hooks
+
+Behavior preserved:
+- Manual expand/collapse via chevron clicks works
+- Drag-drop into container still auto-expands target container
+- State resets on new template load (session-only persistence)
+
+Build passes, lint passes (no new warnings)
