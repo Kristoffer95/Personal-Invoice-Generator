@@ -1,116 +1,19 @@
-## STYLE-010: Fix Template ID Mismatch in Style Editor
+## STYLE-014: Canvas Container element
 
-Problem: StyleEditorContent used single `templateId` URL param for both user templates and system templates, passing incorrect IDs to the wrong Convex queries.
-
-Fix: Separated URL params:
-- `templateId` → user templates (routes to useTemplate hook for `templates` table)
-- `systemTemplateId` → system templates (routes to useSystemTemplate hook for `systemTemplates` table)
-
-Changes:
-- apps/web/src/components/style-editor/StyleEditorContent.tsx
-  - Read both `templateId` and `systemTemplateId` from URL params
-  - `isUserTemplateConvexId` for user template validation
-  - `isSystemTemplateConvexId` for system template validation
-  - useTemplate only called with templateId param
-  - useSystemTemplate only called with systemTemplateId param
-  - Updated useEffect to handle both params with proper priority
-
-Verified:
-- AdminTemplatesPage.tsx:129 uses `systemTemplateId` for system templates
-- StyleManagerPage.tsx:116 uses `templateId` for user templates
-- Build passes, lint passes, typecheck passes
-
-## STYLE-011: Add Layers Tab to Style Editor
-
-Implemented Layers panel as new tab in PropertiesPanel before History tab.
-
-Features:
-- Hierarchical tree view of all template elements
-- Expand/collapse containers with chevron icons
-- Type-specific icons (text, table, divider, rectangle, logo, container)
-- Element names truncated if too long
-- Click-to-select with canvas scroll-into-view
-- Lock/visibility toggles on hover
-- 3-dot action menu: Duplicate, Delete, Move to Container
-- Drag-and-drop reparenting between containers
-- Prevents circular references (container into itself/descendants)
-- Locked elements cannot be dragged
-- Child count badge on collapsed containers
-- Move to Container dialog for non-drag reparenting
-
-Changes:
-- apps/web/src/components/style-editor/LayersTab.tsx (new)
-  - TreeNode structure for hierarchical rendering
-  - buildTree() to convert flat elements to tree
-  - getDescendantIds() for circular reference prevention
-  - LayerItem component with all interactions
-  - Drag-and-drop using native HTML5 API
-  - Move to Container dialog with container selection
-- apps/web/src/components/style-editor/PropertiesPanel.tsx
-  - Added Layers tab before Properties and History
-  - Tab state: 'layers' | 'properties' | 'history'
-  - PropertiesPanel always visible (was conditional on selection)
-  - Header controls conditional on element selection
-  - Footer actions only on Properties tab
-  - onScrollToElement prop for canvas scrolling
-- apps/web/src/components/style-editor/StyleEditorContent.tsx
-  - PropertiesPanel always rendered (not conditional)
-  - handleScrollToElement callback for smooth scrolling
-  - canvasScrollAreaRef for scroll container
+Added Canvas Container to style editor - layout container with canvas width/height modes.
 
 Key decisions:
-- Used native HTML5 drag-and-drop for simplicity
-- useMemo for elements to prevent unnecessary re-renders
-- Layers tab default active tab
-- Properties tab disabled when no element selected
+- Purple theme (#9333ea) for visual distinction from blue Column and green Row containers
+- widthMode: 'canvas' and heightMode: 'canvas' to fill entire printable page area
+- Column layout direction as default (same as root container)
+- Zero padding and gap for full-page coverage
+- Maximize2 icon to represent full-page behavior
+- Position set to 0,0 with 0 dimensions (overridden by canvas mode)
 
-Build passes, lint passes (no errors, only pre-existing warnings)
+Files changed:
+- apps/web/src/components/style-editor/predefined-elements.ts - Added Canvas Container element
+- apps/web/src/components/style-editor/predefined-elements.test.ts - Added tests for Canvas Container
 
-## STYLE-012: Fix Layers Tab Expanded State Lost on Tab Switch
-
-Problem: expandedIds was stored in LayersTab's local React state, destroyed when Radix Tabs unmounts inactive tab content on tab switch.
-
-Solution: Lifted expandedIds state from LayersTab to PropertiesPanel (parent component that never unmounts).
-
-Changes:
-- apps/web/src/components/style-editor/PropertiesPanel.tsx
-  - Added useState for expandedIds
-  - Pass expandedIds and setExpandedIds as props to LayersTab
-- apps/web/src/components/style-editor/LayersTab.tsx
-  - Updated props interface to accept expandedIds and setExpandedIds
-  - Removed local useState for expandedIds
-  - Added setExpandedIds to dependency arrays in useCallback hooks
-
-Behavior preserved:
-- Manual expand/collapse via chevron clicks works
-- Drag-drop into container still auto-expands target container
-- State resets on new template load (session-only persistence)
-
-Build passes, lint passes (no new warnings)
-
-## STYLE-013: Sync Canvas Selection to Layers Tab (Auto-expand and Auto-scroll)
-
-Problem: Clicking element on canvas only highlights it in Layers tab if already visible. Nested elements in collapsed containers not revealed.
-
-Solution: Added useEffect in LayersTab that watches selectedElementId and:
-1. Auto-expands all parent containers via getAncestorIds helper
-2. Scrolls the layers panel to show selected element
-
-Changes:
-- apps/web/src/components/style-editor/LayersTab.tsx
-  - Added getAncestorIds() helper to walk up parentId chain
-  - Added scrollContainerRef for scroll container
-  - Added data-layer-element-id attribute to LayerItem for DOM targeting
-  - Added useEffect watching selectedElementId:
-    - Expands all ancestor containers via setExpandedIds
-    - Scrolls to element after 50ms delay (allows DOM to update after expansion)
-    - Uses scrollIntoView with behavior: 'smooth', block: 'nearest'
-
-Key decisions:
-- 50ms timeout before scroll to allow React to render expanded containers
-- Uses block: 'nearest' to avoid unnecessary scrolling when already visible
-- Smooth scroll for better UX
-- Only expands ancestors that aren't already expanded (avoids unnecessary state updates)
-- Manual collapse after auto-expand still works (user can toggle back)
-
-Build passes, lint passes (no new warnings)
+Notes:
+- Pre-existing test failures in InvoiceForm.test.tsx and InvoiceFilters.test.tsx (unrelated)
+- Pre-existing type errors in StatusLogList.test.tsx (unrelated)

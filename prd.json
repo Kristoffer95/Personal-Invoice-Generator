@@ -1,149 +1,20 @@
 {
   "items": [
     {
-      "id": "STYLE-010",
+      "id": "STYLE-014",
       "category": "Style Editor",
-      "title": "Fix Template ID Mismatch in Style Editor",
-      "description": "The style editor incorrectly passes user template IDs (from `templates` table) to the systemTemplates query, causing ArgumentValidationError. When editing a template, StyleEditorContent must properly distinguish between system templates (using systemTemplateId URL param) and user templates (using templateId URL param) and call the appropriate query/hook.",
-      "acceptance_criteria": [
-        "StyleEditorContent correctly identifies template type from URL params",
-        "systemTemplateId param routes to useSystemTemplate hook",
-        "templateId param routes to useTemplate hook (user templates)",
-        "No ArgumentValidationError when editing user templates",
-        "No ArgumentValidationError when editing system templates",
-        "Quick-edit button in admin templates uses systemTemplateId param",
-        "Edit action in user styles uses templateId param",
-        "Both template types load and save correctly in style editor"
-      ],
-      "steps_to_verify": [
-        "Check StyleEditorContent.tsx for URL param handling",
-        "Verify useSystemTemplate is only called with systemTemplates IDs",
-        "Verify useTemplate is only called with templates IDs",
-        "Navigate to /admin/templates as admin",
-        "Click quick-edit pencil on a system template - verify editor loads without error",
-        "Navigate to /styles as regular user",
-        "Click edit on a user template - verify editor loads without error",
-        "Make changes and save - verify both template types save correctly",
-        "Check browser console for any ArgumentValidationError"
-      ],
-      "files_to_modify": [
-        "apps/web/src/components/style-editor/StyleEditorContent.tsx",
-        "apps/web/src/app/style-editor/page.tsx"
-      ],
-      "passes": true
-    },
-    {
-      "id": "STYLE-011",
-      "category": "Style Editor",
-      "title": "Add Layers Tab to Style Editor",
-      "description": "Implement a Layers panel as a new tab in the PropertiesPanel, positioned before the History tab. The layers panel displays a hierarchical tree view of all template elements with expand/collapse functionality, inline lock/visibility toggles, a 3-dot action menu for additional operations, full drag-and-drop reparenting between containers, and click-to-select with automatic canvas scrolling.",
-      "acceptance_criteria": [
-        "Layers tab appears in PropertiesPanel before History tab",
-        "Tab shows Layers icon and 'Layers' label",
-        "Tree displays all template elements with proper hierarchy",
-        "Container elements show expand/collapse chevrons",
-        "Children are nested under their parent containers",
-        "Each element shows type-specific icon (text, table, divider, rectangle, logo, container)",
-        "Element names are displayed and truncated if too long",
-        "Clicking an element selects it on the canvas",
-        "Clicking an element scrolls the canvas to bring it into view",
-        "Lock icon appears on hover, toggles element.locked state",
-        "Eye icon appears on hover, toggles element.visible state",
-        "3-dot menu appears on hover with Duplicate, Delete, Move to Container options",
-        "Duplicate creates a copy of the element",
-        "Delete removes the element",
-        "Move to Container opens dialog to select target container",
-        "Elements can be dragged to reparent into containers",
-        "Dragging to a container updates parentId and positionMode",
-        "Cannot drag a container into itself or its descendants",
-        "Locked elements cannot be dragged",
-        "Container child count badge shown when collapsed"
-      ],
-      "steps_to_verify": [
-        "Navigate to /style-editor and load a template with nested elements",
-        "Click Layers tab in right panel - verify it appears before History",
-        "Verify tree structure matches element hierarchy",
-        "Click chevron on container - verify children expand/collapse",
-        "Click an element in layers - verify it's selected on canvas",
-        "Verify canvas scrolls to show the selected element",
-        "Hover over element - verify lock and eye icons appear",
-        "Click lock icon - verify element becomes locked on canvas",
-        "Click eye icon - verify element visibility toggles",
-        "Click 3-dot menu - verify Duplicate, Delete, Move to Container options",
-        "Click Duplicate - verify new element created",
-        "Click Delete - verify element removed",
-        "Click Move to Container - verify dialog opens with container list",
-        "Select container and confirm - verify element moves into container",
-        "Drag element onto container - verify it becomes child",
-        "Try dragging locked element - verify it doesn't drag",
-        "Try dragging container into itself - verify it's prevented"
-      ],
-      "files_to_modify": [
-        "apps/web/src/components/style-editor/LayersTab.tsx (new)",
-        "apps/web/src/components/style-editor/PropertiesPanel.tsx",
-        "apps/web/src/components/style-editor/StyleEditorContent.tsx",
-        "apps/web/src/components/style-editor/TemplateElement.tsx",
-        "apps/web/src/components/style-editor/StyleEditorCanvas.tsx"
-      ],
-      "passes": true
-    },
-    {
-      "id": "STYLE-012",
-      "category": "Style Editor",
-      "title": "Fix Layers Tab Expanded State Lost on Tab Switch",
-      "description": "The layers tab's expanded/collapsed state for containers resets when switching between tabs (Layers/Properties/History). This happens because expandedIds is stored in LayersTab's local React state, which is destroyed when Radix Tabs unmounts inactive tab content. Solution: Lift expandedIds state from LayersTab to PropertiesPanel (parent component that never unmounts).",
-      "acceptance_criteria": [
-        "Expanded containers remain expanded when switching from Layers to Properties tab",
-        "Expanded containers remain expanded when switching from Layers to History tab",
-        "Expanded containers remain expanded when switching back to Layers tab from any other tab",
-        "Manual expand/collapse still works correctly via chevron clicks",
-        "Drag-drop into container still auto-expands the target container",
-        "State resets correctly when loading a different template (session-only persistence)"
-      ],
-      "steps_to_verify": [
-        "Open style editor with a template containing nested containers",
-        "Expand Container A and Container B in Layers tab",
-        "Switch to Properties tab",
-        "Switch back to Layers tab - verify Container A and B are still expanded",
-        "Switch to History tab",
-        "Switch back to Layers tab - verify containers are still expanded",
-        "Click chevron on expanded container - verify it collapses",
-        "Click chevron again - verify it expands",
-        "Drag an element onto a collapsed container - verify container auto-expands"
-      ],
-      "files_to_modify": [
-        "apps/web/src/components/style-editor/PropertiesPanel.tsx",
-        "apps/web/src/components/style-editor/LayersTab.tsx"
-      ],
-      "passes": true
-    },
-    {
-      "id": "STYLE-013",
-      "category": "Style Editor",
-      "title": "Sync Canvas Selection to Layers Tab (Auto-expand and Auto-scroll)",
-      "description": "When a user clicks an element on the canvas, the layers tab should automatically expand all parent containers to reveal the selected element and scroll it into view. Currently, clicking on canvas only highlights the element in layers if it's already visible - nested elements in collapsed containers are not revealed.",
-      "acceptance_criteria": [
-        "Clicking an element on canvas auto-expands all parent containers in layers tab",
-        "Clicking an element on canvas scrolls the layers panel to show the selected element",
-        "Auto-expand works for deeply nested elements (3+ levels)",
-        "Scroll behavior is smooth (not instant jump)",
-        "User can still manually collapse containers after auto-expand",
-        "Selection from layers tab to canvas (existing behavior) continues to work"
-      ],
-      "steps_to_verify": [
-        "Create nested structure: Container A → Container B → Text element",
-        "Collapse both Container A and Container B in Layers tab",
-        "Click the Text element directly on the canvas",
-        "Verify Container A auto-expands in Layers tab",
-        "Verify Container B auto-expands in Layers tab",
-        "Verify Text element is highlighted in Layers tab",
-        "Verify Layers panel scrolled to show the Text element",
-        "Click chevron on Container B - verify it can still be manually collapsed",
-        "Create structure with 4+ nesting levels and verify auto-expand works",
-        "Add many elements so Layers tab scrolls - click element at bottom of canvas - verify scroll to element"
-      ],
-      "files_to_modify": [
-        "apps/web/src/components/style-editor/LayersTab.tsx"
+      "description": "Add Canvas Container element to the style editor that works like a layout container but with width and height set to 'canvas' mode, filling the entire printable page area. Should appear in the Layout category alongside Column and Row containers with purple color theme for visual distinction.",
+      "stepsToVerify": [
+        "Open Elements Panel in style editor and expand Layout category",
+        "Verify 'Canvas Container' appears with description 'Full-page container'",
+        "Drag Canvas Container onto the canvas",
+        "Verify element has purple theme (border and background)",
+        "Open Properties Panel and verify Width Mode shows 'Canvas'",
+        "Open Properties Panel and verify Height Mode shows 'Canvas'",
+        "Verify element fills the entire printable area (page minus margins)",
+        "Change page size (e.g., A4 to Letter) and verify container auto-resizes",
+        "Drag other elements into the Canvas Container and verify they become children",
+        "Export PDF and verify Canvas Container renders correctly"
       ],
       "passes": true
     }

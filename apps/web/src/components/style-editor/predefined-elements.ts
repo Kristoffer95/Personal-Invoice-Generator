@@ -474,6 +474,45 @@ export const PREDEFINED_ELEMENTS: PredefinedElement[] = [
       },
     },
   },
+  {
+    id: 'layout-container-canvas',
+    category: 'layout',
+    name: 'Canvas Container',
+    description: 'Full-page container',
+    icon: 'Maximize2',
+    defaultElement: {
+      type: 'layout_container',
+      name: 'Canvas Container',
+      position: { x: 0, y: 0, width: 0, height: 0 }, // Will be overridden by canvas mode
+      content: '',
+      backgroundColor: 'rgba(147, 51, 234, 0.05)',
+      border: {
+        width: 1,
+        color: '#9333ea',
+        style: 'dashed',
+        radius: 0,
+      },
+      padding: 0,
+      opacity: 1,
+      zIndex: 0,
+      locked: false,
+      visible: true,
+      positionMode: 'absolute',
+      order: 0,
+      flexGrow: 0,
+      flexShrink: 1,
+      showWhenEmpty: false,
+      widthMode: 'canvas',
+      heightMode: 'canvas',
+      layoutConfig: {
+        direction: 'column',
+        gap: 0,
+        align: 'stretch',
+        justify: 'start',
+        wrap: false,
+      },
+    },
+  },
 ]
 
 export const ELEMENT_CATEGORIES = [
