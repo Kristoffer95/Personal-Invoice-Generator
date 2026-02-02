@@ -17,3 +17,21 @@ Files changed:
 Notes:
 - Pre-existing test failures in InvoiceForm.test.tsx and InvoiceFilters.test.tsx (unrelated)
 - Pre-existing type errors in StatusLogList.test.tsx (unrelated)
+
+## PERF-001: Vercel Speed Insights integration
+
+Installed @vercel/speed-insights and added SpeedInsights component to root layout.
+
+Key decisions:
+- Used @vercel/speed-insights/next import for Next.js integration
+- Placed <SpeedInsights /> inside body tag but outside Providers for simplicity
+- Version ^1.3.1 installed
+
+Files changed:
+- apps/web/package.json - Added @vercel/speed-insights dependency
+- apps/web/src/app/layout.tsx - Added SpeedInsights import and component
+
+Notes:
+- Build passes successfully
+- Lint passes (warnings only, no errors)
+- Pre-existing test failures remain unrelated to this change

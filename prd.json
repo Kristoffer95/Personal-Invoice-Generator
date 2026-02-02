@@ -17,6 +17,19 @@
         "Export PDF and verify Canvas Container renders correctly"
       ],
       "passes": true
+    },
+    {
+      "id": "PERF-001",
+      "category": "Performance",
+      "description": "Install and integrate Vercel Speed Insights (@vercel/speed-insights) into the Next.js application to collect Web Vitals metrics. Add SpeedInsights component to the root layout.",
+      "stepsToVerify": [
+        "Verify @vercel/speed-insights is installed in package.json",
+        "Open apps/web/src/app/layout.tsx and verify SpeedInsights import exists",
+        "Verify <SpeedInsights /> component is rendered inside the body tag",
+        "Run pnpm dev and verify no console errors",
+        "Deploy to Vercel and verify Speed Insights metrics appear in dashboard"
+      ],
+      "passes": true
     }
   ]
 }
